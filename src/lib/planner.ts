@@ -198,9 +198,21 @@ export function generateWeek(
   week: string,
   data: Pick<AppData, "settings" | "categories" | "recurring">,
   existing?: WeekPlan,
+  options: { notBefore?: { date: string; minute: number } } = {},
 ): PlanResult {
   const { settings: s, recurring } = data;
   const categories = data.categories.filter((c) => c.id !== GOOGLE_CATEGORY_ID);
+  const boundary = options.notBefore;
+  const started = (a: Activity) =>
+    Boolean(
+      boundary &&
+      (a.date < boundary.date ||
+        (a.date === boundary.date && a.start < boundary.minute)),
+    );
+  const schedulingDays = plannedDays(s).filter(
+    (day) => !boundary || addDays(week, day) >= boundary.date,
+  );
+  const focusFirst = s.autoPlanning === true;
   const days = plannedDays(s),
     activities: Activity[] = [],
     conflicts: Conflict[] = [];
@@ -227,7 +239,7 @@ export function generateWeek(
   // Preserve explicitly entered/moved activities and logged outcomes; regenerate only unedited suggestions.
   activities.push(
     ...(existing?.activities.filter(
-      (a) => a.source !== "generated" || a.status !== "planned",
+      (a) => a.source !== "generated" || a.status !== "planned" || started(a),
     ) ?? []),
   );
   // Without explicit permission, existing protected music retains its original place.
@@ -237,6 +249,7 @@ export function generateWeek(
   for (const a of existing?.activities ?? []) {
     if (
       a.source !== "generated" ||
+      started(a) ||
       a.status !== "planned" ||
       a.blockType === "locked" ||
       a.routine
@@ -255,7 +268,7 @@ export function generateWeek(
       }
     } else if (category && !category.movable) activities.push(a);
   }
-  for (const day of days) {
+  for (const day of schedulingDays) {
     const date = addDays(week, day);
     for (const [key, title, categoryId, start, end] of [
       ["lunch", "Lunch & paus", "rest", s.lunchStart, s.lunchEnd],
@@ -271,7 +284,11 @@ export function generateWeek(
           a.categoryId === categoryId &&
           a.blockType === "locked",
       );
-      if (from < to && !same)
+      if (
+        from < to &&
+        !same &&
+        (!boundary || date !== boundary.date || from >= boundary.minute)
+      )
         add({
           id: `${week}-${day}-${key}`,
           title,
@@ -285,10 +302,11 @@ export function generateWeek(
     }
   }
   for (const r of recurring)
-    for (const day of days.filter((d) => r.weekdays.includes(d))) {
+    for (const day of schedulingDays.filter((d) => r.weekdays.includes(d))) {
       const date = addDays(week, day);
       if (
         date < r.startsOn ||
+        (boundary && date === boundary.date && r.start < boundary.minute) ||
         activities.some((a) => a.recurrenceId === r.id && a.date === date)
       )
         continue;
@@ -307,7 +325,8 @@ export function generateWeek(
       busy = activities
         .filter((a) => a.date === date && blocksTime(a))
         .sort((a, b) => a.start - b.start);
-    let cursor = s.start;
+    let cursor =
+      boundary?.date === date ? Math.max(s.start, boundary.minute) : s.start;
     const result: { date: string; start: number; end: number; day: number }[] =
       [];
     for (const a of busy) {
@@ -337,7 +356,9 @@ export function generateWeek(
   ).length;
   let musicNeeded = Math.max(0, s.musicMornings - existingMusic);
   if (music)
-    for (const day of [1, 4, 0, 2, 3, 5, 6].filter((d) => days.includes(d))) {
+    for (const day of [1, 4, 0, 2, 3, 5, 6].filter((d) =>
+      schedulingDays.includes(d),
+    )) {
       if (!musicNeeded) break;
       if (gaps(day).some((g) => g.start <= s.start && g.end >= s.lunchStart)) {
         add({
@@ -358,9 +379,62 @@ export function generateWeek(
       `${musicNeeded} musikförmiddag${musicNeeded > 1 ? "ar" : ""}`,
       musicNeeded * (s.lunchStart - s.start),
     );
+  // Automatic mode reserves weekly exercises and whole afternoon training
+  // sessions before distributing the remaining focus budgets across mornings.
+  if (focusFirst && categories.some((c) => c.id === ROUTINE_CATEGORY.id)) {
+    const routinePlan = addWeeklyRoutines(
+      { week, activities, generatedAt: "" },
+      s,
+      categories,
+      boundary?.date ?? week,
+      boundary,
+    );
+    activities.splice(0, activities.length, ...routinePlan.activities);
+  }
+  const focus = (c: Category) => ["career", "learning"].includes(c.id);
+  const automaticRank = (c: Category) =>
+    c.id === "health" ? 0 : focus(c) ? 1 : 2;
   const flex = categories
     .filter((c) => !["music", "family", ROUTINE_CATEGORY.id].includes(c.id))
-    .sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id));
+    .sort((a, b) =>
+      focusFirst
+        ? automaticRank(a) - automaticRank(b) ||
+          b.priority - a.priority ||
+          a.id.localeCompare(b.id)
+        : b.priority - a.priority || a.id.localeCompare(b.id),
+    );
+  const titleFor = (c: Category) =>
+    c.id === "learning"
+      ? "Kompetensutveckling"
+      : c.id === "career"
+        ? "Jobbsökande & nätverk"
+        : c.name;
+  if (focusFirst) {
+    // Give both focus areas a morning foothold on each available day, then use
+    // their priorities to allocate the rest of their weekly budgets.
+    for (const day of schedulingDays) {
+      for (const c of flex
+        .filter(focus)
+        .sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id))) {
+        const remaining =
+          targetMinutes(c, s) - (categoryMinutes(activities)[c.id] || 0);
+        if (remaining < c.minBlock || !c.allowSplit) continue;
+        const duration = remaining < c.minBlock * 2 ? remaining : c.minBlock;
+        const slot = gaps(day)
+          .map((g) => ({ ...g, end: Math.min(g.end, s.lunchStart) }))
+          .find((g) => g.end - g.start >= duration);
+        if (slot)
+          add({
+            title: titleFor(c),
+            categoryId: c.id,
+            date: slot.date,
+            start: slot.start,
+            end: slot.start + duration,
+            priority: c.priority,
+          });
+      }
+    }
+  }
   for (const c of flex) {
     let remaining = Math.max(
       0,
@@ -376,7 +450,7 @@ export function generateWeek(
           ).length,
       );
       const slots = () =>
-        days
+        schedulingDays
           .flatMap(gaps)
           .filter((g) => g.end - g.start >= s.trainingMinutes)
           .sort((a, b) => {
@@ -403,23 +477,33 @@ export function generateWeek(
       continue;
     }
     const preferred = (day: number, start: number) =>
-      c.id === "learning"
-        ? day === 2 && start < s.lunchStart
-          ? 0
-          : day === 3 && start < s.lunchStart
-            ? 1
-            : day === 0 && start >= s.lunchEnd
-              ? 2
-              : day === 4 && start >= s.lunchEnd
-                ? 3
-                : 10 + day
-        : day === 0 && start < s.lunchStart
-          ? 0
-          : day === 2 && start >= s.lunchEnd
-            ? 1
-            : 10 + day;
+      focusFirst
+        ? (focus(c)
+            ? start < s.lunchStart
+              ? 0
+              : 10000
+            : start >= s.lunchEnd
+              ? 0
+              : 10000) +
+          start * 7 +
+          day
+        : c.id === "learning"
+          ? day === 2 && start < s.lunchStart
+            ? 0
+            : day === 3 && start < s.lunchStart
+              ? 1
+              : day === 0 && start >= s.lunchEnd
+                ? 2
+                : day === 4 && start >= s.lunchEnd
+                  ? 3
+                  : 10 + day
+          : day === 0 && start < s.lunchStart
+            ? 0
+            : day === 2 && start >= s.lunchEnd
+              ? 1
+              : 10 + day;
     while (remaining >= c.minBlock) {
-      const candidates = days
+      const candidates = schedulingDays
         .flatMap(gaps)
         .filter(
           (g) => g.end - g.start >= (c.allowSplit ? c.minBlock : remaining),
@@ -435,12 +519,7 @@ export function generateWeek(
         ? Math.min(remaining, slot.end - slot.start)
         : remaining;
       add({
-        title:
-          c.id === "learning"
-            ? "Kompetensutveckling"
-            : c.id === "career"
-              ? "Jobbsökande & nätverk"
-              : c.name,
+        title: titleFor(c),
         categoryId: c.id,
         date: slot.date,
         start: slot.start,
@@ -454,7 +533,7 @@ export function generateWeek(
   }
   const career = categories.find((c) => c.id === "career");
   if (career)
-    for (const day of days)
+    for (const day of schedulingDays)
       for (const g of gaps(day))
         if (g.end - g.start >= career.minBlock)
           add({
@@ -478,7 +557,13 @@ export function generateWeek(
     ),
   };
   const plan = categories.some((c) => c.id === ROUTINE_CATEGORY.id)
-    ? addWeeklyRoutines(basePlan, s, categories)
+    ? addWeeklyRoutines(
+        basePlan,
+        s,
+        categories,
+        boundary?.date ?? week,
+        boundary,
+      )
     : basePlan;
   const totals = categoryMinutes(plan.activities);
   for (const c of categories.filter(

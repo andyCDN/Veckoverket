@@ -57,10 +57,15 @@ export function addWeeklyRoutines(
   settings: Settings,
   categories: Category[],
   from = plan.week,
+  notBefore?: { date: string; minute: number },
 ): WeekPlan {
   let activities = [...plan.activities];
   for (const routine of WEEKLY_ROUTINES) {
     const date = addDays(plan.week, routine.day);
+    const earliest =
+      notBefore?.date === date
+        ? Math.max(settings.start, notBefore.minute)
+        : settings.start;
     if (
       !settings.days.includes(routine.day) ||
       date < from ||
@@ -73,7 +78,7 @@ export function addWeeklyRoutines(
     const fits = (start: number, other: Activity[]) => {
       const end = start + routine.minutes;
       return (
-        start >= settings.start &&
+        start >= earliest &&
         end <= settings.end &&
         other.every(
           (a) =>
@@ -87,7 +92,7 @@ export function addWeeklyRoutines(
     // Mornings first on Monday, the last available slot on Friday.
     const candidates =
       routine.day === 0
-        ? [settings.start, ...busy.map((a) => a.end + settings.buffer)]
+        ? [earliest, ...busy.map((a) => a.end + settings.buffer)]
         : [
             settings.end - routine.minutes,
             ...busy.map((a) => a.start - settings.buffer - routine.minutes),
@@ -101,6 +106,7 @@ export function addWeeklyRoutines(
             a.source === "generated" &&
             a.status === "planned" &&
             a.blockType === "flexible" &&
+            a.start >= earliest &&
             !a.routine &&
             !a.external &&
             !a.followUpOf &&

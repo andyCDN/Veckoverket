@@ -87,6 +87,7 @@ export type Settings = {
   weekends: boolean;
   musicMovable: boolean;
   timezone: "Europe/Stockholm";
+  autoPlanning?: boolean;
 };
 export type WeekPlan = {
   rules?: Settings;

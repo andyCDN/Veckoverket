@@ -12,6 +12,7 @@ import {
   weekday,
 } from "@/lib/date";
 import { validatePlan } from "@/lib/planner";
+import { bookingConstraints } from "@/lib/auto-planning";
 import { GOOGLE_CATEGORY_ID } from "@/lib/external-calendar";
 import type { Activity, AppData, RecurringActivity } from "@/lib/types";
 export function ActivityEditor({
@@ -87,7 +88,10 @@ export function ActivityEditor({
       source: "manual" as const,
     };
     const issues = validatePlan(
-      [...activities.filter((a) => a.id !== form.id), updated],
+      [
+        ...bookingConstraints(activities, data).filter((a) => a.id !== form.id),
+        updated,
+      ],
       data.settings,
     );
     const conflict = issues.find((c) => c.id.includes(form.id));

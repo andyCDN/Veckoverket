@@ -49,6 +49,7 @@ Utan ett konfigurerat molnprojekt sparas planen på den här enheten. Med Supaba
 - Skapa, redigera och ta bort aktiviteter. Dra till en annan dag med samma starttid; ändra datum och klockslag i formuläret. Alla redigeringar kan göras utan mus.
 - Låst tid kan bara ändras uttryckligen i formuläret eller genom inställningarna; den kan inte dras. Skyddad tid flyttas som ett helt block om dess regel tillåter det.
 - Regelbaserad planering med redigerbara dagar, tider, lunch, familjetid, tidsbudgetar, prioriteringar, passlängd, buffert och helger. Egna livsområden stöds.
+- Valbar automatisk veckoplanering: jobb och kompetensutveckling får morgontid i lediga luckor, och ändrade bokningar räknar om framtida förslag. Aktivera under **Planera veckan → Aktivera och använd planen**. Läget kan pausas utan att den sparade planen ändras. [Guide på engelska](docs/automatic-planning.md).
 - En eller två hela musikförmiddagar, två eller tre träningspass. Omedelbar förhandsvisning av utrymmet i inställningarna, med förklaringar vid kapacitetsbrist.
 - Långsiktiga mål, veckomål, uppgifter, aktiviteters målkoppling, genomförd tid och veckoreflektion. Tid och resultat visas separat.
 - Återkommande aktiviteter varje vecka eller varje vardag. Befintliga och tidigare veckor bevaras. Nya veckor genereras vid navigering. Regeln läggs även in när en befintlig vecka genereras om.

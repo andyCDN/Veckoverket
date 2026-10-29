@@ -15,6 +15,25 @@ export function today() {
     day: "2-digit",
   }).format(new Date());
 }
+export function planningBoundary(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Europe/Stockholm",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const part = (name: string) => parts.find((p) => p.type === name)!.value;
+  const date = `${part("year")}-${part("month")}-${part("day")}`;
+  const minute =
+    Number(part("hour")) * 60 +
+    Number(part("minute")) +
+    (Number(part("second")) > 0 ? 1 : 0);
+  return { date, minute: Math.ceil(minute / 5) * 5 };
+}
 export function addDays(date: string, days: number) {
   const d = new Date(`${date}T12:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);

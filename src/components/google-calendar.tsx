@@ -216,14 +216,19 @@ export function GoogleCalendarModal({
             <label className="google-calendar-choice">
               <input
                 type="checkbox"
-                checked={replan}
+                checked={replan || Boolean(data.settings.autoPlanning)}
+                disabled={Boolean(data.settings.autoPlanning)}
                 onChange={(e) => setReplan(e.target.checked)}
               />
               <span>
                 Anpassa oredigerade planeringsförslag efter bokningarna
               </span>
             </label>
-            <p>Egna, genomförda och skyddade aktiviteter bevaras.</p>
+            <p>
+              Egna, genomförda och skyddade aktiviteter bevaras.{" "}
+              {data.settings.autoPlanning &&
+                "Automatisk veckoplanering är aktiv efter importen."}
+            </p>
             {preview.conflicts.length > 0 && (
               <div className="google-import-conflicts" role="status">
                 <strong>{preview.conflicts.length} planeringsfrågor</strong>
@@ -261,7 +266,12 @@ export function GoogleCalendarModal({
             )}
             <button
               className="button primary"
-              onClick={() => onImport(snapshot, replan)}
+              onClick={() =>
+                onImport(
+                  snapshot,
+                  replan || Boolean(data.settings.autoPlanning),
+                )
+              }
             >
               <Download size={16} />
               Importera kalenderhändelser

@@ -185,6 +185,22 @@ export function SettingsView({
                 ))}
               </div>
             </fieldset>
+            <label className="switch-row">
+              <span>
+                Automatisk veckoplanering
+                <small>
+                  Jobb och kompetens läggs först i lediga tider.
+                  Bokningsändringar planerar om framtida förslag.
+                </small>
+              </span>
+              <input
+                type="checkbox"
+                checked={Boolean(s.autoPlanning)}
+                onChange={(event) =>
+                  patch({ autoPlanning: event.target.checked })
+                }
+              />
+            </label>
             <div className="form-row">
               <label>
                 Dagen börjar

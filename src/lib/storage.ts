@@ -54,7 +54,8 @@ export function decodeData(raw: string): AppData {
       s.lunchStart >= s.lunchEnd ||
       s.familyStart >= s.familyEnd ||
       s.buffer < 0 ||
-      s.trainingMinutes <= 0
+      s.trainingMinutes <= 0 ||
+      (s.autoPlanning !== undefined && typeof s.autoPlanning !== "boolean")
     )
       throw new Error("Planeringsreglerna är ogiltiga.");
   }

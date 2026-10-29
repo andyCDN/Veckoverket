@@ -178,6 +178,39 @@ describe("Google-kalenderns datum och källhändelser", () => {
   });
 });
 describe("planering med importerade tider", () => {
+  it("anpassar automatisk planering efter en uppdaterad Google-bokning och frigör avbokad tid utan att ändra historiken", () => {
+    const data = fixture();
+    data.settings.autoPlanning = true;
+    const past = structuredClone(
+      data.weeks[week].activities.filter((a) => a.date < "2026-10-29"),
+    );
+    const booked = snapshot([
+      event({
+        start: { dateTime: "2026-10-29T13:00:00+01:00" },
+        end: { dateTime: "2026-10-29T13:30:00+01:00" },
+      }),
+    ]);
+    const imported = previewGoogleImport(data, booked, false);
+    expect(imported.replanned).toBe(true);
+    expect(imported.conflicts.some((c) => c.severity === "error")).toBe(false);
+    expect(
+      imported.data.weeks[week].activities.filter((a) => a.date < "2026-10-29"),
+    ).toEqual(past);
+    expect(
+      validatePlan(
+        imported.data.weeks[week].activities,
+        imported.data.weeks[week].rules!,
+      ),
+    ).toEqual([]);
+    const cancelled = previewGoogleImport(imported.data, snapshot([]), false);
+    expect(cancelled.replanned).toBe(true);
+    expect(cancelled.data.weeks[week].activities.some((a) => a.external)).toBe(
+      false,
+    );
+    expect(categoryMinutes(cancelled.data.weeks[week].activities).health).toBe(
+      180,
+    );
+  });
   it("importerar utan dubbletter och behåller egna pass, avbockning och säkerhetskopior", () => {
     const data = fixture(),
       initial = data.weeks[week].activities.map((a) => ({ ...a }));

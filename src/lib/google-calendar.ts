@@ -6,6 +6,8 @@ import {
   googleEventUrl,
 } from "./external-calendar";
 import { generateWeek, validatePlan } from "./planner";
+import { planningBoundary } from "./date";
+import { replanAfterBookings } from "./auto-planning";
 import {
   googleInstant,
   googleWeekRange,
@@ -335,11 +337,21 @@ export function previewGoogleImport(
   const current = { ...data, categories, weeks: { ...weeks, [week]: merged } };
   const candidate = generateWeek(
     week,
-    { ...current, settings: merged.rules ?? data.settings },
+    {
+      ...current,
+      settings: {
+        ...(merged.rules ?? data.settings),
+        autoPlanning: data.settings.autoPlanning,
+      },
+    },
     merged,
+    data.settings.autoPlanning
+      ? { notBefore: planningBoundary(new Date(snapshot.importedAt)) }
+      : {},
   );
   const errors = candidate.conflicts.filter((c) => c.severity === "error");
-  const appliedReplan = replan && errors.length === 0;
+  const appliedReplan =
+    (replan || Boolean(data.settings.autoPlanning)) && errors.length === 0;
   const plan = appliedReplan
     ? {
         ...candidate.plan,
@@ -364,8 +376,15 @@ export function previewGoogleImport(
       lastImportedWeek: week,
     },
   };
+  const affected = Object.keys(weeks).filter(
+    (key) => key !== week && weeks[key] !== data.weeks[key],
+  );
   return {
-    data: next,
+    data: replanAfterBookings(
+      next,
+      affected,
+      planningBoundary(new Date(snapshot.importedAt)),
+    ),
     count: imported.length,
     removed,
     replanned: appliedReplan,

@@ -42,6 +42,7 @@ import {
   weekLabel,
   weekNumber,
   weekday,
+  planningBoundary,
 } from "@/lib/date";
 import {
   assessWeek,
@@ -68,6 +69,7 @@ import { ResetPlanningModal } from "./reset-planning";
 import { resetPlanning } from "@/lib/reset-planning";
 import { upgradeWeeklyRoutines } from "@/lib/weekly-routines";
 import { WeeklyRoutineModal } from "./weekly-routine";
+import { bookingConstraints, replanAfterBookings } from "@/lib/auto-planning";
 import { EditorialSidebar, CategoryFilter } from "./riso";
 import { PlannerMasthead, WorkspaceTools, BackCoverInfo } from "./punk";
 import { GoogleCalendarModal } from "./google-calendar";
@@ -94,11 +96,11 @@ const APP_NAV_LABELS: Record<View, string> = {
   reflection: "Reflektion",
   settings: "Inställningar",
 };
-function linkedPlan(plan: WeekPlan, goals: Goal[]) {
+function linkedPlan(plan: WeekPlan, goals: Goal[], preserved: Activity[] = []) {
   return {
     ...plan,
     activities: plan.activities.map((a) =>
-      a.goalId
+      a.goalId || preserved.includes(a)
         ? a
         : {
             ...a,
@@ -151,6 +153,7 @@ export function Workspace() {
     } | null>(null),
     [newGoal, setNewGoal] = useState(false),
     [generator, setGenerator] = useState(false),
+    [automaticDraft, setAutomaticDraft] = useState(true),
     [account, setAccount] = useState(false),
     [help, setHelp] = useState(false),
     [googleOpen, setGoogleOpen] = useState(false),
@@ -245,7 +248,15 @@ export function Workspace() {
         ...d,
         weeks: {
           ...d.weeks,
-          [w]: linkedPlan(generateWeek(w, d).plan, d.goals),
+          [w]: linkedPlan(
+            generateWeek(
+              w,
+              d,
+              undefined,
+              d.settings.autoPlanning ? { notBefore: planningBoundary() } : {},
+            ).plan,
+            d.goals,
+          ),
         },
       };
     });
@@ -338,7 +349,14 @@ export function Workspace() {
         )}
       </main>
     );
-  const plan = data.weeks[week] ?? generateWeek(week, data).plan,
+  const plan =
+      data.weeks[week] ??
+      generateWeek(
+        week,
+        data,
+        undefined,
+        data.settings.autoPlanning ? { notBefore: planningBoundary() } : {},
+      ).plan,
     activities = plan.activities,
     conflicts = assessWeek(plan, data);
   const focus =
@@ -354,7 +372,13 @@ export function Workspace() {
   const openActivity = (a: Activity) =>
     a.routine ? setRoutineId(a.id) : setEditor({ activity: a, date: a.date });
   const currentWeek = week === monday(today());
-  const weekData = { ...data, settings: plan.rules ?? data.settings };
+  const weekData = {
+    ...data,
+    settings: {
+      ...(plan.rules ?? data.settings),
+      autoPlanning: data.settings.autoPlanning,
+    },
+  };
   const days = mobile
     ? [0, 1, 2, 3, 4, 5, 6]
     : visibleDays(weekData.settings, activities);
@@ -434,6 +458,7 @@ export function Workspace() {
         : d,
     );
   function move(a: Activity, date: string, start: number) {
+    const current = data!;
     const moved = {
       ...a,
       date,
@@ -444,7 +469,7 @@ export function Workspace() {
     const error = validateMove(
       a,
       moved,
-      activities,
+      bookingConstraints(activities, weekData),
       weekData.settings,
       data!.categories,
     );
@@ -452,10 +477,30 @@ export function Workspace() {
       notify(error);
       return;
     }
-    updatePlan({
-      ...plan,
-      activities: activities.map((item) => (item.id === a.id ? moved : item)),
-    });
+    const next = replanAfterBookings(
+      {
+        ...current,
+        weeks: {
+          ...current.weeks,
+          [week]: {
+            ...plan,
+            activities: activities.map((item) =>
+              item.id === a.id ? moved : item,
+            ),
+          },
+        },
+      },
+      [week],
+    );
+    const conflict = validatePlan(
+      next.weeks[week].activities,
+      weekData.settings,
+    ).find((issue) => issue.severity === "error" && issue.id.includes(a.id));
+    if (conflict) {
+      notify(conflict.message);
+      return;
+    }
+    setData(next);
     notify("Aktiviteten har flyttats.");
   }
   function saveActivity(
@@ -524,6 +569,22 @@ export function Workspace() {
         a,
       ],
     };
+    const changedWeeks = Object.keys(weeks).filter(
+      (key) =>
+        JSON.stringify(weeks[key]) !== JSON.stringify(current.weeks[key]) ||
+        (Boolean(recurrence || removeRecurrence) && key >= week),
+    );
+    const recurring = current.recurring.filter(
+      (r) =>
+        r.id !== recurrence?.id &&
+        !(removeRecurrence && r.id === original?.recurrenceId),
+    );
+    if (recurrence) recurring.push(recurrence);
+    const replanned = replanAfterBookings(
+      { ...current, weeks, recurring },
+      changedWeeks,
+    );
+    weeks = replanned.weeks;
     for (const wp of Object.values(weeks)) {
       if (
         wp.week !== week &&
@@ -559,12 +620,6 @@ export function Workspace() {
         return;
       }
     }
-    const recurring = current.recurring.filter(
-      (r) =>
-        r.id !== recurrence?.id &&
-        !(removeRecurrence && r.id === original?.recurrenceId),
-    );
-    if (recurrence) recurring.push(recurrence);
     setData({ ...current, weeks, recurring });
     setEditor(null);
     notify(
@@ -580,7 +635,7 @@ export function Workspace() {
       notify("Ta bort händelsen i Google Kalender och uppdatera importen.");
       return;
     }
-    const weeks = { ...data!.weeks };
+    let weeks = { ...data!.weeks };
     if (series && a.recurrenceId) {
       for (const [w, p] of Object.entries(weeks))
         weeks[w] = {
@@ -597,13 +652,19 @@ export function Workspace() {
         ...plan,
         activities: activities.filter((a) => a.id !== id),
       };
-    setData({
+    const changedWeeks = Object.keys(weeks).filter(
+      (key) => JSON.stringify(weeks[key]) !== JSON.stringify(data!.weeks[key]),
+    );
+    const next = {
       ...data!,
       weeks,
       recurring: series
         ? data!.recurring.filter((r) => r.id !== a.recurrenceId)
         : data!.recurring,
-    });
+    };
+    setData(
+      a.source !== "generated" ? replanAfterBookings(next, changedWeeks) : next,
+    );
     setEditor(null);
     notify(
       series
@@ -617,7 +678,14 @@ export function Workspace() {
     name: string,
   ) {
     const next = { ...data!, settings, categories, profile: { name } },
-      result = generateWeek(week, next, plan);
+      result = generateWeek(
+        week,
+        next,
+        plan,
+        settings.autoPlanning || data!.settings.autoPlanning
+          ? { notBefore: planningBoundary() }
+          : {},
+      );
     const error = result.conflicts.find((c) => c.severity === "error");
     if (error) {
       notify(
@@ -625,7 +693,16 @@ export function Workspace() {
       );
       return;
     }
-    next.weeks = { ...next.weeks, [week]: linkedPlan(result.plan, next.goals) };
+    next.weeks = {
+      ...next.weeks,
+      [week]: linkedPlan(
+        result.plan,
+        next.goals,
+        settings.autoPlanning || data!.settings.autoPlanning
+          ? plan.activities
+          : [],
+      ),
+    };
     setData(next);
     navigate("dashboard");
     notify(
@@ -717,7 +794,18 @@ export function Workspace() {
       </button>
     </>
   );
-  const generation = generator ? generateWeek(week, data, plan) : null;
+  const generationData = {
+    ...data,
+    settings: { ...weekData.settings, autoPlanning: automaticDraft },
+  };
+  const generation = generator
+    ? generateWeek(
+        week,
+        generationData,
+        plan,
+        automaticDraft ? { notBefore: planningBoundary() } : {},
+      )
+    : null;
   return (
     <div className="app-shell" data-view={view}>
       <a className="skip-link" href="#main-content">
@@ -1213,9 +1301,16 @@ export function Workspace() {
           connection={google}
           onImport={importGoogle}
           onRemove={() => {
-            setData((current) =>
-              current ? removeGoogleImports(current) : current,
-            );
+            setData((current) => {
+              if (!current) return current;
+              const next = removeGoogleImports(current);
+              return replanAfterBookings(
+                next,
+                Object.keys(current.weeks).filter((key) =>
+                  current.weeks[key].activities.some((a) => a.external),
+                ),
+              );
+            });
             notify(
               "Importerade Google-händelser har tagits bort från Veckoverket.",
             );
@@ -1300,16 +1395,38 @@ export function Workspace() {
       )}
       {generator && generation && (
         <Modal
-          title="Ett nytt förslag för din vecka"
-          description="Motorn tar hänsyn till dina ramar och prioriteringar."
+          title="Automatisk veckoplanering"
+          description="Planera utifrån bokningar, tillgänglighet och tidsmål."
           onClose={() => setGenerator(false)}
         >
           <div className="stack">
+            <label className="switch-row">
+              <span>
+                Automatisk planering
+                <small>
+                  Jobb och kompetens först i lediga tider. Planera om efter
+                  ändrade bokningar.
+                </small>
+              </span>
+              <input
+                type="checkbox"
+                checked={automaticDraft}
+                onChange={(event) => setAutomaticDraft(event.target.checked)}
+              />
+            </label>
             <p>
               Oredigerade, planerade förslag ersätts. Dina egna, flyttade och
               redan genomförda aktiviteter bevaras. Låsta åtaganden och
               återkommande regler ligger till grund för den nya planen.
             </p>
+            {automaticDraft && (
+              <p>
+                Påbörjade pass och tidigare datum behålls. Musikförmiddagar,
+                lunch, familjetid och buffert följer dina regler.
+                Google-bokningar räknas med när du importerar eller uppdaterar
+                dem.
+              </p>
+            )}
             <div className="generation-totals">
               {data.categories
                 .filter((c) => c.id !== "rest" && c.id !== "family")
@@ -1349,14 +1466,45 @@ export function Workspace() {
                 (c) => c.severity === "error",
               )}
               onClick={() => {
-                updatePlan(linkedPlan(generation.plan, data.goals));
+                setData({
+                  ...data,
+                  settings: { ...data.settings, autoPlanning: automaticDraft },
+                  weeks: {
+                    ...data.weeks,
+                    [week]: linkedPlan(
+                      generation.plan,
+                      data.goals,
+                      automaticDraft ? plan.activities : [],
+                    ),
+                  },
+                });
                 setGenerator(false);
                 notify("Ditt nya veckoförslag är sparat.");
               }}
             >
               <Sparkles size={16} />
-              Använd förslaget
+              {automaticDraft
+                ? "Aktivera och använd planen"
+                : "Använd förslaget"}
             </button>
+            {data.settings.autoPlanning && (
+              <button
+                className="button secondary"
+                onClick={() => {
+                  setData({
+                    ...data,
+                    settings: { ...data.settings, autoPlanning: false },
+                  });
+                  setAutomaticDraft(false);
+                  setGenerator(false);
+                  notify(
+                    "Automatisk planering är pausad. Den sparade planen behålls.",
+                  );
+                }}
+              >
+                Pausa automatisk planering
+              </button>
+            )}
           </div>
         </Modal>
       )}
