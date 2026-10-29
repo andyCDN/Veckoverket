@@ -116,6 +116,7 @@ export function ActivityEditor({
         recurrenceId: _r,
         followUpOf: _followUp,
         external: _external,
+        routine: _routine,
         ...values
       } = updated;
       recurring = {
@@ -308,8 +309,16 @@ export function ActivityEditor({
         <div className="form-row">
           <label>
             Återkommer
-            <select value={repeat} onChange={(e) => setRepeat(e.target.value)}>
-              <option value="none">Bara denna gång</option>
+            <select
+              value={repeat}
+              disabled={Boolean(activity?.routine)}
+              onChange={(e) => setRepeat(e.target.value)}
+            >
+              <option value="none">
+                {activity?.routine
+                  ? "Automatiskt varje vecka"
+                  : "Bara denna gång"}
+              </option>
               <option value="weekly">Varje vecka, samma veckodag</option>
               <option value="weekdays">Varje vardag</option>
             </select>

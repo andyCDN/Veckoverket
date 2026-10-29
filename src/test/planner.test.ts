@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createData } from "../lib/defaults";
+import { createData as createDefaultData } from "../lib/defaults";
 import {
   generateWeek,
   categoryMinutes,
@@ -12,6 +12,13 @@ import { addDays, monday, weekNumber, weekday } from "../lib/date";
 import { decodeData, loadLocal, saveLocal, STORAGE_KEY } from "../lib/storage";
 import type { Activity, RecurringActivity } from "../lib/types";
 const week = "2026-10-26";
+// Preserve the original scheduling contract for legacy workspaces. The new
+// default routines and their capacity costs are covered in weekly-routines.test.
+function createData() {
+  const data = createDefaultData();
+  data.categories = data.categories.filter((c) => c.id !== "weekly-planning");
+  return data;
+}
 const manual = (overrides: Partial<Activity> = {}): Activity => ({
   id: "manual",
   title: "Intervju",

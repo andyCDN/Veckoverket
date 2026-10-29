@@ -9,6 +9,12 @@ import type {
 } from "./types";
 import { addDays, weekday } from "./date";
 import { blocksTime, GOOGLE_CATEGORY_ID } from "./external-calendar";
+import {
+  addWeeklyRoutines,
+  ROUTINE_CATEGORY,
+  routineMinutes,
+  routineConflicts,
+} from "./weekly-routines";
 
 export function plannedDays(s: Settings): number[] {
   return [
@@ -39,6 +45,7 @@ export function categoryMinutes(
     }, {});
 }
 export function targetMinutes(category: Category, s: Settings) {
+  if (category.id === ROUTINE_CATEGORY.id) return routineMinutes(s);
   if (category.id === GOOGLE_CATEGORY_ID) return 0;
   if (category.id === "music")
     return s.musicMornings * (s.lunchStart - s.start);
@@ -231,7 +238,8 @@ export function generateWeek(
     if (
       a.source !== "generated" ||
       a.status !== "planned" ||
-      a.blockType === "locked"
+      a.blockType === "locked" ||
+      a.routine
     )
       continue;
     const category = categories.find((c) => c.id === a.categoryId);
@@ -351,7 +359,7 @@ export function generateWeek(
       musicNeeded * (s.lunchStart - s.start),
     );
   const flex = categories
-    .filter((c) => !["music", "family"].includes(c.id))
+    .filter((c) => !["music", "family", ROUTINE_CATEGORY.id].includes(c.id))
     .sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id));
   for (const c of flex) {
     let remaining = Math.max(
@@ -458,7 +466,7 @@ export function generateWeek(
             priority: career.priority,
           });
   // Associate generated blocks with suitable goals in the presentation layer, not the engine.
-  const plan: WeekPlan = {
+  const basePlan: WeekPlan = {
     week,
     activities: activities.sort(
       (a, b) => a.date.localeCompare(b.date) || a.start - b.start,
@@ -469,7 +477,24 @@ export function generateWeek(
       categories.map((c) => [c.id, targetMinutes(c, s)]),
     ),
   };
-  conflicts.push(...validatePlan(plan.activities, s));
+  const plan = categories.some((c) => c.id === ROUTINE_CATEGORY.id)
+    ? addWeeklyRoutines(basePlan, s, categories)
+    : basePlan;
+  const totals = categoryMinutes(plan.activities);
+  for (const c of categories.filter(
+    (c) => !["family", "rest", ROUTINE_CATEGORY.id].includes(c.id),
+  )) {
+    const remaining = targetMinutes(c, s) - (totals[c.id] || 0);
+    if (
+      remaining > 0 &&
+      !conflicts.some((issue) => issue.id === `budget-${c.id}`)
+    )
+      missing(c.id, c.name, remaining);
+  }
+  conflicts.push(
+    ...validatePlan(plan.activities, s),
+    ...routineConflicts(plan, s),
+  );
   return { plan, conflicts };
 }
 export function assessWeek(
@@ -478,11 +503,14 @@ export function assessWeek(
 ): Conflict[] {
   const rules = plan.rules ?? data.settings;
   const totals = categoryMinutes(plan.activities),
-    conflicts = validatePlan(plan.activities, rules);
+    conflicts = [
+      ...validatePlan(plan.activities, rules),
+      ...routineConflicts(plan, rules),
+    ];
   for (const c of data.categories.filter(
     (c) =>
       (!plan.targets || c.id in plan.targets) &&
-      !["family", "rest"].includes(c.id),
+      !["family", "rest", ROUTINE_CATEGORY.id].includes(c.id),
   )) {
     const missing =
       (plan.targets?.[c.id] ?? targetMinutes(c, rules)) - (totals[c.id] || 0);

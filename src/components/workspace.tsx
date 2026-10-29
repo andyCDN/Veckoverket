@@ -66,6 +66,8 @@ import { Modal } from "./modal";
 import { AppInstallButton, useStandaloneMode } from "./app-install";
 import { ResetPlanningModal } from "./reset-planning";
 import { resetPlanning } from "@/lib/reset-planning";
+import { upgradeWeeklyRoutines } from "@/lib/weekly-routines";
+import { WeeklyRoutineModal } from "./weekly-routine";
 import { EditorialSidebar, CategoryFilter } from "./riso";
 import { PlannerMasthead, WorkspaceTools, BackCoverInfo } from "./punk";
 import { GoogleCalendarModal } from "./google-calendar";
@@ -153,11 +155,16 @@ export function Workspace() {
     [help, setHelp] = useState(false),
     [googleOpen, setGoogleOpen] = useState(false),
     [resetOpen, setResetOpen] = useState(false),
+    [routineId, setRoutineId] = useState<string | null>(null),
     [notice, setNotice] = useState("");
   const google = useGoogleCalendar(
     configured ? (user?.id ?? "signed-out") : "local",
   );
   const notify = useCallback((message: string) => setNotice(message), []);
+  useEffect(() => {
+    if (!data || (configured && cloud.phase !== "synced")) return;
+    setData((current) => (current ? upgradeWeeklyRoutines(current) : current));
+  }, [data, configured, cloud.phase, setData]);
   useEffect(() => {
     const query = window.matchMedia(
       standalone ? "(max-width: 950px)" : "(max-width: 700px)",
@@ -188,6 +195,7 @@ export function Workspace() {
     setHelp(false);
     setGoogleOpen(false);
     setResetOpen(false);
+    setRoutineId(null);
     setNotice("");
     setView("dashboard");
     setWeek(monday(today()));
@@ -201,11 +209,21 @@ export function Workspace() {
         generator ||
         googleOpen ||
         resetOpen ||
+        routineId ||
         view === "settings",
       ),
     );
     return () => setEditing(false);
-  }, [editor, newGoal, generator, googleOpen, resetOpen, view, setEditing]);
+  }, [
+    editor,
+    newGoal,
+    generator,
+    googleOpen,
+    resetOpen,
+    routineId,
+    view,
+    setEditing,
+  ]);
   const navigate = (v: View) => {
     setView(v);
   };
@@ -218,6 +236,7 @@ export function Workspace() {
     });
   };
   function changeWeek(w: string) {
+    setRoutineId(null);
     setWeek(w);
     setDaySelection(null);
     setData((d) => {
@@ -329,6 +348,11 @@ export function Workspace() {
     ) ??
     activities.find((a) => a.status === "planned" && a.blockType !== "locked");
   const goals = data.goals.filter((g) => g.week === week);
+  const routineActivity = activities.find(
+    (a) => a.id === routineId && a.routine,
+  );
+  const openActivity = (a: Activity) =>
+    a.routine ? setRoutineId(a.id) : setEditor({ activity: a, date: a.date });
   const currentWeek = week === monday(today());
   const weekData = { ...data, settings: plan.rules ?? data.settings };
   const days = mobile
@@ -898,7 +922,7 @@ export function Workspace() {
                       data={weekData}
                       activities={activities}
                       categoryFilter={categoryFilter}
-                      onEdit={(a) => setEditor({ activity: a, date: a.date })}
+                      onEdit={openActivity}
                       onMove={move}
                       onStatusChange={(activity, status) =>
                         updatePlan({
@@ -938,7 +962,7 @@ export function Workspace() {
                     onToggleTask={toggleTask}
                     onGoalView={() => navigate("goals")}
                     onSettings={() => navigate("settings")}
-                    onEdit={(a) => setEditor({ activity: a, date: a.date })}
+                    onEdit={openActivity}
                     onComplete={(activity) => {
                       updatePlan({
                         ...plan,
@@ -1210,6 +1234,52 @@ export function Workspace() {
           onSave={saveActivity}
           onDelete={deleteActivity}
           onClose={() => setEditor(null)}
+        />
+      )}
+      {routineActivity && (
+        <WeeklyRoutineModal
+          activity={routineActivity}
+          data={data}
+          week={week}
+          storageLabel={
+            configured ? syncLabel(cloud) : "Sparas automatiskt på enheten"
+          }
+          onChange={(reflection) =>
+            setData((current) =>
+              current
+                ? {
+                    ...current,
+                    reflections: { ...current.reflections, [week]: reflection },
+                  }
+                : current,
+            )
+          }
+          onTask={toggleTask}
+          onComplete={() => {
+            updatePlan({
+              ...plan,
+              activities: activities.map((a) =>
+                a.id === routineActivity.id ? { ...a, status: "done" } : a,
+              ),
+            });
+            setRoutineId(null);
+          }}
+          onEdit={() => {
+            setRoutineId(null);
+            setEditor({
+              activity: routineActivity,
+              date: routineActivity.date,
+            });
+          }}
+          onGoals={() => {
+            setRoutineId(null);
+            navigate("goals");
+          }}
+          onNextWeek={() => {
+            changeWeek(addDays(week, 7));
+            navigate("planner");
+          }}
+          onClose={() => setRoutineId(null)}
         />
       )}
       {newGoal && (

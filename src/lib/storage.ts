@@ -85,6 +85,13 @@ export function decodeData(raw: string): AppData {
       !Array.isArray(plan.activities)
     )
       throw new Error("Veckodatan är ogiltig.");
+    const routinesFrom = (plan as { weeklyRoutinesFrom?: unknown })
+      .weeklyRoutinesFrom;
+    if (
+      routinesFrom !== undefined &&
+      (typeof routinesFrom !== "string" || !isLocalDate(routinesFrom))
+    )
+      throw new Error("Veckoplaneringens startdatum är ogiltigt.");
     const activityIds = new Set();
     for (const a of plan.activities) {
       if (
@@ -99,6 +106,8 @@ export function decodeData(raw: string): AppData {
         Number(a.end) <= Number(a.start) ||
         !["locked", "protected", "flexible"].includes(String(a.blockType)) ||
         !["planned", "done", "skipped"].includes(String(a.status)) ||
+        (a.routine !== undefined &&
+          !["week-start", "week-review"].includes(String(a.routine))) ||
         (a.followUpOf !== undefined &&
           (!a.followUpOf ||
             typeof a.followUpOf !== "object" ||
@@ -184,6 +193,9 @@ export function decodeData(raw: string): AppData {
       !r ||
       !["week", "good", "unfinished", "balance", "next", "updatedAt"].every(
         (k) => typeof r[k] === "string",
+      ) ||
+      ["startPlan", "goalReview"].some(
+        (k) => r[k] !== undefined && typeof r[k] !== "string",
       )
     )
       throw new Error("En reflektion är ogiltig.");

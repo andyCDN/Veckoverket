@@ -1,5 +1,6 @@
 import type { AppData, Settings, Category } from "./types";
 import { monday, today } from "./date";
+import { ROUTINE_CATEGORY } from "./weekly-routines";
 export const DEFAULT_SETTINGS: Settings = {
   days: [0, 1, 2, 3, 4],
   start: 510,
@@ -77,6 +78,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
     allowSplit: true,
     movable: true,
   },
+  ROUTINE_CATEGORY,
 ];
 export function createData(): AppData {
   const week = monday(today());

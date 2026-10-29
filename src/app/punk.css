@@ -1077,7 +1077,14 @@ body {
 .modal-head p {
   color: var(--paper-light);
 }
+.modal-head > div {
+  min-width: 0;
+}
+.modal-head h2 {
+  overflow-wrap: anywhere;
+}
 .modal-head .icon-button {
+  flex-shrink: 0;
   background: transparent;
   color: var(--paper-light);
   border-color: var(--paper-light);
@@ -1753,6 +1760,16 @@ body {
   .calendar-viewport .calendar-entry .calendar-block .block-time {
     font-size: 9px;
   }
+  .calendar-viewport .calendar-entry .calendar-block[data-routine] {
+    min-height: 85px;
+    padding-block: 8px 28px;
+  }
+  .calendar-viewport
+    .calendar-entry
+    .calendar-block[data-routine]
+    .block-title {
+    font-size: 17px;
+  }
   .day-bottom-add,
   .day-empty {
     display: none;
@@ -2377,6 +2394,68 @@ body {
 }
 .reset-actions .button {
   min-height: 44px;
+}
+.weekly-routine {
+  font: 13px/1.5 var(--body);
+}
+.weekly-routine h3 {
+  font: 900 23px/1.1 var(--display);
+  text-transform: uppercase;
+}
+.routine-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.routine-field > span,
+.routine-goal > span {
+  font-size: 12px;
+}
+.routine-field textarea {
+  min-height: 100px;
+  font-size: 16px;
+}
+.routine-goals,
+.routine-next {
+  display: grid;
+  gap: 12px;
+  padding-top: 15px;
+  border-top: 3px solid var(--ink);
+}
+.routine-goal {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 2px solid var(--ink);
+  background: var(--paper-light);
+  box-shadow: 3px 3px 0 var(--red);
+}
+.routine-task {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-size: 13px;
+}
+.routine-task input {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  accent-color: var(--blue);
+}
+.routine-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border-top: 2px solid var(--ink);
+  padding-top: 12px;
+}
+.weekly-routine button {
+  min-height: 44px;
+  white-space: normal;
 }
 @media screen {
   :root[data-app-mode="standalone"][data-layout="daily"] {

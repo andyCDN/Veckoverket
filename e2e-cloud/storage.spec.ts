@@ -276,6 +276,9 @@ test("ett öppet formulär skyddas mot bakgrundsändringar och kontrolleras vid 
   await status(page, "Sparat i molnet");
   await page.locator(".calendar-block").first().click();
   await page
+    .getByRole("button", { name: "Ändra tid eller pass", exact: true })
+    .click();
+  await page
     .getByLabel("Namn", { exact: true })
     .fill("Min pågående redigering");
   const newer = structuredClone(f.documents.get(userA)!.data);

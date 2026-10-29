@@ -290,8 +290,11 @@ describe("planering med importerade tider", () => {
   });
   it("importerar bokningar men behåller egna aktiviteter när automatisk omplanering har hårda konflikter", () => {
     const data = fixture();
-    data.weeks[week].activities[0].source = "manual";
-    const original = structuredClone(data.weeks[week].activities[0]);
+    const booking = data.weeks[week].activities.find(
+      (a) => a.categoryId === "career" && a.date === week,
+    )!;
+    booking.source = "manual";
+    const original = structuredClone(booking);
     const result = previewGoogleImport(data, snapshot(), true);
     expect(result.replanned).toBe(false);
     expect(result.conflicts.some((c) => c.severity === "error")).toBe(true);

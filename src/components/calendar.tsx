@@ -74,7 +74,8 @@ function CalendarBlock({
         onClick={onEdit}
         title={`${a.title} · ${categoryLabel(category)} · ${time(a.start)}–${time(a.end)}`}
         tabIndex={filteredOut ? -1 : 0}
-        aria-label={`${a.title}, ${categoryLabel(category)}, ${time(a.start)} till ${time(a.end)}${a.status === "done" ? ", genomförd" : a.status === "skipped" ? ", missat" : ""}. Redigera aktivitet`}
+        aria-label={`${a.title}, ${categoryLabel(category)}, ${time(a.start)} till ${time(a.end)}${a.status === "done" ? ", genomförd" : a.status === "skipped" ? ", missat" : ""}. ${a.routine ? "Öppna övning" : "Redigera aktivitet"}`}
+        data-routine={a.routine}
         className={`calendar-block ${filteredOut ? "is-filtered-out" : ""} ${family ? "family" : ""} ${lunch ? "lunch" : ""} ${a.status === "done" ? "is-done" : ""} ${a.status === "skipped" ? "is-skipped" : ""} ${isDragging ? "dragging" : ""}`}
       >
         <span className="block-time">

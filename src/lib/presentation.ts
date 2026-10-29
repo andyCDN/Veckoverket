@@ -2,6 +2,11 @@ import type { CSSProperties } from "react";
 import type { Category } from "./types";
 
 const palette: Record<string, { ink: string; fill: string; label: string }> = {
+  "weekly-planning": {
+    ink: "#F04B31",
+    fill: "#FFF1BD",
+    label: "Veckoplanering",
+  },
   career: { ink: "#243D9B", fill: "#E3E9F7", label: "Jobbsök" },
   learning: { ink: "#F9C845", fill: "#FFF1BD", label: "Lärande" },
   music: { ink: "#F04B31", fill: "#FBD9CE", label: "Musik" },

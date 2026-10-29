@@ -36,6 +36,7 @@ export type Activity = {
   followUpOf?: { week: string; activityId: string };
   source: "generated" | "manual" | "recurring" | "external";
   external?: GoogleEventSource;
+  routine?: "week-start" | "week-review";
 };
 export type RecurringActivity = Omit<
   Activity,
@@ -46,6 +47,7 @@ export type RecurringActivity = Omit<
   | "recurrenceId"
   | "followUpOf"
   | "external"
+  | "routine"
 > & {
   id: string;
   weekdays: number[];
@@ -67,6 +69,8 @@ export type Reflection = {
   balance: string;
   next: string;
   updatedAt: string;
+  startPlan?: string;
+  goalReview?: string;
 };
 export type Settings = {
   days: number[];
@@ -90,6 +94,7 @@ export type WeekPlan = {
   week: string;
   activities: Activity[];
   generatedAt: string;
+  weeklyRoutinesFrom?: string;
 };
 export type AppData = {
   version: 1;

@@ -29,6 +29,8 @@ I vanlig webbläsarvy mellan 701 och 950 px visas fortfarande ett rullbart vecko
 
 ## Missade pass och ombokning
 
+Veckostart på måndagar (15 min) och veckoavstämning på fredagar (30 min) visas som vanliga passkort i kategorin Planering & uppföljning. Kortet öppnar en övning med sparade anteckningar, veckomål och nästa vecka. Kryssrutan fungerar som för övriga kalenderhändelser. Se [veckorutinernas beskrivning](weekly-routines.md) för placering, tidsbrist och uppdatering av befintliga planer.
+
 Alla händelser har en egen checkbox för genomförd tid. Jobbpass (`career`) och pass med `nätverk` i titel eller beskrivning kan även markeras som missade. Dessa handlingar använder det befintliga statusfältet: `planned`, `done` och `skipped`. Genomförd och missad status kan därför aldrig vara aktiva samtidigt. Förfluten tid ändrar inte status automatiskt.
 
 `src/lib/follow-up.ts` räknar missad tid från de verkliga sparade aktiviteterna. `src/components/follow-up.tsx` visar återstående timmar och ombokningar. Obokad tid från tidigare veckor syns även på senare veckor.

@@ -5,6 +5,11 @@ import { categoryInk } from "@/lib/presentation";
 import { hours, weekLabel, weekNumber } from "@/lib/date";
 import type { AppData, Reflection } from "@/lib/types";
 const prompts = [
+  [
+    "startPlan",
+    "Veckans startplan",
+    "Ange veckans viktigaste uppgifter och när de ska göras.",
+  ],
   ["good", "Vad fungerade bra?", "Beskriv vad som fungerade."],
   [
     "unfinished",
@@ -15,6 +20,11 @@ const prompts = [
     "balance",
     "Hur fungerade balansen?",
     "Beskriv fördelningen mellan livsområdena.",
+  ],
+  [
+    "goalReview",
+    "Bedömning av måluppfyllelse",
+    "Ange vilka mål som är uppnådda och vad som återstår.",
   ],
   [
     "next",
@@ -68,7 +78,7 @@ export function ReflectionView({
                 <span className="reflection-prompt">{title}</span>
                 <textarea
                   rows={3}
-                  value={reflection[key]}
+                  value={reflection[key] ?? ""}
                   placeholder={placeholder}
                   onChange={(e) =>
                     onChange({

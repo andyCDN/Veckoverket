@@ -21,6 +21,7 @@ import {
 import { decodeData, downloadData } from "@/lib/storage";
 import { categoryInk, categoryStyle } from "@/lib/presentation";
 import { GOOGLE_CATEGORY_ID } from "@/lib/external-calendar";
+import { ROUTINE_CATEGORY } from "@/lib/weekly-routines";
 import { Modal } from "./modal";
 import { AppInstallCard } from "./app-install";
 function CategoryForm({
@@ -394,9 +395,13 @@ export function SettingsView({
               {cats
                 .filter(
                   (c) =>
-                    !["music", "family", "health", GOOGLE_CATEGORY_ID].includes(
-                      c.id,
-                    ),
+                    ![
+                      "music",
+                      "family",
+                      "health",
+                      GOOGLE_CATEGORY_ID,
+                      ROUTINE_CATEGORY.id,
+                    ].includes(c.id),
                 )
                 .map((c) => (
                   <div className="category-setting" key={c.id}>
@@ -602,6 +607,8 @@ export function SettingsView({
           )}
           <div className="preview-note">
             Lunch och familjetid är reserverade enligt inställningarna.
+            Veckostart på måndagar (15 min) och veckoavstämning på fredagar (30
+            min) läggs in när dagen ingår i planeringen och tiden räcker.
           </div>
         </aside>
       </form>

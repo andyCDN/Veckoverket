@@ -180,6 +180,11 @@ async function logout(page: Page) {
 }
 async function renameFirst(page: Page, title: string) {
   await page.locator(".calendar-block").first().click();
+  const editRoutine = page.getByRole("button", {
+    name: "Ändra tid eller pass",
+    exact: true,
+  });
+  if (await editRoutine.isVisible()) await editRoutine.click();
   await page.getByLabel("Namn", { exact: true }).fill(title);
   await page
     .getByRole("button", { name: "Spara aktivitet", exact: true })

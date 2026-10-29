@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { addDays, hours, time } from "../src/lib/date";
 async function nav(page: import("@playwright/test").Page, name: string) {
   await page
     .getByRole("navigation")
@@ -29,14 +30,14 @@ test("svensk vecka, musikalternativ, överbelastning och beständig lagring", as
   await page.getByRole("button", { name: "1 förmiddag", exact: true }).click();
   await expect(
     page.locator(".preview-row").filter({ hasText: "Jobb & nätverk" }),
-  ).toContainText("8,5 h");
+  ).toContainText("8,3 h");
   await page.getByRole("button", { name: "Spara och planera veckan" }).click();
   await expect(page.getByRole("heading", { name: "Min vecka" })).toBeVisible();
   await page.reload();
   await page.locator(".info-drawer > summary").click();
   await expect(
     page.locator(".balance-stat").filter({ hasText: "Jobb & nätverk" }),
-  ).toContainText("8,5 h");
+  ).toContainText("8,3 h");
   await nav(page, "Inställningar");
   await page
     .getByRole("button", { name: "2 förmiddagar", exact: true })
@@ -74,11 +75,12 @@ test("redigering, status, egna aktiviteter, kategorier, mål, uppgifter och refl
     .filter({ hasText: "Förbereda intervju" })
     .click();
   const date = await page.getByLabel("Datum", { exact: true }).inputValue();
+  const start = await page.getByLabel("Start", { exact: true }).inputValue();
   await page.getByRole("button", { name: "Ta bort", exact: true }).click();
   await page.getByRole("button", { name: "Ny aktivitet", exact: true }).click();
   await page.getByLabel("Namn", { exact: true }).fill("Mitt eget projekt");
   await page.getByLabel("Datum", { exact: true }).fill(date);
-  await page.getByLabel("Start", { exact: true }).fill("08:30");
+  await page.getByLabel("Start", { exact: true }).fill(start);
   await page.getByLabel("Slut", { exact: true }).fill("09:30");
   await page
     .getByRole("combobox", { name: "Återkommer", exact: true })
@@ -233,8 +235,8 @@ test("dra och släpp flyttar flexibelt block och avvisar upptagen tid", async ({
   const first = await stored(page),
     w = Object.keys(first.weeks)[0];
   const career = first.weeks[w].activities.find(
-    (a: { categoryId: string; start: number }) =>
-      a.categoryId === "career" && a.start === 510,
+    (a: { categoryId: string; date: string }) =>
+      a.categoryId === "career" && a.date === w,
   );
   const study = page
     .locator(".day-shell")
@@ -378,8 +380,15 @@ test("kategorifilter ändrar bara visningen och utskrift visar hela veckan", asy
   await expect(page.locator(".week-title:visible")).toContainText("Vecka");
   await expect(page.locator(".day-shell:visible")).toHaveCount(5);
   await expect(page.locator(".calendar-block:visible")).toHaveCount(total);
-  for (const count of await page.locator(".print-count:visible").all())
-    await expect(count).toHaveText("4 pass");
+  for (const [index, count] of (
+    await page.locator(".print-count:visible").all()
+  ).entries()) {
+    const iso = addDays(week, index);
+    const expected = before.weeks[week].activities.filter(
+      (a: { date: string }) => a.date === iso,
+    ).length;
+    await expect(count).toHaveText(`${expected} pass`);
+  }
   await expect(filters).not.toBeVisible();
   await expect(
     page.getByRole("button", { name: "Skriv ut", exact: true }),
@@ -612,9 +621,10 @@ test("v2.5: missade pass, ombokning, ändrad längd, borttagning och uppföljnin
   const initial = await stored(page),
     week = Object.keys(initial.weeks)[0];
   const original = initial.weeks[week].activities.find(
-    (a: { date: string; categoryId: string; start: number }) =>
-      a.date === week && a.categoryId === "career" && a.start === 510,
+    (a: { date: string; categoryId: string }) =>
+      a.date === week && a.categoryId === "career",
   );
+  const debt = `${hours(original.end - original.start)} kvar att boka om`;
   const entry = page.locator(`[data-activity-id="${original.id}"]`);
   const missed = entry.getByRole("checkbox", { name: /^Missat:/ }),
     done = entry.getByRole("checkbox", { name: /^Genomförd:/ });
@@ -624,7 +634,7 @@ test("v2.5: missade pass, ombokning, ändrad längd, borttagning och uppföljnin
   await missed.check();
   await expect(done).not.toBeChecked();
   await expect(page.getByRole("dialog")).not.toBeVisible();
-  await expect(panel.getByRole("status")).toHaveText("3,5 h kvar att boka om");
+  await expect(panel.getByRole("status")).toHaveText(debt);
   await done.check();
   await expect(missed).not.toBeChecked();
   await expect(panel).not.toBeVisible();
@@ -644,7 +654,9 @@ test("v2.5: missade pass, ombokning, ändrad längd, borttagning och uppföljnin
     study.date,
   );
   await expect(page.getByLabel("Start", { exact: true })).toHaveValue("08:30");
-  await expect(page.getByLabel("Slut", { exact: true })).toHaveValue("12:00");
+  await expect(page.getByLabel("Slut", { exact: true })).toHaveValue(
+    time(510 + original.end - original.start),
+  );
   await page
     .getByRole("button", { name: "Spara aktivitet", exact: true })
     .click();
@@ -671,15 +683,17 @@ test("v2.5: missade pass, ombokning, ändrad längd, borttagning och uppföljnin
   await page
     .getByRole("button", { name: "Spara aktivitet", exact: true })
     .click();
-  await expect(panel.getByRole("status")).toHaveText("1,5 h kvar att boka om");
+  await expect(panel.getByRole("status")).toHaveText(
+    `${hours(original.end - original.start - 120)} kvar att boka om`,
+  );
   await page
     .locator(`[data-activity-id="${replacement.id}"]`)
     .getByRole("button", { name: /^Ta bort pass:/ })
     .click();
-  await expect(panel.getByRole("status")).toHaveText("3,5 h kvar att boka om");
+  await expect(panel.getByRole("status")).toHaveText(debt);
   // Unresolved time follows the user into another week.
   await page.getByRole("button", { name: "Nästa vecka", exact: true }).click();
-  await expect(panel.getByRole("status")).toHaveText("3,5 h kvar att boka om");
+  await expect(panel.getByRole("status")).toHaveText(debt);
   after = await stored(page);
   const next = Object.keys(after.weeks).sort().at(-1)!;
   const nextStudy = after.weeks[next].activities.find(
@@ -703,7 +717,7 @@ test("v2.5: missade pass, ombokning, ändrad längd, borttagning och uppföljnin
   expect(nextReplacement.followUpOf).toEqual({ week, activityId: original.id });
   const nextEntry = page.locator(`[data-activity-id="${nextReplacement.id}"]`);
   await nextEntry.getByRole("checkbox", { name: /^Missat:/ }).check();
-  await expect(panel.getByRole("status")).toHaveText("3,5 h kvar att boka om");
+  await expect(panel.getByRole("status")).toHaveText(debt);
   await expect(panel.locator(".debt-chip")).toHaveCount(1);
   const { default: AxeBuilder } = await import("@axe-core/playwright");
   const scan = await new AxeBuilder({ page })
