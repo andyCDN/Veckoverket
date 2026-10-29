@@ -12,6 +12,35 @@ import {
   logout,
   renameFirst,
 } from "./helpers";
+test("installerad molnvy visar sparningsfel även i liggande läge", async ({
+  page,
+}) => {
+  await page.addInitScript(() =>
+    Object.defineProperty(navigator, "standalone", { get: () => true }),
+  );
+  await page.setViewportSize({ width: 844, height: 390 });
+  const f = await mock(page);
+  await page.goto("./");
+  await login(page);
+  await status(page, "Sparat i molnet");
+  await expect(page.locator(".storage-status")).not.toBeVisible();
+  const entry = page.locator(".day-shell.is-selected .calendar-entry").first();
+  const id = await entry.getAttribute("data-activity-id");
+  f.offline = true;
+  await entry.getByRole("checkbox", { name: /^Genomförd:/ }).check();
+  await status(page, "Molnet har inte bekräftat ändringarna");
+  await expect(
+    page.locator(".storage-status.needs-attention"),
+  ).toBeInViewport();
+  f.offline = false;
+  await page.getByRole("button", { name: "Försök igen", exact: true }).click();
+  await status(page, "Sparat i molnet");
+  expect(
+    f.documents.get(userA)!.data.weeks[week].activities.find((a) => a.id === id)
+      ?.status,
+  ).toBe("done");
+  expect(f.errors).toEqual([]);
+});
 test("inloggning, automatisk sparning, omladdning och separata konton", async ({
   page,
 }) => {

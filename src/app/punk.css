@@ -20,6 +20,10 @@ h3 {
   --blue: var(--vv-riso-blue);
   --red: var(--vv-riso-red);
   --yellow: var(--vv-punk-yellow);
+  --app-safe-top: env(safe-area-inset-top, 0px);
+  --app-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --app-safe-left: env(safe-area-inset-left, 0px);
+  --app-safe-right: env(safe-area-inset-right, 0px);
 }
 body {
   background: #d9d4c8;
@@ -28,10 +32,9 @@ body {
   --page-gutter: clamp(13px, 2.1vw, 32px);
   max-width: 1560px;
   margin: auto;
-  padding: env(safe-area-inset-top, 0px)
-    max(var(--page-gutter), env(safe-area-inset-right, 0px))
-    max(20px, env(safe-area-inset-bottom, 0px))
-    max(var(--page-gutter), env(safe-area-inset-left, 0px));
+  padding: var(--app-safe-top) max(var(--page-gutter), var(--app-safe-right))
+    max(20px, var(--app-safe-bottom))
+    max(var(--page-gutter), var(--app-safe-left));
   background: var(--paper);
   min-height: 100vh;
   overflow-x: clip;
@@ -1948,63 +1951,75 @@ body {
 }
 
 /* Phone agenda: one full-width day with compact date navigation. */
-@media screen and (max-width: 700px) {
-  .toolbar-week-controls {
+@media screen {
+  :root[data-layout="daily"] .toolbar-week-controls {
     display: none;
   }
-  .planner-header {
+  :root[data-layout="daily"] .planner-header {
     min-height: 52px;
     padding: 8px;
   }
-  .masthead-kicker,
-  .schema-label,
-  .week-total {
+  :root[data-layout="daily"] .masthead-kicker,
+  :root[data-layout="daily"] .schema-label,
+  :root[data-layout="daily"] .week-total {
     display: none;
   }
-  .brand-title {
+  :root[data-layout="daily"] .brand-title {
     font-size: clamp(27px, 7.5vw, 34px);
   }
-  .workspace-navigation .nav-item {
+  :root[data-layout="daily"] .workspace-navigation .nav-item {
     min-height: 44px;
     padding: 8px 10px;
     font-size: 10px;
   }
-  .storage-status-line .text-button {
+  :root[data-layout="daily"] .storage-status-line .text-button {
     min-height: 44px;
     padding: 8px 3px;
   }
-  .week-toolbar {
+  :root[data-layout="daily"] .week-toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+    min-height: 0;
     gap: 4px;
     padding-block: 4px;
   }
-  .week-controls .icon-button {
+  :root[data-layout="daily"] .week-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+  :root[data-layout="daily"] .week-title {
+    min-width: 0;
+  }
+  :root[data-layout="daily"] .week-controls .icon-button {
     width: 44px;
     height: 44px;
   }
-  .week-title h2 {
+  :root[data-layout="daily"] .week-title h2 {
     font-size: 18px;
   }
-  .week-title > span {
+  :root[data-layout="daily"] .week-title > span {
     display: none;
   }
-  .week-actions {
+  :root[data-layout="daily"] .week-actions {
+    width: 100%;
+    flex-wrap: nowrap;
     justify-content: flex-start;
     gap: 8px;
   }
-  .week-actions .this-week-button,
-  .calendar-tools-menu > summary,
-  .week-actions .new-session {
+  :root[data-layout="daily"] .week-actions .this-week-button,
+  :root[data-layout="daily"] .calendar-tools-menu > summary,
+  :root[data-layout="daily"] .week-actions .new-session {
     min-height: 44px;
     padding: 10px 12px;
     font-size: 12px;
   }
-  .week-actions .new-session {
+  :root[data-layout="daily"] .week-actions .new-session {
     margin-left: auto;
   }
-  .calendar-tools-menu {
+  :root[data-layout="daily"] .calendar-tools-menu {
     position: relative;
   }
-  .calendar-tools-menu > summary {
+  :root[data-layout="daily"] .calendar-tools-menu > summary {
     display: flex;
     align-items: center;
     gap: 5px;
@@ -2013,10 +2028,12 @@ body {
     font-weight: 700;
     list-style: none;
   }
-  .calendar-tools-menu > summary::-webkit-details-marker {
+  :root[data-layout="daily"]
+    .calendar-tools-menu
+    > summary::-webkit-details-marker {
     display: none;
   }
-  .calendar-menu-options {
+  :root[data-layout="daily"] .calendar-menu-options {
     position: absolute;
     top: calc(100% + 6px);
     left: -45px;
@@ -2027,7 +2044,7 @@ body {
     background: var(--paper-light);
     box-shadow: 3px 3px 0 var(--ink);
   }
-  .week-actions .calendar-menu-options .text-button {
+  :root[data-layout="daily"] .week-actions .calendar-menu-options .text-button {
     display: flex;
     justify-content: flex-start;
     width: 100%;
@@ -2038,77 +2055,77 @@ body {
     font-size: 12px;
     text-align: left;
   }
-  .calendar-filters:not(.is-open) {
+  :root[data-layout="daily"] .calendar-filters:not(.is-open) {
     display: none;
   }
-  .category-filter button {
+  :root[data-layout="daily"] .category-filter button {
     min-height: 44px;
     font-size: 11px;
   }
-  .mobile-active-filter {
+  :root[data-layout="daily"] .mobile-active-filter {
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 8px;
     font-size: 12px;
   }
-  .mobile-active-filter button {
+  :root[data-layout="daily"] .mobile-active-filter button {
     min-height: 44px;
   }
-  .week-board {
+  :root[data-layout="daily"] .week-board {
     display: flex;
     flex-direction: column;
   }
-  .calendar-wrap {
+  :root[data-layout="daily"] .calendar-wrap {
     order: 1;
   }
-  .week-board > .accountability-band {
+  :root[data-layout="daily"] .week-board > .accountability-band {
     order: 2;
   }
-  .week-board > .bottomstrip {
+  :root[data-layout="daily"] .week-board > .bottomstrip {
     order: 3;
   }
-  .day-focus {
+  :root[data-layout="daily"] .day-focus {
     min-height: 82px;
     padding: 8px 6px;
     gap: 6px;
   }
-  .day-focus-status {
+  :root[data-layout="daily"] .day-focus-status {
     flex-basis: 45px;
   }
-  .focus-index {
+  :root[data-layout="daily"] .focus-index {
     display: none;
   }
-  .day-focus-name {
+  :root[data-layout="daily"] .day-focus-name {
     flex: 1;
     gap: 4px;
   }
-  .day-focus-name strong {
+  :root[data-layout="daily"] .day-focus-name strong {
     font-size: clamp(21px, 6vw, 28px);
   }
-  .day-focus-name > span {
+  :root[data-layout="daily"] .day-focus-name > span {
     font-size: 9px;
   }
-  .day-focus-name .mobile-day-summary {
+  :root[data-layout="daily"] .day-focus-name .mobile-day-summary {
     display: block;
     white-space: normal;
     font-size: 9px;
     line-height: 1.3;
   }
-  .day-focus-nav button {
+  :root[data-layout="daily"] .day-focus-nav button {
     width: 44px;
     height: 44px;
     flex-basis: 44px;
   }
-  .calendar-viewport {
+  :root[data-layout="daily"] .calendar-viewport {
     overflow: visible;
     container-type: normal;
     border-width: 2px;
   }
-  .calendar-viewport .calendar-grid {
+  :root[data-layout="daily"] .calendar-viewport .calendar-grid {
     grid-template-columns: repeat(var(--mobile-days), minmax(0, 1fr));
   }
-  .calendar-viewport .calendar-grid > .day-heading {
+  :root[data-layout="daily"] .calendar-viewport .calendar-grid > .day-heading {
     grid-column: var(--mobile-column);
     min-width: 0;
     min-height: 52px;
@@ -2116,98 +2133,121 @@ body {
     border-width: 0 0 2px 1px;
     box-shadow: none;
   }
-  .calendar-viewport .calendar-grid > .day-heading.is-selected {
+  :root[data-layout="daily"]
+    .calendar-viewport
+    .calendar-grid
+    > .day-heading.is-selected {
     padding: 3px 0;
     border-width: 0 0 4px 1px;
     border-bottom-color: var(--ink);
   }
-  .calendar-viewport .day-heading::after,
-  .day-heading .day-name-wide,
-  .day-heading .day-count,
-  .day-heading .day-index,
-  .day-heading .day-flag,
-  .day-heading .day-completed {
+  :root[data-layout="daily"] .calendar-viewport .day-heading::after,
+  :root[data-layout="daily"] .day-heading .day-name-wide,
+  :root[data-layout="daily"] .day-heading .day-count,
+  :root[data-layout="daily"] .day-heading .day-index,
+  :root[data-layout="daily"] .day-heading .day-flag,
+  :root[data-layout="daily"] .day-heading .day-completed {
     display: none;
   }
-  .day-heading .day-name-short {
+  :root[data-layout="daily"] .day-heading .day-name-short {
     display: inline;
   }
-  .calendar-viewport .day-heading .day-name,
-  .calendar-viewport .day-heading.is-selected .day-name {
+  :root[data-layout="daily"] .calendar-viewport .day-heading .day-name,
+  :root[data-layout="daily"]
+    .calendar-viewport
+    .day-heading.is-selected
+    .day-name {
     font: 700 12px/1.2 var(--body);
     text-shadow: none;
   }
-  .calendar-viewport .day-heading .day-meta {
+  :root[data-layout="daily"] .calendar-viewport .day-heading .day-meta {
     font-size: 9px;
     gap: 0;
   }
-  .day-select {
+  :root[data-layout="daily"] .day-select {
     align-items: center;
     justify-content: center;
     min-height: 44px;
     gap: 3px;
   }
-  .calendar-viewport .calendar-grid > .day-shell:not(.is-selected) {
+  :root[data-layout="daily"]
+    .calendar-viewport
+    .calendar-grid
+    > .day-shell:not(.is-selected) {
     display: none;
   }
-  .calendar-viewport .calendar-grid > .day-shell.is-selected {
+  :root[data-layout="daily"]
+    .calendar-viewport
+    .calendar-grid
+    > .day-shell.is-selected {
     grid-column: 1 / -1;
     padding: 0;
     border: 0;
     box-shadow: none;
   }
-  .day-column {
+  :root[data-layout="daily"] .day-column {
     min-height: 0;
     padding: 10px;
     gap: 12px;
   }
-  .calendar-viewport .day-shell.is-selected .calendar-entry .calendar-block {
+  :root[data-layout="daily"]
+    .calendar-viewport
+    .day-shell.is-selected
+    .calendar-entry
+    .calendar-block {
     min-height: 124px;
     padding: 12px 12px 60px;
     border-width: 2px;
     gap: 5px;
     box-shadow: 2px 2px 0 var(--ink);
   }
-  .calendar-viewport .day-shell.is-selected .calendar-entry .block-title {
+  :root[data-layout="daily"]
+    .calendar-viewport
+    .day-shell.is-selected
+    .calendar-entry
+    .block-title {
     font-size: clamp(18px, 5.5vw, 25px);
     line-height: 1.15;
     overflow-wrap: anywhere;
   }
-  .calendar-viewport .calendar-entry .block-time {
+  :root[data-layout="daily"] .calendar-viewport .calendar-entry .block-time {
     font-size: 12px;
   }
-  .calendar-viewport .calendar-entry .block-category {
+  :root[data-layout="daily"]
+    .calendar-viewport
+    .calendar-entry
+    .block-category {
     font-size: 10px;
   }
-  .calendar-event-actions {
+  :root[data-layout="daily"] .calendar-event-actions {
     inset: auto 12px 5px;
     min-height: 44px;
     gap: 0 10px;
   }
-  .calendar-completion,
-  .calendar-missed {
+  :root[data-layout="daily"] .calendar-completion,
+  :root[data-layout="daily"] .calendar-missed {
     min-height: 44px;
     gap: 6px;
     font-size: 10px;
   }
-  .calendar-completion .completion-box,
-  .calendar-missed .completion-box {
+  :root[data-layout="daily"] .calendar-completion .completion-box,
+  :root[data-layout="daily"] .calendar-missed .completion-box {
     width: 20px;
     height: 20px;
   }
-  .calendar-event-actions .completion-label {
+  :root[data-layout="daily"] .calendar-event-actions .completion-label {
     font-size: 10px;
   }
-  .session-remove {
+  :root[data-layout="daily"] .session-remove {
     width: 44px;
     height: 44px;
   }
-  .day-bottom-add {
+  :root[data-layout="daily"] .day-bottom-add {
     min-height: 44px;
     font-size: 11px;
   }
-  .calendar-hint,
-  .bottomstrip {
+  :root[data-layout="daily"] .calendar-hint,
+  :root[data-layout="daily"] .bottomstrip {
     display: none;
   }
 }
@@ -2294,5 +2334,195 @@ body {
 @media print {
   .install-message {
     display: none;
+  }
+}
+.standalone-brand-icon {
+  display: none;
+}
+@media screen {
+  :root[data-app-mode="standalone"][data-layout="daily"] {
+    --app-tabbar-height: 64px;
+    scroll-padding-block: 12px
+      calc(var(--app-tabbar-height) + var(--app-safe-bottom) + 20px);
+    background: var(--paper);
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] body {
+    background: var(--paper);
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .app-shell {
+    --page-gutter: 8px;
+    max-width: none;
+    min-height: 100dvh;
+    padding-bottom: calc(
+      var(--app-tabbar-height) + var(--app-safe-bottom) + 20px
+    );
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .planner-header {
+    min-height: 44px;
+    padding: 7px 4px;
+    border: 0;
+    border-bottom: 1px solid var(--ink);
+    background: var(--paper);
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"]
+    .planner-header::before {
+    display: none;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .title-line {
+    flex-direction: row;
+    align-items: center;
+    gap: 9px;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"]
+    .standalone-brand-icon {
+    display: block;
+    border-radius: 7px;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .brand-title {
+    font-size: 22px;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .brand-title > span {
+    color: var(--blue);
+    text-shadow: none;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .navigation-bar {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 50;
+    display: block;
+    padding: 0 max(6px, var(--app-safe-right)) var(--app-safe-bottom)
+      max(6px, var(--app-safe-left));
+    background: var(--paper-light);
+    border: 0;
+    border-top: 2px solid var(--ink);
+    box-shadow: 0 -3px 0 #19191814;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .workspace-tools {
+    display: none;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .workspace-navigation {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    width: 100%;
+    gap: 0;
+    padding: 3px 0;
+    overflow: visible;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 56px;
+    gap: 5px;
+    padding: 6px 1px;
+    border: 0;
+    box-shadow: none;
+    font: 700 9px/1.2 var(--body);
+    white-space: normal;
+    text-align: center;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .nav-item svg {
+    display: block;
+    width: 20px;
+    height: 20px;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .nav-label {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .storage-status-line {
+    min-height: 44px;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .storage-status,
+  :root[data-app-mode="standalone"][data-layout="daily"]
+    .storage-status-line
+    .text-button {
+    font-size: 11px;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"]
+    .calendar-menu-options {
+    max-height: calc(
+      var(--app-visible-height, 100dvh) - 170px - var(--app-safe-top) -
+        var(--app-safe-bottom)
+    );
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .punk-backcover,
+  :root[data-app-mode="standalone"][data-layout="daily"] .page-footer {
+    display: none;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"]
+    input:not([type="checkbox"]):not([type="radio"]),
+  :root[data-app-mode="standalone"][data-layout="daily"] select,
+  :root[data-app-mode="standalone"][data-layout="daily"] textarea {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .modal,
+  :root[data-app-mode="standalone"][data-layout="daily"] .modal.wide {
+    position: fixed;
+    inset-block: calc(var(--app-visible-top, 0px) + var(--app-safe-top) + 8px)
+      auto;
+    margin-block: 0;
+    width: min(
+      640px,
+      calc(100vw - var(--app-safe-left) - var(--app-safe-right) - 20px)
+    );
+    max-height: calc(
+      var(--app-visible-height, 100dvh) - var(--app-safe-top) -
+        var(--app-safe-bottom) - 16px
+    );
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-padding-block: 86px 20px;
+    box-shadow: 3px 3px 0 var(--blue);
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .modal-head {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    padding: 14px;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .modal-head h2 {
+    font-size: 24px;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .modal .button,
+  :root[data-app-mode="standalone"][data-layout="daily"] .modal .icon-button,
+  :root[data-app-mode="standalone"][data-layout="daily"] .cloud-auth .button {
+    min-height: 44px;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"]
+    .modal-head
+    .icon-button {
+    min-width: 44px;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .toast,
+  :root[data-app-mode="standalone"][data-layout="daily"] .install-message {
+    bottom: calc(var(--app-tabbar-height) + var(--app-safe-bottom) + 10px);
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .cloud-gate {
+    min-height: 100dvh;
+    padding: calc(16px + var(--app-safe-top)) max(16px, var(--app-safe-right))
+      calc(20px + var(--app-safe-bottom)) max(16px, var(--app-safe-left));
+  }
+}
+@media screen and (max-height: 500px) {
+  :root[data-app-mode="standalone"][data-layout="daily"] .planner-header,
+  :root[data-app-mode="standalone"][data-layout="daily"]
+    .storage-status.is-settled,
+  :root[data-app-mode="standalone"][data-layout="daily"]
+    .calendar-viewport
+    .calendar-grid
+    > .day-heading,
+  :root[data-app-mode="standalone"][data-layout="daily"]
+    .calendar-block
+    .block-subtitle {
+    display: none;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .day-focus {
+    min-height: 64px;
   }
 }

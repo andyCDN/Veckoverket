@@ -63,7 +63,7 @@ import { SettingsView } from "./settings";
 import { ReflectionView } from "./reflection";
 import { Account } from "./account";
 import { Modal } from "./modal";
-import { AppInstallButton } from "./app-install";
+import { AppInstallButton, useStandaloneMode } from "./app-install";
 import { EditorialSidebar, CategoryFilter } from "./riso";
 import { PlannerMasthead, WorkspaceTools, BackCoverInfo } from "./punk";
 import { GoogleCalendarModal } from "./google-calendar";
@@ -83,6 +83,13 @@ const NAV = [
   { id: "reflection", label: "Veckoreflektion", icon: BookOpen },
   { id: "settings", label: "Inställningar", icon: Settings2 },
 ] as const;
+const APP_NAV_LABELS: Record<View, string> = {
+  dashboard: "Idag",
+  planner: "Planera",
+  goals: "Mål",
+  reflection: "Reflektion",
+  settings: "Inställningar",
+};
 function linkedPlan(plan: WeekPlan, goals: Goal[]) {
   return {
     ...plan,
@@ -105,6 +112,7 @@ function newWorkspace() {
   return data;
 }
 export function Workspace() {
+  const standalone = useStandaloneMode();
   const {
     data,
     setData,
@@ -148,12 +156,22 @@ export function Workspace() {
   );
   const notify = useCallback((message: string) => setNotice(message), []);
   useEffect(() => {
-    const query = window.matchMedia("(max-width: 700px)");
-    const update = () => setMobile(query.matches);
+    const query = window.matchMedia(
+      standalone ? "(max-width: 950px)" : "(max-width: 700px)",
+    );
+    const update = () => {
+      setMobile(query.matches);
+      document.documentElement.dataset.layout = query.matches
+        ? "daily"
+        : "weekly";
+    };
     update();
     query.addEventListener("change", update);
-    return () => query.removeEventListener("change", update);
-  }, []);
+    return () => {
+      query.removeEventListener("change", update);
+      document.documentElement.removeAttribute("data-layout");
+    };
+  }, [standalone]);
   useEffect(() => {
     if (!notice) return;
     const id = setTimeout(() => setNotice(""), 6000);
@@ -666,16 +684,26 @@ export function Workspace() {
           {NAV.map(({ id, label, icon: Icon }, index) => (
             <button
               key={id}
-              aria-label={label}
+              aria-label={standalone && mobile ? APP_NAV_LABELS[id] : label}
               className={`nav-item ${view === id ? "active" : ""}`}
               aria-current={view === id ? "page" : undefined}
-              onClick={() => navigate(id)}
+              onClick={() => {
+                navigate(id);
+                if (standalone && mobile) {
+                  if (id === "dashboard") changeWeek(monday(today()));
+                  requestAnimationFrame(() =>
+                    window.scrollTo({ top: 0, behavior: "instant" }),
+                  );
+                }
+              }}
             >
               <span className="nav-index" aria-hidden="true">
                 0{index + 1}
               </span>
               <Icon size={15} />
-              {label}
+              <span className="nav-label">
+                {standalone && mobile ? APP_NAV_LABELS[id] : label}
+              </span>
             </button>
           ))}
         </nav>
@@ -699,6 +727,7 @@ export function Workspace() {
             </div>
           </div>
           <StorageStatus
+            compact={standalone && mobile}
             configured={configured}
             state={cloud}
             onAccount={() => setAccount(true)}

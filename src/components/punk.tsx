@@ -2,6 +2,7 @@
 import { ArrowUpRight, CircleHelp } from "lucide-react";
 import { DAY_NAMES, hours } from "@/lib/date";
 import { plannedDays } from "@/lib/planner";
+import { appPath } from "@/lib/app-path";
 import type { Settings } from "@/lib/types";
 
 export function PlannerMasthead({
@@ -23,6 +24,14 @@ export function PlannerMasthead({
       <div className="planner-header-text">
         <span className="masthead-kicker">Nr 005 / {range}</span>
         <div className="title-line">
+          <img
+            className="standalone-brand-icon"
+            src={appPath("/icons/veckoverket-32.png")}
+            width={28}
+            height={28}
+            alt=""
+            aria-hidden="true"
+          />
           <span className="brand-title">
             Vecko<span>verket</span>
           </span>

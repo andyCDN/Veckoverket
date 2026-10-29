@@ -23,7 +23,9 @@ Pass visas i tidsordning som kort med naturlig höjd, enligt v2.5-referensen. St
 
 På telefoner upp till 700 px visas en dagsagenda i full bredd. Dagens datum är startvy, även på helger och dagar utan inplanerade pass. En kompakt datumrad och stora pilar byter dag, och `Idag` återställer dagens datum. Passens kryssrutor, borttagning och huvudknappar har minst 44 px höga tryckytor. Dragning är avstängd på telefonen; datum och tid ändras i formuläret. Menyn `Verktyg` samlar veckobyte, filter, planering, utskrift och Google Kalender. Ett aktivt kategorifilter visas uttryckligen med möjlighet att återställa alla aktiviteter. Uppföljning ligger efter dagens pass.
 
-Mellan 701 och 950 px visas fortfarande ett rullbart veckoschema där den valda dagen tar cirka 92 procent av kalenderns bredd. Hela dokumentet ska inte få horisontell överströmning. Utskrift återställer planeringsveckans kronologiska ordning, lika breda dagar och alla kategorier även efter filtrering och dagbyte på mobil.
+Den installerade appen använder dagsagenda upp till 950 px, även i liggande läge. En fast meny i nederkanten visar Idag, Planera, Mål, Reflektion och Inställningar. Idag återgår till dagens datum. Navigationen får plats innanför hemindikatorn; pass och formulär får marginaler mot skärmkanter och tangentbord. I lågt liggande läge döljs extra datumflikar, branding och normal lagringsstatus så att första passet får plats. Sparningsfel och väntande ändringar visas fortfarande.
+
+I vanlig webbläsarvy mellan 701 och 950 px visas fortfarande ett rullbart veckoschema där den valda dagen tar cirka 92 procent av kalenderns bredd. Hela dokumentet ska inte få horisontell överströmning. Utskrift återställer planeringsveckans kronologiska ordning, lika breda dagar och alla kategorier även efter filtrering och dagbyte på mobil.
 
 ## Missade pass och ombokning
 

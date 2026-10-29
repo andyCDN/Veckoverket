@@ -19,26 +19,34 @@ export function StorageStatus({
   onAccount,
   onRetry,
   onResolve,
+  compact = false,
 }: {
   configured: boolean;
   state: SyncSnapshot;
   onAccount: () => void;
   onRetry: () => void;
   onResolve: (choice: "cloud" | "device") => void;
+  compact?: boolean;
 }) {
   return (
     <div
-      className={`storage-status ${state.phase === "error" || state.phase === "conflict" ? "needs-attention" : ""}`}
+      className={`storage-status ${state.phase === "error" || state.phase === "conflict" ? "needs-attention" : ""} ${!configured || state.phase === "synced" ? "is-settled" : ""}`}
     >
       <div className="storage-status-line">
         <span role="status">
           {configured ? <Cloud size={14} /> : <CloudOff size={14} />}
           {configured
             ? syncLabel(state)
-            : "Lokal lagring · molnet är inte anslutet"}
+            : compact
+              ? "På den här enheten"
+              : "Lokal lagring · molnet är inte anslutet"}
         </span>
-        <button className="text-button" onClick={onAccount}>
-          Konto & molnlagring
+        <button
+          className="text-button"
+          onClick={onAccount}
+          aria-label="Konto & molnlagring"
+        >
+          {compact ? "Konto" : "Konto & molnlagring"}
         </button>
       </div>
       {configured &&

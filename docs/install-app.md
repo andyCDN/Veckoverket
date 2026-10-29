@@ -26,6 +26,8 @@ In Chrome or Edge, use the install icon in the address bar or the browser menu's
 
 The installed app opens in its own window. Installation does not create a new account or move data between browsers. Use the same browser and your existing Veckoverket account to access your cloud plan. A plan stored only on one device remains on that device; use cloud storage or JSON export/import when moving it.
 
+In the installed mobile window, the main navigation sits at the bottom and the daily agenda stays visible in both portrait and landscape. **Idag** returns to today's activities. The layout reserves space for notches and the Home indicator, and editing forms adapt to the visible screen when the keyboard opens.
+
 ## Offline use and updates
 
 Open the app online once so it can save its public interface, icons and assets. It can then reopen that saved interface offline. Local plans keep working, and the existing cloud cache can show a previously loaded account plan when its session is available. Signing in, importing from Google Calendar and syncing to Supabase require a connection.

@@ -10,11 +10,13 @@ type InstallPromptEvent = Event & {
 };
 type InstallState = {
   installed: boolean;
+  standalone: boolean;
   busy: boolean;
   install: () => void;
 };
 const InstallContext = createContext<InstallState>({
   installed: false,
+  standalone: false,
   busy: false,
   install: () => {},
 });
@@ -26,6 +28,7 @@ export function AppInstallProvider({
 }) {
   const prompt = useRef<InstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
+  const [standalone, setStandalone] = useState(false);
   const [help, setHelp] = useState(false);
   const [platform, setPlatform] = useState<"ios" | "android" | "desktop">(
     "desktop",
@@ -39,13 +42,16 @@ export function AppInstallProvider({
   }, [message]);
   useEffect(() => {
     const mode = window.matchMedia("(display-mode: standalone)");
-    const sync = () =>
-      setInstalled(
+    const sync = () => {
+      const active =
         mode.matches ||
-          Boolean(
-            (navigator as Navigator & { standalone?: boolean }).standalone,
-          ),
-      );
+        Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
+      setInstalled(active);
+      setStandalone(active);
+      document.documentElement.dataset.appMode = active
+        ? "standalone"
+        : "browser";
+    };
     const capture = (event: Event) => {
       event.preventDefault();
       prompt.current = event as InstallPromptEvent;
@@ -86,6 +92,28 @@ export function AppInstallProvider({
       window.removeEventListener("appinstalled", complete);
     };
   }, []);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    const update = () => {
+      document.documentElement.style.setProperty(
+        "--app-visible-height",
+        `${viewport?.height ?? window.innerHeight}px`,
+      );
+      document.documentElement.style.setProperty(
+        "--app-visible-top",
+        `${viewport?.offsetTop ?? 0}px`,
+      );
+    };
+    update();
+    viewport?.addEventListener("resize", update);
+    viewport?.addEventListener("scroll", update);
+    window.addEventListener("resize", update);
+    return () => {
+      viewport?.removeEventListener("resize", update);
+      viewport?.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, []);
   async function requestInstall() {
     if (busy || installed) return;
     const event = prompt.current;
@@ -111,6 +139,7 @@ export function AppInstallProvider({
     <InstallContext.Provider
       value={{
         installed,
+        standalone,
         busy,
         install: () => {
           void requestInstall();
@@ -196,6 +225,9 @@ export function AppInstallProvider({
       )}
     </InstallContext.Provider>
   );
+}
+export function useStandaloneMode() {
+  return useContext(InstallContext).standalone;
 }
 export function AppInstallButton({
   className = "button secondary",
