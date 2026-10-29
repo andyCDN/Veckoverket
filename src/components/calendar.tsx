@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import {
   DndContext,
   useDraggable,
@@ -16,28 +16,31 @@ import {
   Check,
   Plus,
   GripVertical,
+  ChevronLeft,
+  ChevronRight,
+  X,
 } from "lucide-react";
 import type { Activity, AppData } from "@/lib/types";
-import { addDays, DAY_NAMES, time, today, weekday } from "@/lib/date";
+import { addDays, DAY_NAMES, fullDate, time, today } from "@/lib/date";
+import { canFollowUp } from "@/lib/follow-up";
 import { plannedDays } from "@/lib/planner";
 import { categoryLabel, categoryStyle } from "@/lib/presentation";
-const PX_PER_MINUTE = 1.35;
 function CalendarBlock({
   a,
   category,
-  top,
   canMove,
   filteredOut,
   onEdit,
   onStatusChange,
+  onDelete,
 }: {
   a: Activity;
   category: AppData["categories"][number] | undefined;
-  top: number;
   canMove: boolean;
   filteredOut: boolean;
   onEdit: () => void;
   onStatusChange: (status: Activity["status"]) => void;
+  onDelete: () => void;
 }) {
   const {
     attributes,
@@ -52,11 +55,10 @@ function CalendarBlock({
   return (
     <div
       ref={setNodeRef}
-      className={`calendar-entry ${filteredOut ? "is-filtered-out" : ""} ${isDragging ? "is-dragging" : ""}`}
+      data-activity-id={a.id}
+      className={`calendar-entry ${a.status === "skipped" ? "is-missed" : ""} ${filteredOut ? "is-filtered-out" : ""} ${isDragging ? "is-dragging" : ""}`}
       style={
         {
-          top,
-          height: Math.max(24, (a.end - a.start) * PX_PER_MINUTE - 5),
           ...categoryStyle(category),
           transform: transform
             ? `translate3d(${transform.x}px,${transform.y}px,0)`
@@ -72,9 +74,8 @@ function CalendarBlock({
         onClick={onEdit}
         title={`${a.title} · ${categoryLabel(category)} · ${time(a.start)}–${time(a.end)}`}
         tabIndex={filteredOut ? -1 : 0}
-        aria-label={`${a.title}, ${categoryLabel(category)}, ${time(a.start)} till ${time(a.end)}${a.status === "done" ? ", genomförd" : ""}. Redigera aktivitet`}
-        className={`calendar-block ${a.end - a.start < 90 ? "is-short" : ""} ${a.end - a.start < 60 ? "is-compact" : ""} ${filteredOut ? "is-filtered-out" : ""} ${family ? "family" : ""} ${lunch ? "lunch" : ""} ${a.status === "done" ? "is-done" : ""} ${a.status === "skipped" ? "is-skipped" : ""} ${isDragging ? "dragging" : ""}`}
-        style={{ top: 0, height: "100%" }}
+        aria-label={`${a.title}, ${categoryLabel(category)}, ${time(a.start)} till ${time(a.end)}${a.status === "done" ? ", genomförd" : a.status === "skipped" ? ", missat" : ""}. Redigera aktivitet`}
+        className={`calendar-block ${filteredOut ? "is-filtered-out" : ""} ${family ? "family" : ""} ${lunch ? "lunch" : ""} ${a.status === "done" ? "is-done" : ""} ${a.status === "skipped" ? "is-skipped" : ""} ${isDragging ? "dragging" : ""}`}
       >
         <span className="block-time">
           {time(a.start)}–{time(a.end)}
@@ -92,57 +93,93 @@ function CalendarBlock({
         <span className="block-title">{a.title}</span>
         {a.end - a.start >= 100 && (
           <span className="block-subtitle">
-            {a.blockType === "protected"
-              ? "Sammanhängande pass"
-              : category?.name}
+            {a.description ||
+              (a.blockType === "protected"
+                ? "Sammanhängande pass"
+                : category?.name)}
           </span>
         )}
       </button>
-      <label
-        className="calendar-completion"
-        title={
-          a.status === "done"
-            ? "Återställ till planerad"
-            : "Markera som genomförd"
-        }
-      >
-        <input
-          type="checkbox"
-          checked={a.status === "done"}
-          tabIndex={filteredOut ? -1 : 0}
-          aria-label={`Genomförd: ${a.title}, ${a.date} ${time(a.start)}–${time(a.end)}`}
-          onChange={(event) =>
-            onStatusChange(event.target.checked ? "done" : "planned")
+      <div className="calendar-event-actions">
+        <label
+          className="calendar-completion"
+          title={
+            a.status === "done"
+              ? "Återställ till planerad"
+              : "Markera som genomförd"
           }
-        />
-        <span className="completion-box" aria-hidden="true">
-          {a.status === "done" && <Check size={11} />}
-        </span>
-      </label>
+        >
+          <input
+            type="checkbox"
+            checked={a.status === "done"}
+            tabIndex={filteredOut ? -1 : 0}
+            aria-label={`Genomförd: ${a.title}, ${a.date} ${time(a.start)}–${time(a.end)}`}
+            onChange={(event) =>
+              onStatusChange(event.target.checked ? "done" : "planned")
+            }
+          />
+          <span className="completion-box" aria-hidden="true">
+            {a.status === "done" && <Check size={11} />}
+          </span>
+          <span className="completion-label" aria-hidden="true">
+            {a.status === "done" ? "Klart" : "Klar?"}
+          </span>
+        </label>
+        {canFollowUp(a) && (
+          <label
+            className="calendar-missed"
+            title={
+              a.status === "skipped"
+                ? "Återställ till planerad"
+                : "Markera som missat"
+            }
+          >
+            <input
+              type="checkbox"
+              checked={a.status === "skipped"}
+              tabIndex={filteredOut ? -1 : 0}
+              aria-label={`Missat: ${a.title}, ${a.date} ${time(a.start)}–${time(a.end)}`}
+              onChange={(event) =>
+                onStatusChange(event.target.checked ? "skipped" : "planned")
+              }
+            />
+            <span className="completion-box" aria-hidden="true">
+              {a.status === "skipped" && <X size={11} />}
+            </span>
+            <span className="completion-label" aria-hidden="true">
+              {a.status === "skipped" ? "Missat" : "Missat?"}
+            </span>
+          </label>
+        )}
+        <button
+          className="session-remove"
+          aria-label={`Ta bort pass: ${a.title}, ${a.date}`}
+          tabIndex={filteredOut ? -1 : 0}
+          onClick={onDelete}
+        >
+          <X size={14} />
+        </button>
+      </div>
     </div>
   );
 }
 function DayColumn({
   date,
   children,
-  height,
   onCreate,
 }: {
   date: string;
   children: React.ReactNode;
-  height: number;
-  onCreate: (start: number) => void;
+  onCreate: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: date });
   return (
     <div
       ref={setNodeRef}
       className={`day-column ${isOver ? "drop-over" : ""}`}
-      style={{ height }}
       onDoubleClick={(e) => {
         if (e.target === e.currentTarget) {
-          const rect = e.currentTarget.getBoundingClientRect();
-          onCreate(e.clientY - rect.top);
+          onCreate();
         }
       }}
     >
@@ -151,6 +188,9 @@ function DayColumn({
   );
 }
 export function Calendar({
+  activeDay,
+  onSelectDay,
+  onDelete,
   week,
   data,
   activities,
@@ -168,72 +208,29 @@ export function Calendar({
   onMove: (a: Activity, date: string, start: number) => void;
   onCreate: (date: string, start?: number) => void;
   onStatusChange: (activity: Activity, status: Activity["status"]) => void;
+  activeDay: number;
+  onSelectDay: (day: number) => void;
+  onDelete: (a: Activity) => void;
 }) {
   const days = plannedDays(data.settings);
   const viewport = useRef<HTMLDivElement>(null);
-  function selectDay(day: number) {
-    setMobileDay(day);
-    const heading = viewport.current?.querySelector<HTMLElement>(
-      `[data-day="${day}"]`,
-    );
-    if (
-      heading &&
-      viewport.current &&
-      viewport.current.scrollWidth > viewport.current.clientWidth
-    )
-      viewport.current.scrollTo({
-        left: Math.max(0, heading.offsetLeft - 42),
-        behavior: "instant",
-      });
-  }
-  function syncVisibleDay() {
-    const container = viewport.current;
-    if (!container || container.scrollWidth <= container.clientWidth) return;
-    const midpoint =
-      container.getBoundingClientRect().left + container.clientWidth / 2;
-    const headings = [...container.querySelectorAll<HTMLElement>("[data-day]")];
-    headings.sort(
-      (a, b) =>
-        Math.abs(
-          a.getBoundingClientRect().left + a.offsetWidth / 2 - midpoint,
-        ) -
-        Math.abs(b.getBoundingClientRect().left + b.offsetWidth / 2 - midpoint),
-    );
-    if (headings[0]) setMobileDay(Number(headings[0].dataset.day));
-  }
-  const [mobileDay, setMobileDay] = useState(
-    weekday(today()) < 5 ? weekday(today()) : 0,
-  );
-  const activeDay = days.includes(mobileDay) ? mobileDay : days[0];
+  const activeDate = addDays(week, activeDay);
+  const currentDate = today();
+  const isToday = activeDate === currentDate;
+  const activeIndex = days.indexOf(activeDay);
+  const mobileOrder = [activeDay, ...days.filter((day) => day !== activeDay)];
   useEffect(() => {
     const container = viewport.current;
     if (!container) return;
     const align = () => {
-      if (container.scrollWidth <= container.clientWidth) return;
-      const heading = container.querySelector<HTMLElement>(
-        `[data-day="${container.dataset.activeDay}"]`,
-      );
-      if (heading)
-        container.scrollTo({
-          left: Math.max(0, heading.offsetLeft - 42),
-          behavior: "instant",
-        });
+      if (container.scrollWidth > container.clientWidth)
+        container.scrollTo({ left: 0, behavior: "instant" });
     };
     const observer = new ResizeObserver(align);
     observer.observe(container);
     align();
     return () => observer.disconnect();
-  }, [week]);
-  const start = Math.min(
-      data.settings.start,
-      ...activities.map((a) => a.start),
-    ),
-    end = Math.max(data.settings.end, ...activities.map((a) => a.end));
-  const height = (end - start) * PX_PER_MINUTE;
-  const ticks = Array.from(
-    { length: Math.ceil((end - start) / 60) + 1 },
-    (_, i) => start + i * 60,
-  ).filter((n) => n <= end);
+  }, [week, activeDay]);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor),
@@ -242,9 +239,7 @@ export function Calendar({
     const a = activities.find((a) => a.id === e.active.id);
     if (!a || !e.over) return;
     const date = String(e.over.id);
-    const movedStart =
-      a.start + Math.round(e.delta.y / PX_PER_MINUTE / 15) * 15;
-    onMove(a, date, movedStart);
+    onMove(a, date, a.start);
   }
   if (!days.length)
     return (
@@ -255,17 +250,36 @@ export function Calendar({
     );
   return (
     <div className="calendar-wrap">
-      <div className="mobile-days" role="group" aria-label="Välj dag">
-        {days.map((d) => (
+      <div className="day-focus" role="group" aria-label="Vald dag">
+        <div className="day-focus-status">
+          <span className={`focus-marker ${isToday ? "" : "is-past"}`}>
+            {isToday ? "Idag" : "Vald dag"}
+          </span>
+          <span className="focus-index">
+            {String(activeIndex + 1).padStart(2, "0")} /{" "}
+            {String(days.length).padStart(2, "0")}
+          </span>
+        </div>
+        <div className="day-focus-name" aria-live="polite" aria-atomic="true">
+          <strong>{DAY_NAMES[activeDay]}</strong>
+          <span>{fullDate(activeDate)}</span>
+        </div>
+        <div className="day-focus-nav">
           <button
-            className={d === activeDay ? "active" : ""}
-            key={d}
-            onClick={() => selectDay(d)}
+            aria-label="Välj föregående dag"
+            disabled={activeIndex <= 0}
+            onClick={() => onSelectDay(days[activeIndex - 1])}
           >
-            {DAY_NAMES[d].slice(0, 3)}
-            <strong>{Number(addDays(week, d).slice(8))}</strong>
+            <ChevronLeft size={18} />
           </button>
-        ))}
+          <button
+            aria-label="Välj nästa dag"
+            disabled={activeIndex >= days.length - 1}
+            onClick={() => onSelectDay(days[activeIndex + 1])}
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
       </div>
       <DndContext
         sensors={sensors}
@@ -290,98 +304,108 @@ export function Calendar({
           className="calendar-viewport"
           data-active-day={activeDay}
           ref={viewport}
-          onScroll={syncVisibleDay}
           role="region"
           aria-label="Kalender, rulla i sidled för fler dagar"
           tabIndex={0}
         >
           <div
             className="calendar-grid"
-            style={{ "--days": days.length } as React.CSSProperties}
+            style={
+              {
+                "--days": days.length,
+                "--day-columns": days
+                  .map((d) => `minmax(0,${d === activeDay ? 1.9 : 1}fr)`)
+                  .join(" "),
+                "--mobile-columns": mobileOrder
+                  .map((d) =>
+                    d === activeDay
+                      ? "var(--active-column-width)"
+                      : "var(--other-column-width)",
+                  )
+                  .join(" "),
+              } as React.CSSProperties
+            }
           >
-            <div className="time-heading">Tid</div>
             {days.map((d) => {
               const date = addDays(week, d);
               return (
                 <div
-                  className={`day-heading ${d === activeDay ? "mobile-active" : ""} ${date === today() ? "is-today" : ""}`}
+                  className={`day-heading ${d === activeDay ? "is-selected mobile-active" : ""} ${date === currentDate ? "is-today" : ""}`}
                   key={d}
                   data-day={d}
-                >
-                  <span className="day-name">
-                    <span className="sr-only">{DAY_NAMES[d]}</span>
-                    <span aria-hidden="true">{DAY_NAMES[d].slice(0, 3)}</span>
-                  </span>
-                  <strong>
-                    {Number(date.slice(8))} / {date.slice(5, 7)}
-                  </strong>
-                  <span className="day-count screen-count">
+                  style={
                     {
-                      activities.filter(
-                        (a) =>
-                          a.date === date &&
-                          (categoryFilter === "all" ||
-                            a.categoryId === categoryFilter),
-                      ).length
-                    }{" "}
-                    pass
-                  </span>
-                  <span className="day-count print-count">
-                    {activities.filter((a) => a.date === date).length} pass
-                  </span>
+                      "--desktop-column": days.indexOf(d) + 1,
+                      "--mobile-column": mobileOrder.indexOf(d) + 1,
+                    } as React.CSSProperties
+                  }
+                >
+                  <button
+                    type="button"
+                    className="day-select"
+                    aria-label={`Visa ${DAY_NAMES[d].toLowerCase()} ${fullDate(date)}`}
+                    aria-pressed={d === activeDay}
+                    onClick={() => onSelectDay(d)}
+                  >
+                    <span className="day-name">
+                      {d === activeDay
+                        ? DAY_NAMES[d]
+                        : DAY_NAMES[d].slice(0, 3)}
+                    </span>
+                    <span className="day-meta">
+                      <strong>
+                        {Number(date.slice(8))}/{Number(date.slice(5, 7))}
+                      </strong>
+                      <span className="day-count screen-count">
+                        {
+                          activities.filter(
+                            (a) =>
+                              a.date === date &&
+                              (categoryFilter === "all" ||
+                                a.categoryId === categoryFilter),
+                          ).length
+                        }{" "}
+                        pass
+                      </span>
+                      <span className="day-count print-count">
+                        {activities.filter((a) => a.date === date).length} pass
+                      </span>
+                    </span>
+                    {d === activeDay ? (
+                      <span className="day-flag">
+                        {date === currentDate
+                          ? "Idag / aktiv dag"
+                          : "Vald dag / aktiv"}
+                      </span>
+                    ) : date === currentDate ? (
+                      <span className="day-flag">Idag</span>
+                    ) : null}
+                  </button>
                   <span className="day-index" aria-hidden="true">
                     {String(days.indexOf(d) + 1).padStart(2, "0")}
                   </span>
-                  {date === today() && <span className="sr-only">Idag</span>}
-                  <button
-                    className="day-add"
-                    aria-label={`Lägg till aktivitet ${DAY_NAMES[d].toLowerCase()}`}
-                    onClick={() => onCreate(date)}
-                  >
-                    <Plus size={15} />
-                  </button>
                 </div>
               );
             })}
-            <div className="time-axis" style={{ height }}>
-              {ticks.map((n) => (
-                <span key={n} style={{ top: (n - start) * PX_PER_MINUTE }}>
-                  {time(n)}
-                </span>
-              ))}
-            </div>
             {days.map((d) => {
               const date = addDays(week, d);
               return (
                 <div
-                  className={`day-shell ${d === activeDay ? "mobile-active" : ""}`}
+                  className={`day-shell ${d === activeDay ? "is-selected mobile-active" : ""}`}
                   key={date}
+                  style={
+                    {
+                      "--desktop-column": days.indexOf(d) + 1,
+                      "--mobile-column": mobileOrder.indexOf(d) + 1,
+                    } as React.CSSProperties
+                  }
                 >
-                  <DayColumn
-                    date={date}
-                    height={height}
-                    onCreate={(y) =>
-                      onCreate(
-                        date,
-                        Math.max(
-                          start,
-                          Math.min(
-                            end - 30,
-                            start + Math.floor(y / PX_PER_MINUTE / 15) * 15,
-                          ),
-                        ),
-                      )
-                    }
-                  >
-                    {ticks.map((n) => (
-                      <div
-                        className="hour-line"
-                        key={n}
-                        style={{ top: (n - start) * PX_PER_MINUTE }}
-                      />
-                    ))}
+                  <DayColumn date={date} onCreate={() => onCreate(date)}>
                     {activities
                       .filter((a) => a.date === date)
+                      .sort(
+                        (a, b) => a.start - b.start || a.id.localeCompare(b.id),
+                      )
                       .map((a) => (
                         <CalendarBlock
                           key={a.id}
@@ -393,7 +417,6 @@ export function Calendar({
                           category={data.categories.find(
                             (c) => c.id === a.categoryId,
                           )}
-                          top={(a.start - start) * PX_PER_MINUTE}
                           canMove={
                             a.blockType !== "locked" &&
                             Boolean(
@@ -403,10 +426,31 @@ export function Calendar({
                             (a.categoryId !== "music" ||
                               data.settings.musicMovable)
                           }
+                          onDelete={() => onDelete(a)}
                           onEdit={() => onEdit(a)}
                           onStatusChange={(status) => onStatusChange(a, status)}
                         />
                       ))}
+                    {!activities.some(
+                      (a) =>
+                        a.date === date &&
+                        (categoryFilter === "all" ||
+                          a.categoryId === categoryFilter),
+                    ) && (
+                      <p className="day-empty">
+                        {categoryFilter === "all"
+                          ? "Inga pass denna dag"
+                          : "Inga pass i vald kategori"}
+                      </p>
+                    )}
+                    <button
+                      className="day-bottom-add"
+                      aria-label={`Lägg till aktivitet ${DAY_NAMES[d].toLowerCase()}`}
+                      onClick={() => onCreate(date)}
+                    >
+                      <Plus size={13} />
+                      Lägg till pass
+                    </button>
                   </DayColumn>
                 </div>
               );
@@ -422,7 +466,7 @@ export function Calendar({
           <ShieldCheck size={13} /> Skyddad tid
         </span>
         <span className="calendar-hint">
-          Klicka för att redigera · Dra för att flytta
+          Klicka för att ändra tid · Dra till en annan dag
         </span>
       </div>
     </div>

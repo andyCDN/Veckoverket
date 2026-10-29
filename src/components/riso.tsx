@@ -1,6 +1,6 @@
 "use client";
 import { ArrowRight, ArrowUpRight, Check, Settings2 } from "lucide-react";
-import { hours, time, weekNumber } from "@/lib/date";
+import { hours, time } from "@/lib/date";
 import { categoryMinutes, targetMinutes } from "@/lib/planner";
 import { categoryInk, categoryLabel, categoryStyle } from "@/lib/presentation";
 import type { Activity, AppData, Category, Goal, WeekPlan } from "@/lib/types";
@@ -21,9 +21,7 @@ export function CategoryFilter({
   return (
     <div className="filter-section">
       <span className="filter-caption" aria-hidden="true">
-        Visa
-        <br />
-        kategori ↘
+        Kategori ↘
       </span>
       <div
         className="category-filter"
@@ -88,23 +86,6 @@ export function EditorialSidebar({
     .reduce((n, a) => n + a.end - a.start, 0);
   return (
     <aside className="editorial-sidebar" aria-label="Veckosammanfattning">
-      <section className="editorial-index">
-        <span className="section-tag">[ Innehåll / 01 ]</span>
-        <h3>
-          Vecko
-          <br />
-          plan
-          <br />
-          <span>Nr.</span>
-          <br />
-          002.
-        </h3>
-        <p>
-          Översikt över aktiviteter, mål och tidsfördelning för vecka{" "}
-          {weekNumber(plan.week)}.
-        </p>
-        <span className="hand-underline" aria-hidden="true" />
-      </section>
       <section className="riso-total">
         <span className="overprint">Veckans timmar</span>
         <strong>{hours(total)}</strong>

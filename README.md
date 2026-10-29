@@ -84,7 +84,7 @@ e2e/                      Webbläsartester för dator och mobil
 supabase/migrations/      PostgreSQL-schema och RLS
 ```
 
-React, TypeScript, Next.js, dnd-kit och Lucide. CSS använder designvariabler och responsiva layouter utan ett ytterligare komponentramverk. RISO-designen använder Anton för rubriker, Arial för brödtext och Courier New för metadata. Anton levereras lokalt från npm; inget Google Fonts-anrop behövs. Se [designbeskrivningen](docs/riso-design.md).
+React, TypeScript, Next.js, dnd-kit och Lucide. CSS använder designvariabler och responsiva layouter utan ett ytterligare komponentramverk. PUNK × RISO v2.5 använder kittets displaystack, Arial för brödtext och Courier New för metadata, utan externa typsnittsanrop. Kalendern visar en aktiv dag och passkort i tidsordning. Missade jobb- och nätverkspass kan följas upp och bokas om med koppling till ursprungspasset. Se [designbeskrivningen](docs/riso-design.md).
 
 ## Test och kontroll
 

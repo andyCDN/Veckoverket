@@ -33,6 +33,7 @@ test("svensk vecka, musikalternativ, överbelastning och beständig lagring", as
   await page.getByRole("button", { name: "Spara och planera veckan" }).click();
   await expect(page.getByRole("heading", { name: "Min vecka" })).toBeVisible();
   await page.reload();
+  await page.locator(".info-drawer > summary").click();
   await expect(
     page.locator(".balance-stat").filter({ hasText: "Jobb & nätverk" }),
   ).toContainText("8,5 h");
@@ -164,14 +165,14 @@ test("mobil dagrullning, navigation, redigering och ingen sidscroll", async ({
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("./");
-  await expect(page.locator(".mobile-days")).toBeVisible();
+  await expect(page.locator(".day-focus")).toBeVisible();
   await expect(page.locator(".day-shell:visible")).toHaveCount(5);
   expect(
     await page
       .locator(".calendar-viewport")
       .evaluate((el) => el.scrollWidth > el.clientWidth),
   ).toBe(true);
-  await page.getByRole("button", { name: /Mån/ }).first().click();
+  await page.getByRole("button", { name: /^Visa måndag/ }).click();
   await expect(page.locator(".day-heading.mobile-active")).toContainText(
     "Måndag",
   );
@@ -335,15 +336,14 @@ test("kategorifilter ändrar bara visningen och utskrift visar hela veckan", asy
     "true",
   );
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: /^Visa fredag/ }).click();
+  await expect(page.locator(".day-heading.is-selected")).toContainText(
+    "Fredag",
+  );
+  // Print must restore chronological, equal-width columns even after mobile reordering.
   await page
-    .getByRole("group", { name: "Välj dag", exact: true })
-    .getByRole("button", { name: /Fre/ })
-    .click();
-  await expect
-    .poll(() =>
-      page.locator(".calendar-viewport").evaluate((el) => el.scrollLeft),
-    )
-    .toBeGreaterThan(0);
+    .locator(".calendar-viewport")
+    .evaluate((el) => (el.scrollLeft = 200));
   await page.emulateMedia({ media: "print" });
   await expect(page.locator(".day-shell:visible")).toHaveCount(5);
   await expect(page.locator(".calendar-block:visible")).toHaveCount(total);
@@ -400,12 +400,18 @@ test("varje kalenderhändelse kan bockas av, återställas och sparas utan att �
   await expect(page.locator(".calendar-grid")).toBeVisible();
   const before = await stored(page),
     week = Object.keys(before.weeks)[0],
-    first = before.weeks[week].activities[0];
+    firstId = await page
+      .locator(".calendar-entry")
+      .first()
+      .getAttribute("data-activity-id"),
+    first = before.weeks[week].activities.find(
+      (a: { id: string }) => a.id === firstId,
+    );
   await expect(
-    page.locator(".calendar-entry input[type=checkbox]"),
+    page.locator(".calendar-completion input[type=checkbox]"),
   ).toHaveCount(before.weeks[week].activities.length);
   const firstEntry = page.locator(".calendar-entry").first(),
-    firstCheck = firstEntry.getByRole("checkbox");
+    firstCheck = firstEntry.getByRole("checkbox", { name: /^Genomförd:/ });
   await firstCheck.check();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await expect(firstEntry.locator(".calendar-block")).toHaveClass(/is-done/);
@@ -424,7 +430,7 @@ test("varje kalenderhändelse kan bockas av, återställas och sparas utan att �
     .locator(".calendar-entry")
     .filter({ has: page.locator(".lunch") })
     .first();
-  await lunch.getByRole("checkbox").check();
+  await lunch.getByRole("checkbox", { name: /^Genomförd:/ }).check();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await nav(page, "Veckoreflektion");
   await expect(
@@ -435,13 +441,12 @@ test("varje kalenderhändelse kan bockas av, återställas och sparas utan att �
   ).toHaveText("5 h / 1 h");
   await page.setViewportSize({ width: 390, height: 844 });
   await nav(page, "Min vecka");
-  await page
-    .getByRole("group", { name: "Välj dag", exact: true })
-    .getByRole("button", { name: /Mån/ })
-    .click();
-  await lunch.getByRole("checkbox").focus();
+  await page.getByRole("button", { name: /^Visa måndag/ }).click();
+  await lunch.getByRole("checkbox", { name: /^Genomförd:/ }).focus();
   await page.keyboard.press("Space");
-  await expect(lunch.getByRole("checkbox")).not.toBeChecked();
+  await expect(
+    lunch.getByRole("checkbox", { name: /^Genomförd:/ }),
+  ).not.toBeChecked();
   expect((await stored(page)).weeks[week].activities).toEqual(
     before.weeks[week].activities,
   );
@@ -471,4 +476,209 @@ test("baksidans länkar visar och fokuserar reflektion respektive lagringsinstä
     }),
   ).toBeInViewport();
   await expect(page.locator("#storage-settings")).toBeFocused();
+});
+
+test("v2.5: aktiv dag, exakta datum, veckobyte och nytt pass på vald dag", async ({
+  page,
+}) => {
+  await page.clock.install({ time: new Date("2026-10-29T10:00:00+01:00") });
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  for (const [width, height] of [
+    [1440, 900],
+    [390, 844],
+    [320, 740],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await page.goto("./");
+    const focus = page.getByRole("group", { name: "Vald dag", exact: true });
+    await expect(focus.locator(".focus-marker")).toHaveText("Idag");
+    await expect(focus.locator(".day-focus-name")).toHaveText(
+      "Torsdag29 oktober 2026",
+    );
+    const selected = page.locator(".day-heading.is-selected");
+    await expect(selected.getByRole("button")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    const viewport = (await page.locator(".calendar-viewport").boundingBox())!;
+    const active = (await selected.boundingBox())!;
+    const first = (await page
+      .locator(".day-shell.is-selected .calendar-entry")
+      .first()
+      .boundingBox())!;
+    expect(first.y).toBeLessThan(height - 100);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    if (width > 950) {
+      const inactive = (await page
+        .locator(".day-heading:not(.is-selected)")
+        .first()
+        .boundingBox())!;
+      expect(active.width / inactive.width).toBeCloseTo(1.9, 1);
+    } else {
+      expect(Math.abs(active.x - viewport.x - 2)).toBeLessThan(2);
+      expect(active.width / viewport.width).toBeCloseTo(0.92, 1);
+    }
+    await page.screenshot({ path: `test-results/v25-${width}.png` });
+    await page.getByRole("button", { name: /^Visa måndag/ }).click();
+    await expect(focus.locator(".focus-marker")).toHaveText("Vald dag");
+    await expect(focus.locator(".day-focus-name")).toHaveText(
+      "Måndag26 oktober 2026",
+    );
+    await page
+      .getByRole("button", { name: "Välj nästa dag", exact: true })
+      .click();
+    await expect(focus.locator(".day-focus-name")).toHaveText(
+      "Tisdag27 oktober 2026",
+    );
+    await page
+      .getByRole("button", { name: "Ny aktivitet", exact: true })
+      .click();
+    await expect(page.getByLabel("Datum", { exact: true })).toHaveValue(
+      "2026-10-27",
+    );
+    await page.keyboard.press("Escape");
+    await page
+      .getByRole("button", { name: "Nästa vecka", exact: true })
+      .click();
+    await expect(focus.locator(".day-focus-name")).toHaveText(
+      "Måndag2 november 2026",
+    );
+    await expect(focus.locator(".focus-marker")).toHaveText("Vald dag");
+    await expect(page.locator(".day-heading.is-today")).toHaveCount(0);
+    await page.getByRole("button", { name: "Till idag", exact: true }).click();
+    await expect(focus.locator(".focus-marker")).toHaveText("Idag");
+    await expect(focus.locator(".day-focus-name")).toHaveText(
+      "Torsdag29 oktober 2026",
+    );
+  }
+  expect(errors).toEqual([]);
+});
+
+test("v2.5: missade pass, ombokning, ändrad längd, borttagning och uppföljning över veckor", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  await page.goto("./");
+  await expect(page.locator(".calendar-grid")).toBeVisible();
+  const initial = await stored(page),
+    week = Object.keys(initial.weeks)[0];
+  const original = initial.weeks[week].activities.find(
+    (a: { date: string; categoryId: string; start: number }) =>
+      a.date === week && a.categoryId === "career" && a.start === 510,
+  );
+  const entry = page.locator(`[data-activity-id="${original.id}"]`);
+  const missed = entry.getByRole("checkbox", { name: /^Missat:/ }),
+    done = entry.getByRole("checkbox", { name: /^Genomförd:/ });
+  const panel = page.getByRole("region", {
+    name: "Uppföljning av missade pass",
+  });
+  await missed.check();
+  await expect(done).not.toBeChecked();
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await expect(panel.getByRole("status")).toHaveText("3,5 h kvar att boka om");
+  await done.check();
+  await expect(missed).not.toBeChecked();
+  await expect(panel).not.toBeVisible();
+  await missed.check();
+  await expect(done).not.toBeChecked();
+  // Make a real free slot; ombokning must not displace occupied or locked passes.
+  const study = initial.weeks[week].activities.find(
+    (a: { categoryId: string; start: number; date: string }) =>
+      a.categoryId === "learning" && a.start === 510 && a.date > week,
+  );
+  await page
+    .locator(`[data-activity-id="${study.id}"]`)
+    .getByRole("button", { name: /^Ta bort pass:/ })
+    .click();
+  await panel.getByRole("button", { name: "Boka om", exact: true }).click();
+  await expect(page.getByLabel("Datum", { exact: true })).toHaveValue(
+    study.date,
+  );
+  await expect(page.getByLabel("Start", { exact: true })).toHaveValue("08:30");
+  await expect(page.getByLabel("Slut", { exact: true })).toHaveValue("12:00");
+  await page
+    .getByRole("button", { name: "Spara aktivitet", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await expect(panel.getByRole("status")).toHaveText("0 h kvar att boka om");
+  await expect(panel.locator(".followup-state")).toHaveText("Ombokad");
+  await expect(
+    panel.getByRole("button", { name: "Boka om", exact: true }),
+  ).toHaveCount(0);
+  let after = await stored(page);
+  const replacement = after.weeks[week].activities.find(
+    (a: { followUpOf?: { activityId: string } }) =>
+      a.followUpOf?.activityId === original.id,
+  );
+  expect(
+    after.weeks[week].activities.find(
+      (a: { id: string }) => a.id === original.id,
+    ),
+  ).toEqual({ ...original, status: "skipped" });
+  await page.reload();
+  await expect(panel.getByRole("status")).toHaveText("0 h kvar att boka om");
+  await panel.getByRole("button", { name: /^Ersättningspass:/ }).click();
+  await page.getByLabel("Slut", { exact: true }).fill("10:30");
+  await page
+    .getByRole("button", { name: "Spara aktivitet", exact: true })
+    .click();
+  await expect(panel.getByRole("status")).toHaveText("1,5 h kvar att boka om");
+  await page
+    .locator(`[data-activity-id="${replacement.id}"]`)
+    .getByRole("button", { name: /^Ta bort pass:/ })
+    .click();
+  await expect(panel.getByRole("status")).toHaveText("3,5 h kvar att boka om");
+  // Unresolved time follows the user into another week.
+  await page.getByRole("button", { name: "Nästa vecka", exact: true }).click();
+  await expect(panel.getByRole("status")).toHaveText("3,5 h kvar att boka om");
+  after = await stored(page);
+  const next = Object.keys(after.weeks).sort().at(-1)!;
+  const nextStudy = after.weeks[next].activities.find(
+    (a: { categoryId: string; start: number }) =>
+      a.categoryId === "learning" && a.start === 510,
+  );
+  await page
+    .locator(`[data-activity-id="${nextStudy.id}"]`)
+    .getByRole("button", { name: /^Ta bort pass:/ })
+    .click();
+  await panel.getByRole("button", { name: "Boka om", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Spara aktivitet", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+  after = await stored(page);
+  const nextReplacement = after.weeks[next].activities.find(
+    (a: { followUpOf?: { activityId: string } }) =>
+      a.followUpOf?.activityId === original.id,
+  );
+  expect(nextReplacement.followUpOf).toEqual({ week, activityId: original.id });
+  const nextEntry = page.locator(`[data-activity-id="${nextReplacement.id}"]`);
+  await nextEntry.getByRole("checkbox", { name: /^Missat:/ }).check();
+  await expect(panel.getByRole("status")).toHaveText("3,5 h kvar att boka om");
+  await expect(panel.locator(".debt-chip")).toHaveCount(1);
+  const { default: AxeBuilder } = await import("@axe-core/playwright");
+  const scan = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+    .analyze();
+  expect(
+    scan.violations.map((v) => ({
+      id: v.id,
+      nodes: v.nodes.map((n) => n.failureSummary),
+    })),
+  ).toEqual([]);
+  await nextEntry.getByRole("checkbox", { name: /^Genomförd:/ }).check();
+  await expect(
+    nextEntry.getByRole("checkbox", { name: /^Missat:/ }),
+  ).not.toBeChecked();
+  await expect(panel).not.toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "Nästa vecka", exact: true }).click();
+  await expect(
+    nextEntry.getByRole("checkbox", { name: /^Genomförd:/ }),
+  ).toBeChecked();
 });

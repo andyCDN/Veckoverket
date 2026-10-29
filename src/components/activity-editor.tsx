@@ -11,6 +11,7 @@ export function ActivityEditor({
   activities,
   date,
   initialStart,
+  followUp,
   onSave,
   onDelete,
   onClose,
@@ -20,6 +21,7 @@ export function ActivityEditor({
   activities: Activity[];
   date: string;
   initialStart?: number;
+  followUp?: { source: Activity; week: string; minutes: number };
   onSave: (
     a: Activity,
     recurrence?: RecurringActivity,
@@ -31,20 +33,28 @@ export function ActivityEditor({
   const [form, setForm] = useState<Activity>(
     activity ?? {
       id: uid(),
-      title: "",
-      description: "",
-      categoryId: "career",
+      title: followUp ? `Ombokning: ${followUp.source.title}` : "",
+      description: followUp
+        ? `Ersätter missat pass ${followUp.source.date} ${time(followUp.source.start)}–${time(followUp.source.end)}.`
+        : "",
+      categoryId: followUp?.source.categoryId ?? "career",
       date,
       start: initialStart ?? data.settings.start,
       end: Math.min(
         data.settings.end,
-        (initialStart ?? data.settings.start) + 60,
+        (initialStart ?? data.settings.start) + (followUp?.minutes ?? 60),
       ),
-      estimatedMinutes: 60,
+      estimatedMinutes: followUp?.minutes ?? 60,
       blockType: "flexible",
       priority: 3,
       status: "planned",
       source: "manual",
+      ...(followUp
+        ? {
+            followUpOf: { week: followUp.week, activityId: followUp.source.id },
+            goalId: followUp.source.goalId,
+          }
+        : {}),
     },
   );
   const [repeat, setRepeat] = useState(
@@ -95,6 +105,7 @@ export function ActivityEditor({
         status: _status,
         source: _source,
         recurrenceId: _r,
+        followUpOf: _followUp,
         ...values
       } = updated;
       recurring = {
@@ -110,11 +121,23 @@ export function ActivityEditor({
   }
   return (
     <Modal
-      title={activity ? "Redigera aktivitet" : "Ny aktivitet"}
+      title={
+        activity
+          ? "Redigera aktivitet"
+          : followUp
+            ? "Boka om missat pass"
+            : "Ny aktivitet"
+      }
       description="Ange livsområde, datum och tid för aktiviteten."
       onClose={onClose}
     >
       <form onSubmit={submit} className="stack">
+        {followUp && (
+          <p className="followup-context">
+            {followUp.source.title} / {followUp.source.date}. Ersättningspasset
+            kontrolleras mot kalenderns upptagna tider.
+          </p>
+        )}
         <label>
           Namn
           <input

@@ -27,6 +27,19 @@ export function monday(date: string) {
 export function weekday(date: string) {
   return (new Date(`${date}T12:00:00Z`).getUTCDay() + 6) % 7;
 }
+export function initialDay(week: string, days: number[], current = today()) {
+  const day =
+    week === monday(current) && weekday(current) < 5 ? weekday(current) : 0;
+  return days.includes(day) ? day : (days[0] ?? 0);
+}
+export function fullDate(date: string) {
+  return new Intl.DateTimeFormat("sv-SE", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${date}T12:00:00Z`));
+}
 export function weekNumber(date: string) {
   const d = new Date(`${date}T12:00:00Z`);
   d.setUTCDate(d.getUTCDate() + 3 - weekday(date));

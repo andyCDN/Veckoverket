@@ -23,11 +23,12 @@ export type Activity = {
   status: "planned" | "done" | "skipped";
   goalId?: string;
   recurrenceId?: string;
+  followUpOf?: { week: string; activityId: string };
   source: "generated" | "manual" | "recurring";
 };
 export type RecurringActivity = Omit<
   Activity,
-  "id" | "date" | "status" | "source" | "recurrenceId"
+  "id" | "date" | "status" | "source" | "recurrenceId" | "followUpOf"
 > & {
   id: string;
   weekdays: number[];

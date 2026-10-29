@@ -96,7 +96,17 @@ export function decodeData(raw: string): AppData {
         !Number.isFinite(a.end) ||
         Number(a.end) <= Number(a.start) ||
         !["locked", "protected", "flexible"].includes(String(a.blockType)) ||
-        !["planned", "done", "skipped"].includes(String(a.status))
+        !["planned", "done", "skipped"].includes(String(a.status)) ||
+        (a.followUpOf !== undefined &&
+          (!a.followUpOf ||
+            typeof a.followUpOf !== "object" ||
+            typeof (a.followUpOf as Record<string, unknown>).week !==
+              "string" ||
+            !date.test(
+              String((a.followUpOf as Record<string, unknown>).week),
+            ) ||
+            typeof (a.followUpOf as Record<string, unknown>).activityId !==
+              "string"))
       )
         throw new Error("En aktivitet är ogiltig.");
       activityIds.add(a.id);

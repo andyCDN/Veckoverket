@@ -33,12 +33,14 @@ import { createData } from "@/lib/defaults";
 import {
   addDays,
   hours,
+  initialDay,
   monday,
   time,
   today,
   uid,
   weekLabel,
   weekNumber,
+  weekday,
 } from "@/lib/date";
 import {
   assessWeek,
@@ -46,6 +48,7 @@ import {
   generateWeek,
   validateMove,
   validatePlan,
+  plannedDays,
 } from "@/lib/planner";
 import { loadLocal, saveLocal } from "@/lib/storage";
 import { supabase } from "@/lib/supabase";
@@ -57,7 +60,9 @@ import { ReflectionView } from "./reflection";
 import { Account } from "./account";
 import { Modal } from "./modal";
 import { EditorialSidebar, CategoryFilter } from "./riso";
-import { MastheadCover, IssueSpread, BackCoverInfo } from "./punk";
+import { PlannerMasthead, WorkspaceTools, BackCoverInfo } from "./punk";
+import { FollowUpPanel } from "./follow-up";
+import { followUps, type FollowUp } from "@/lib/follow-up";
 type View = "dashboard" | "planner" | "goals" | "reflection" | "settings";
 const NAV = [
   { id: "dashboard", label: "Min vecka", icon: LayoutDashboard },
@@ -91,11 +96,16 @@ export function Workspace() {
   const [data, setData] = useState<AppData | null>(null),
     [week, setWeek] = useState(monday(today())),
     [view, setView] = useState<View>("dashboard");
+  const [daySelection, setDaySelection] = useState<{
+    week: string;
+    day: number;
+  } | null>(null);
   const [categoryFilter, setCategoryFilter] = useState("all"),
     [editor, setEditor] = useState<{
       activity?: Activity;
       date: string;
       start?: number;
+      followUp?: { source: Activity; week: string; minutes: number };
     } | null>(null),
     [newGoal, setNewGoal] = useState(false),
     [generator, setGenerator] = useState(false),
@@ -156,6 +166,7 @@ export function Workspace() {
   };
   function changeWeek(w: string) {
     setWeek(w);
+    setDaySelection(null);
     setData((d) => {
       if (!d || d.weeks[w]) return d;
       return {
@@ -192,6 +203,66 @@ export function Workspace() {
   const goals = data.goals.filter((g) => g.week === week);
   const currentWeek = week === monday(today());
   const weekData = { ...data, settings: plan.rules ?? data.settings };
+  const days = plannedDays(weekData.settings);
+  const activeDay =
+    daySelection?.week === week && days.includes(daySelection.day)
+      ? daySelection.day
+      : initialDay(week, days);
+  const selectDay = (day: number) => setDaySelection({ week, day });
+  function editInWeek(targetWeek: string, activity: Activity) {
+    changeWeek(targetWeek);
+    setDaySelection({
+      week: targetWeek,
+      day: weekday(activity.date),
+    });
+    setEditor({ activity, date: activity.date });
+  }
+  function reschedule(item: FollowUp) {
+    const settings = weekData.settings;
+    let slot: { date: string; start: number } | undefined;
+    // Suggest a real free slot without moving or deleting existing passes.
+    for (const day of days) {
+      const date = addDays(week, day);
+      if (date < item.activity.date) continue;
+      for (
+        let start = settings.start;
+        start + item.remaining <= settings.end;
+        start += 5
+      ) {
+        const candidate = {
+          ...item.activity,
+          id: "followup-draft",
+          date,
+          start,
+          end: start + item.remaining,
+          source: "manual" as const,
+          blockType: "flexible" as const,
+        };
+        if (
+          !validatePlan([...activities, candidate], settings).some(
+            (c) => c.severity === "error",
+          )
+        ) {
+          slot = { date, start };
+          break;
+        }
+      }
+      if (slot) break;
+    }
+    setEditor({
+      date: slot?.date ?? addDays(week, activeDay),
+      start: slot?.start ?? settings.start,
+      followUp: {
+        source: item.activity,
+        week: item.week,
+        minutes: item.remaining,
+      },
+    });
+    if (!slot)
+      notify(
+        "Ingen ledig sammanhängande tid i veckan. Frigör tid i kalendern eller välj en annan vecka innan du bokar om.",
+      );
+  }
   const toggleTask = (id: string) =>
     setData((d) =>
       d
@@ -234,6 +305,23 @@ export function Workspace() {
     removeRecurrence?: boolean,
   ) {
     const current = data!;
+    if (editor?.followUp) {
+      const item = followUps(current).find(
+        (item) =>
+          item.week === editor.followUp!.week &&
+          item.activity.id === editor.followUp!.source.id,
+      );
+      if (
+        !item ||
+        item.remaining <= 0 ||
+        a.categoryId !== item.activity.categoryId
+      ) {
+        notify(
+          "Ombokningen kunde inte sparas. Kontrollera ursprungspassets status och välj samma livsområde.",
+        );
+        return;
+      }
+    }
     let weeks = { ...current.weeks };
     const original = editor?.activity;
     // A series change updates future, uncompleted occurrences, and validates every affected week atomically.
@@ -359,6 +447,7 @@ export function Workspace() {
   }
   function replaceData(imported: AppData) {
     setBlockedSave(false);
+    setDaySelection(null);
     setData(imported);
     const w = Object.keys(imported.weeks).sort().at(-1);
     if (w) setWeek(w);
@@ -371,56 +460,46 @@ export function Workspace() {
       <a className="skip-link" href="#main-content">
         Hoppa till innehållet
       </a>
-      <MastheadCover
+      <PlannerMasthead
         settings={weekData.settings}
-        week={week}
-        name={data.profile.name}
-        connected={Boolean(user)}
-        onHome={() => navigate("dashboard")}
-        onAccount={() => setAccount(true)}
-        onHelp={() => setHelp(true)}
+        minutes={activities.reduce((n, a) => n + a.end - a.start, 0)}
       />
-      <nav className="workspace-navigation" aria-label="Huvudnavigation">
-        {NAV.map(({ id, label, icon: Icon }, index) => (
-          <button
-            key={id}
-            aria-label={label}
-            className={`nav-item ${view === id ? "active" : ""}`}
-            aria-current={view === id ? "page" : undefined}
-            onClick={() => navigate(id)}
-          >
-            <span className="nav-index" aria-hidden="true">
-              0{index + 1}
-            </span>
-            <Icon size={15} />
-            {label}
-          </button>
-        ))}
-      </nav>
+      <div className="navigation-bar">
+        <nav className="workspace-navigation" aria-label="Huvudnavigation">
+          {NAV.map(({ id, label, icon: Icon }, index) => (
+            <button
+              key={id}
+              aria-label={label}
+              className={`nav-item ${view === id ? "active" : ""}`}
+              aria-current={view === id ? "page" : undefined}
+              onClick={() => navigate(id)}
+            >
+              <span className="nav-index" aria-hidden="true">
+                0{index + 1}
+              </span>
+              <Icon size={15} />
+              {label}
+            </button>
+          ))}
+        </nav>
+        <WorkspaceTools
+          connected={Boolean(user)}
+          onAccount={() => setAccount(true)}
+          onHelp={() => setHelp(true)}
+        />
+      </div>
       <div className="main-shell">
         <main id="main-content" tabIndex={-1}>
-          <div className="main-heading">
+          <div
+            className={`main-heading ${view === "dashboard" || view === "planner" ? "calendar-page-heading" : ""}`}
+          >
             <div>
               <h1>
                 {view === "dashboard"
                   ? "Min vecka"
                   : NAV.find((n) => n.id === view)?.label}
-                <span className="punk-issue-number" aria-hidden="true">
-                  #02
-                </span>
               </h1>
             </div>
-            {(view === "dashboard" || view === "planner") && (
-              <button
-                className="button primary"
-                onClick={() =>
-                  setEditor({ date: week, start: weekData.settings.start })
-                }
-              >
-                <Plus size={18} />
-                Ny aktivitet
-              </button>
-            )}
           </div>
           {storageError && (
             <div className="storage-error" role="alert">
@@ -438,75 +517,67 @@ export function Workspace() {
             <>
               <section className="week-section">
                 <div className="week-toolbar">
-                  <div className="week-title">
-                    <h2>Vecka {weekNumber(week)}</h2>
-                    <span>{weekLabel(week)}</span>
+                  <div className="week-controls">
+                    <button
+                      className="icon-button"
+                      aria-label="Föregående vecka"
+                      onClick={() => changeWeek(addDays(week, -7))}
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <div className="week-title">
+                      <h2>Vecka {weekNumber(week)}</h2>
+                      <span>{weekLabel(week)}</span>
+                    </div>
+                    <button
+                      className="icon-button"
+                      aria-label="Nästa vecka"
+                      onClick={() => changeWeek(addDays(week, 7))}
+                    >
+                      <ChevronRight size={18} />
+                    </button>
                   </div>
                   <div className="week-actions">
-                    <div className="week-navigation">
-                      <button
-                        className="icon-button"
-                        aria-label="Föregående vecka"
-                        onClick={() => changeWeek(addDays(week, -7))}
-                      >
-                        <ChevronLeft size={17} />
-                      </button>
-                      <button
-                        className="this-week-button"
-                        onClick={() => changeWeek(monday(today()))}
-                      >
-                        {currentWeek ? "Denna vecka" : "Till idag"}
-                      </button>
-                      <button
-                        className="icon-button"
-                        aria-label="Nästa vecka"
-                        onClick={() => changeWeek(addDays(week, 7))}
-                      >
-                        <ChevronRight size={17} />
-                      </button>
-                    </div>
+                    <button
+                      className="text-button this-week-button"
+                      onClick={() => changeWeek(monday(today()))}
+                    >
+                      {currentWeek ? "Denna vecka" : "Till idag"}
+                    </button>
                     <button
                       className="text-button print-button"
                       onClick={() => window.print()}
                     >
-                      <Printer size={15} />
+                      <Printer size={13} />
                       Skriv ut
                     </button>
                     <button
-                      className="button secondary generate-button"
+                      className="text-button generate-button"
+                      aria-label="Planera veckan"
                       onClick={() => setGenerator(true)}
                     >
-                      <Sparkles size={15} />
+                      <Sparkles size={13} />
                       Planera veckan
+                    </button>
+                    <button
+                      className="button primary new-session"
+                      aria-label="Ny aktivitet"
+                      onClick={() =>
+                        setEditor({
+                          date: addDays(week, activeDay),
+                          start: weekData.settings.start,
+                        })
+                      }
+                    >
+                      <Plus size={14} />
+                      Nytt pass
                     </button>
                   </div>
                 </div>
                 <div
                   className={`week-layout ${view === "planner" ? "full-calendar" : ""}`}
                 >
-                  {view === "dashboard" && (
-                    <EditorialSidebar
-                      data={weekData}
-                      plan={plan}
-                      goals={goals}
-                      focus={focus}
-                      onToggleTask={toggleTask}
-                      onGoalView={() => navigate("goals")}
-                      onSettings={() => navigate("settings")}
-                      onEdit={(a) => setEditor({ activity: a, date: a.date })}
-                      onComplete={(activity) => {
-                        updatePlan({
-                          ...plan,
-                          activities: activities.map((a) =>
-                            a.id === activity.id ? { ...a, status: "done" } : a,
-                          ),
-                        });
-                        notify("Genomförd tid är sparad.");
-                      }}
-                    />
-                  )}
                   <div className="week-board">
-                    <IssueSpread settings={weekData.settings} />
                     <CategoryFilter
                       categories={data.categories}
                       selected={categoryFilter}
@@ -518,7 +589,16 @@ export function Workspace() {
                       }
                       total={activities.length}
                     />
+                    <FollowUpPanel
+                      data={data}
+                      week={week}
+                      onReschedule={reschedule}
+                      onEdit={editInWeek}
+                    />
                     <Calendar
+                      activeDay={activeDay}
+                      onSelectDay={selectDay}
+                      onDelete={(a) => deleteActivity(a.id, false)}
                       week={week}
                       data={weekData}
                       activities={activities}
@@ -548,6 +628,34 @@ export function Workspace() {
                   </div>
                 </div>
               </section>
+              {view === "dashboard" && (
+                <details className="info-drawer">
+                  <summary>
+                    <span className="section-tag">[ Bilaga 01 ]</span>
+                    <strong>Planinfo / mål / tidsfördelning</strong>
+                    <span aria-hidden="true">＋</span>
+                  </summary>
+                  <EditorialSidebar
+                    data={weekData}
+                    plan={plan}
+                    goals={goals}
+                    focus={focus}
+                    onToggleTask={toggleTask}
+                    onGoalView={() => navigate("goals")}
+                    onSettings={() => navigate("settings")}
+                    onEdit={(a) => setEditor({ activity: a, date: a.date })}
+                    onComplete={(activity) => {
+                      updatePlan({
+                        ...plan,
+                        activities: activities.map((a) =>
+                          a.id === activity.id ? { ...a, status: "done" } : a,
+                        ),
+                      });
+                      notify("Genomförd tid är sparad.");
+                    }}
+                  />
+                </details>
+              )}
               <div
                 className={`conflicts-panel ${conflicts.length ? "has-conflicts" : ""}`}
               >
@@ -738,7 +846,7 @@ export function Workspace() {
             onStorage={() => navigateAndReveal("settings", "storage-settings")}
           />
           <footer className="page-footer">
-            <span>Veckoverket / Nr 002 / Punk × Riso</span>
+            <span>Veckoverket / Nr 005 / Punk × Riso</span>
             <span>
               {storageError
                 ? "Lagring behöver ses över"
@@ -767,6 +875,7 @@ export function Workspace() {
         <ActivityEditor
           activity={editor.activity}
           initialStart={editor.start}
+          followUp={editor.followUp}
           data={weekData}
           activities={activities}
           date={editor.date}
@@ -874,10 +983,10 @@ export function Workspace() {
             <p>
               <strong>2. Redigera aktiviteter.</strong>
               <br />
-              Klicka på ett tidsblock för att redigera. Dra flexibla aktiviteter
-              till en ledig tid. Skyddad tid hålls samman och låst tid flyttas
-              aldrig med dra och släpp. Alla tider går också att ändra med
-              tangentbord i formuläret.
+              Klicka på ett pass för att ändra datum och tid. Dra flexibla
+              aktiviteter till en annan dag med samma starttid. Skyddad tid
+              hålls samman och låst tid flyttas aldrig med dra och släpp. Alla
+              tider går också att ändra med tangentbord i formuläret.
             </p>
             <p>
               <strong>3. Följ upp tid och uppgifter.</strong>
