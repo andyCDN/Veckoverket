@@ -19,7 +19,7 @@ test("svensk vecka, musikalternativ, överbelastning och beständig lagring", as
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/");
+  await page.goto("./");
   await expect(
     page.getByRole("heading", { name: "Lite mer balans i vardagen." }),
   ).toBeVisible();
@@ -57,7 +57,7 @@ test("svensk vecka, musikalternativ, överbelastning och beständig lagring", as
 test("redigering, status, egna aktiviteter, kategorier, mål, uppgifter och reflektion", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("./");
   await expect(page.locator(".calendar-grid")).toBeVisible();
   await page
     .locator(".calendar-block")
@@ -134,7 +134,7 @@ test("redigering, status, egna aktiviteter, kategorier, mål, uppgifter och refl
 test("ny vecka återanvänder regler och skyddar föregående vecka", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("./");
   await expect(page.locator(".calendar-grid")).toBeVisible();
   const initial = await stored(page);
   const week = Object.keys(initial.weeks)[0];
@@ -150,7 +150,7 @@ test("ny vecka återanvänder regler och skyddar föregående vecka", async ({
 test("överlappning nekas i editorn och låst tid kan inte dras", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("./");
   await expect(page.locator(".calendar-grid")).toBeVisible();
   await page
     .locator(".calendar-block")
@@ -171,7 +171,7 @@ test("mobil dagvy, meny, redigering och ingen horisontell överströmning", asyn
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("./");
   await expect(page.locator(".mobile-days")).toBeVisible();
   await expect(page.locator(".day-shell:visible")).toHaveCount(1);
   await page.getByRole("button", { name: /Mån/ }).first().click();
@@ -200,7 +200,7 @@ test("mobil dagvy, meny, redigering och ingen horisontell överströmning", asyn
 test("dra och släpp flyttar flexibelt block och avvisar upptagen tid", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("./");
   await expect(page.locator(".calendar-grid")).toBeVisible();
   const first = await stored(page),
     w = Object.keys(first.weeks)[0];
@@ -260,7 +260,7 @@ test("dra och släpp flyttar flexibelt block och avvisar upptagen tid", async ({
 test("tillgänglighet i huvudvyer och aktivitetsdialog", async ({ page }) => {
   test.setTimeout(90000);
   const { default: AxeBuilder } = await import("@axe-core/playwright");
-  await page.goto("/");
+  await page.goto("./");
   await expect(page.locator(".calendar-grid")).toBeVisible();
   for (const name of [
     "Min vecka",

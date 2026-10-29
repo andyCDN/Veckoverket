@@ -13,6 +13,32 @@ npm run dev
 
 Öppna `http://localhost:3000` i din egen lokala miljö. Inga API-nycklar, databaser eller konton behövs. För produktion: `npm run build` följt av `npm start`.
 
+## Publicera med GitHub Pages
+
+Projektet innehåller `.github/workflows/pages.yml`. Flödet testar, bygger och publicerar den statiska appen vid push till `main`. Det kan också startas manuellt via **Actions → Deploy Veckoverket to GitHub Pages → Run workflow**.
+
+Första gången:
+
+1. Öppna **Settings → Pages** i GitHub-arkivet.
+2. Under **Build and deployment → Source**, välj **GitHub Actions**.
+3. Öppna **Actions → Deploy Veckoverket to GitHub Pages → Run workflow**, välj `main` och starta flödet om det första försöket hann köras innan Pages aktiverades.
+4. När jobbet **deploy** är grönt öppnar du länken i körningens **github-pages**-miljö. Standardadressen är `https://andycdn.github.io/Veckoverket/`.
+
+Om publicering är begränsad av arkivets synlighet eller organisationens inställningar behöver Pages tillåtas av en administratör. GitHub Actions-tokenet används automatiskt; inga egna åtkomsttoken behövs i flödet.
+
+### Testa samma statiska version lokalt
+
+```sh
+npm run build:pages
+npm run preview:pages
+```
+
+Förhandsvisningen serverar `out/` på `http://localhost:4173/Veckoverket/`. Kör `npm run test:pages` efter bygget för att testa hela webbläsarsviten mot de exporterade filerna; testverktyget startar förhandsvisningen automatiskt.
+
+`build:pages` aktiverar `output: "export"` och `trailingSlash` utan att ändra den vanliga utvecklingsservern. Standardprefixet är `/Veckoverket`. GitHubs `configure-pages` levererar rätt prefix i Actions, även för en egen domän där prefixet är tomt. För en lokal export under ett annat prefix sätter du samma `PAGES_BASE_PATH` vid både bygge och förhandsvisning. `npm start` används för det vanliga serverbygget, inte för `out/`.
+
+Demoläget kräver inga externa nycklar. Varje besökares plan sparas i den egna webbläsaren. Lokal data från utvecklingsadressen följer inte automatiskt med till GitHub-adressen; använd export/import om du vill flytta planen. Vid en framtida Supabase-anslutning behöver de publika variablerna sättas vid Pages-bygget och den publicerade adressen tillåtas i Supabase Auth.
+
 ## Det som fungerar
 
 - Svensk kalender med måndag som veckostart och mobil dagvy. Separata vyer för översikt, planerare, mål, inställningar och reflektion.
