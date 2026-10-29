@@ -218,6 +218,12 @@ export function Calendar({
   onDelete: (a: Activity) => void;
 }) {
   const days = visibleDays(data.settings, activities);
+  const completedDays = new Set(
+    days.filter((day) => {
+      const entries = activities.filter((a) => a.date === addDays(week, day));
+      return entries.length > 0 && entries.every((a) => a.status === "done");
+    }),
+  );
   const viewport = useRef<HTMLDivElement>(null);
   const activeDate = addDays(week, activeDay);
   const currentDate = today();
@@ -319,13 +325,18 @@ export function Calendar({
               {
                 "--days": days.length,
                 "--day-columns": days
-                  .map((d) => `minmax(0,${d === activeDay ? 1.9 : 1}fr)`)
+                  .map(
+                    (d) =>
+                      `minmax(0,${d === activeDay ? 1.9 : completedDays.has(d) ? 0.65 : 1}fr)`,
+                  )
                   .join(" "),
                 "--mobile-columns": mobileOrder
                   .map((d) =>
                     d === activeDay
                       ? "var(--active-column-width)"
-                      : "var(--other-column-width)",
+                      : completedDays.has(d)
+                        ? "var(--completed-column-width)"
+                        : "var(--other-column-width)",
                   )
                   .join(" "),
               } as React.CSSProperties
@@ -335,7 +346,7 @@ export function Calendar({
               const date = addDays(week, d);
               return (
                 <div
-                  className={`day-heading ${d === activeDay ? "is-selected mobile-active" : ""} ${date === currentDate ? "is-today" : ""}`}
+                  className={`day-heading ${d === activeDay ? "is-selected mobile-active" : ""} ${date === currentDate ? "is-today" : ""} ${completedDays.has(d) ? "is-completed" : ""}`}
                   key={d}
                   data-day={d}
                   style={
@@ -348,7 +359,7 @@ export function Calendar({
                   <button
                     type="button"
                     className="day-select"
-                    aria-label={`Visa ${DAY_NAMES[d].toLowerCase()} ${fullDate(date)}`}
+                    aria-label={`Visa ${DAY_NAMES[d].toLowerCase()} ${fullDate(date)}${completedDays.has(d) ? ", avklarad" : ""}`}
                     aria-pressed={d === activeDay}
                     onClick={() => onSelectDay(d)}
                   >
@@ -376,6 +387,11 @@ export function Calendar({
                         {activities.filter((a) => a.date === date).length} pass
                       </span>
                     </span>
+                    {completedDays.has(d) && (
+                      <span className="day-completed">
+                        <Check size={11} aria-hidden="true" /> Avklarad
+                      </span>
+                    )}
                     {d === activeDay ? (
                       <span className="day-flag">
                         {date === currentDate
@@ -396,7 +412,7 @@ export function Calendar({
               const date = addDays(week, d);
               return (
                 <div
-                  className={`day-shell ${d === activeDay ? "is-selected mobile-active" : ""}`}
+                  className={`day-shell ${d === activeDay ? "is-selected mobile-active" : ""} ${completedDays.has(d) ? "is-completed" : ""}`}
                   key={date}
                   style={
                     {

@@ -449,6 +449,7 @@ body {
   border-bottom: 3px solid var(--ink);
   background: var(--blue-soft);
   color: var(--ink);
+  filter: grayscale(1);
 }
 .day-heading[data-day="1"],
 .day-heading[data-day="3"] {
@@ -541,15 +542,11 @@ body {
   grid-row: 2;
   min-width: 0;
   border-left: 2px solid var(--ink);
+  filter: grayscale(1);
 }
 .calendar-grid > .day-heading:not(.is-selected),
 .calendar-grid > .day-shell:not(.is-selected) {
   background-color: #e9e5dc;
-  filter: saturate(0.65);
-}
-.calendar-grid > .day-heading:not(.is-selected):hover,
-.calendar-grid > .day-shell:not(.is-selected):focus-within {
-  filter: none;
 }
 .calendar-grid > .day-heading.is-selected {
   background: var(--red);
@@ -687,6 +684,59 @@ body {
   background: var(--yellow);
   opacity: 1;
   transform: none;
+}
+.calendar-grid > .day-heading.is-completed,
+.calendar-grid > .day-shell.is-completed {
+  background-color: #deded9;
+  color: #454542;
+  filter: grayscale(1);
+}
+.day-heading.is-completed .day-name {
+  color: #454542;
+  text-shadow: none;
+}
+.day-heading.is-completed::after {
+  opacity: 0.15;
+}
+.day-heading.is-completed .day-flag {
+  background: #efefeb;
+}
+.day-completed {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font: 700 9px/1.3 var(--mono);
+  text-transform: uppercase;
+}
+.calendar-grid > .day-shell.is-completed.is-selected {
+  box-shadow:
+    inset 5px 0 0 #aaa,
+    inset -5px 0 0 #aaa;
+}
+.day-shell.is-completed .calendar-block {
+  background: #e5e5df;
+  color: #454542;
+}
+.day-shell.is-completed .calendar-block.is-done::after {
+  background: #9a9a94;
+}
+.day-heading.is-completed:not(.is-selected) .day-name {
+  font-size: clamp(22px, 1.8vw, 28px);
+}
+.day-heading.is-completed:not(.is-selected) .day-meta {
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.day-shell.is-completed:not(.is-selected) .calendar-block {
+  min-height: 120px;
+  padding: 12px 6px 42px;
+}
+.day-shell.is-completed:not(.is-selected) .calendar-entry .block-title {
+  font-size: clamp(16px, 1.5vw, 21px);
+}
+.day-shell.is-completed:not(.is-selected) .block-subtitle,
+.day-shell.is-completed:not(.is-selected) .completion-label {
+  display: none;
 }
 .calendar-block.is-skipped {
   background: var(--red-soft);
@@ -1106,6 +1156,7 @@ body {
   .calendar-viewport .calendar-grid {
     --active-column-width: calc(100cqw * 0.92);
     --other-column-width: calc(100cqw * 0.73);
+    --completed-column-width: calc(100cqw * 0.5);
     grid-template-columns: var(--mobile-columns);
   }
   .calendar-viewport .calendar-grid > .day-heading,
@@ -1560,7 +1611,7 @@ body {
     grid-column: var(--desktop-column);
     min-height: 76px;
     padding: 8px;
-    filter: none;
+    filter: grayscale(1);
     color: var(--ink);
     background: var(--blue-soft);
     border: 0;
@@ -1591,7 +1642,7 @@ body {
     border-left: 2px solid var(--ink);
     padding: 0;
     box-shadow: none;
-    filter: none;
+    filter: grayscale(1);
     background: transparent;
   }
   .calendar-viewport .calendar-block {
