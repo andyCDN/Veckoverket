@@ -7,7 +7,7 @@ Utformningen bygger på det uppladdade kittet `Veckoverket-PUNK-RISO-v2.5-komple
 - En kompakt röd masthead med `VECKOVERKET` och `VECKANS SCHEMA` ersätter det tidigare omslaget och mittuppslaget. Huvudnavigation, veckoval, utskrift, planering och nytt pass ligger direkt ovanför kalendern.
 - Paletten är papper `#F1EAD6`, ljust papper `#FFF9E9`, svart `#191918`, blått `#243D9B`, rött `#F04B31` och gult `#F9C845`.
 - Displaystacken följer kittets Impact/Arial Narrow med Arial/Helvetica som fallback. Metadata använder Courier New. Typsnitt hämtas inte från externa tjänster.
-- Tungt raster ligger i masthead, filter och dagrubriker. Passens texter har ljusa läsytor med svagt raster. Innehållet använder sakliga etiketter utan pepp, slogans eller belöningsfraser.
+- Grovt tvåfärgsraster ligger i masthead, filter och fokusremsa. Stora rubriker har förskjutna färgtryck, medan pass och knappar får hårda dubbla skuggor. Papperskorn, randiga färgkanter och raster i kortens nedre hörn förstärker tryckkänslan. Passens texter och kontroller behåller ljusa läsytor; datumens gråskala och färghierarki gäller fortfarande. Effekterna är statiska och gäller skärmvisning, så utskriften behåller sina rena läsytor. Innehållet använder sakliga etiketter utan pepp, slogans eller belöningsfraser.
 - `src/components/punk.tsx` innehåller `PlannerMasthead`, `WorkspaceTools` och `BackCoverInfo`. `src/app/punk.css` innehåller temat och dess responsiva regler. Gemensamma formulär och vyer använder `globals.css`.
 - Planinfo, riktiga mål, uppgifter och tidsfördelning finns i en utfällbar bilaga efter kalendern. Baksidans länkar öppnar veckoreflektion respektive lagringsinställningar.
 

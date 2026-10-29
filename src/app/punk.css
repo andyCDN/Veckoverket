@@ -2565,3 +2565,164 @@ body {
     min-height: 64px;
   }
 }
+
+/* Coarse, offset ink on screen; keep the printed calendar's clean surfaces. */
+@media screen {
+  .app-shell {
+    background-image:
+      radial-gradient(#19191814 0.7px, transparent 0.9px),
+      radial-gradient(#243d9b0d 0.7px, transparent 1px);
+    background-size:
+      5px 7px,
+      7px 5px;
+    background-position:
+      0 0,
+      3px 2px;
+  }
+  .planner-header::before {
+    background-image:
+      radial-gradient(var(--blue) 3.1px, transparent 3.5px),
+      radial-gradient(var(--ink) 2.1px, transparent 2.5px);
+    background-size: 9px 9px;
+    background-position:
+      0 0,
+      3px 2px;
+    opacity: 0.95;
+    pointer-events: none;
+  }
+  .brand-title > span {
+    text-shadow:
+      3px 2px 0 var(--blue),
+      -2px -1px 0 var(--ink);
+  }
+  .schema-label {
+    box-shadow:
+      2px 2px 0 var(--ink),
+      5px 4px 0 var(--blue);
+  }
+  .week-total {
+    box-shadow:
+      3px 3px 0 var(--ink),
+      7px 6px 0 var(--blue);
+  }
+  .button.primary {
+    box-shadow:
+      3px 3px 0 var(--ink),
+      5px 5px 0 var(--blue);
+  }
+  .filter-section::after {
+    background-image:
+      radial-gradient(var(--red) 2.6px, transparent 3px),
+      radial-gradient(var(--blue) 1.8px, transparent 2.2px);
+    background-size: 8px 8px;
+    background-position:
+      0 0,
+      2px 2px;
+    opacity: 0.8;
+    pointer-events: none;
+  }
+  .day-focus {
+    box-shadow: 3px 3px 0 var(--red);
+  }
+  .day-focus::before {
+    background-image:
+      radial-gradient(var(--red) 3px, transparent 3.4px),
+      radial-gradient(var(--yellow) 1.8px, transparent 2.2px);
+    background-size: 9px 9px;
+    background-position:
+      0 0,
+      3px 2px;
+    opacity: 0.9;
+    clip-path: polygon(30% 0, 100% 0, 100% 100%, 0 100%);
+  }
+  .day-focus-name strong {
+    text-shadow:
+      3px 2px 0 var(--red),
+      -1px -1px 0 var(--ink);
+  }
+  .focus-marker {
+    box-shadow:
+      2px 2px 0 var(--ink),
+      5px 4px 0 var(--red);
+  }
+  .calendar-grid > .day-heading::after {
+    background-size: 7px 7px;
+  }
+  .calendar-grid > .day-heading.is-today::after {
+    background-image:
+      radial-gradient(var(--red) 2.6px, transparent 3px),
+      radial-gradient(var(--yellow) 1.5px, transparent 1.9px);
+    background-position:
+      0 0,
+      2px 2px;
+  }
+  .calendar-block,
+  .day-shell.is-selected .calendar-block {
+    box-shadow:
+      3px 3px 0 var(--ink),
+      6px 5px 0 var(--category);
+  }
+  .calendar-block::before {
+    height: 6px;
+    background-image: repeating-linear-gradient(
+      -18deg,
+      transparent 0 7px,
+      #19191866 7px 9px,
+      transparent 9px 15px
+    );
+  }
+  .calendar-block:not(.is-done)::after {
+    right: -3px;
+    bottom: -3px;
+    width: 110px;
+    height: 64px;
+    background-image:
+      radial-gradient(var(--ink) 1.7px, transparent 2px),
+      radial-gradient(var(--category) 2.3px, transparent 2.7px);
+    background-size: 7px 7px;
+    background-position:
+      0 0,
+      2px 2px;
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+    opacity: 0.3;
+    transform: none;
+  }
+  :root[data-layout="daily"]
+    .calendar-viewport
+    .day-shell.is-selected
+    .calendar-entry
+    .calendar-block {
+    box-shadow:
+      3px 3px 0 var(--ink),
+      6px 5px 0 var(--category);
+  }
+  .info-drawer {
+    box-shadow:
+      3px 3px 0 var(--ink),
+      6px 5px 0 var(--red);
+  }
+  .info-drawer summary {
+    background-image: repeating-linear-gradient(
+      -16deg,
+      transparent 0 4px,
+      #1919180d 4px 5px
+    );
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"]
+    .planner-header::before {
+    display: block;
+    top: -18px;
+    right: -18px;
+    width: 74px;
+    height: 80px;
+    opacity: 0.55;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .brand-title > span {
+    text-shadow: 1px 1px 0 var(--red);
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .navigation-bar {
+    box-shadow:
+      0 -3px 0 var(--red),
+      0 -6px 0 var(--blue);
+  }
+}
