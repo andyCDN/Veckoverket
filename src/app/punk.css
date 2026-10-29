@@ -2339,6 +2339,45 @@ body {
 .standalone-brand-icon {
   display: none;
 }
+.reset-summary {
+  margin: 0;
+  border-top: 1px solid var(--ink);
+}
+.reset-summary > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 0;
+  border-bottom: 1px dashed var(--ink);
+  font-size: 13px;
+}
+.reset-summary dd {
+  margin: 0;
+  font-weight: 700;
+}
+.reset-confirmation {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.reset-confirmation input {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  accent-color: var(--blue);
+}
+.reset-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.reset-actions .button {
+  min-height: 44px;
+}
 @media screen {
   :root[data-app-mode="standalone"][data-layout="daily"] {
     --app-tabbar-height: 64px;

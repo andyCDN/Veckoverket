@@ -64,6 +64,8 @@ import { ReflectionView } from "./reflection";
 import { Account } from "./account";
 import { Modal } from "./modal";
 import { AppInstallButton, useStandaloneMode } from "./app-install";
+import { ResetPlanningModal } from "./reset-planning";
+import { resetPlanning } from "@/lib/reset-planning";
 import { EditorialSidebar, CategoryFilter } from "./riso";
 import { PlannerMasthead, WorkspaceTools, BackCoverInfo } from "./punk";
 import { GoogleCalendarModal } from "./google-calendar";
@@ -150,6 +152,7 @@ export function Workspace() {
     [account, setAccount] = useState(false),
     [help, setHelp] = useState(false),
     [googleOpen, setGoogleOpen] = useState(false),
+    [resetOpen, setResetOpen] = useState(false),
     [notice, setNotice] = useState("");
   const google = useGoogleCalendar(
     configured ? (user?.id ?? "signed-out") : "local",
@@ -184,6 +187,7 @@ export function Workspace() {
     setAccount(false);
     setHelp(false);
     setGoogleOpen(false);
+    setResetOpen(false);
     setNotice("");
     setView("dashboard");
     setWeek(monday(today()));
@@ -192,11 +196,16 @@ export function Workspace() {
   useLayoutEffect(() => {
     setEditing(
       Boolean(
-        editor || newGoal || generator || googleOpen || view === "settings",
+        editor ||
+        newGoal ||
+        generator ||
+        googleOpen ||
+        resetOpen ||
+        view === "settings",
       ),
     );
     return () => setEditing(false);
-  }, [editor, newGoal, generator, googleOpen, view, setEditing]);
+  }, [editor, newGoal, generator, googleOpen, resetOpen, view, setEditing]);
   const navigate = (v: View) => {
     setView(v);
   };
@@ -617,6 +626,24 @@ export function Workspace() {
     setGoogleOpen(false);
     notify(
       "Google-händelserna har importerats. Planeringskonflikter visas under kalendern.",
+    );
+  }
+  function resetPlanAndStatistics() {
+    if (configured && cloud.phase === "conflict") return;
+    const currentWeek = monday(today());
+    setBlockedSave(false);
+    setData((current) =>
+      current ? resetPlanning(current, currentWeek) : current,
+    );
+    setResetOpen(false);
+    setCategoryFilter("all");
+    setMobileFiltersOpen(false);
+    setDaySelection(null);
+    setWeek(currentWeek);
+    navigate("dashboard");
+    notify("Planering och statistik har nollställts.");
+    requestAnimationFrame(() =>
+      window.scrollTo({ top: 0, behavior: "instant" }),
     );
   }
   const weekControls = (
@@ -1101,21 +1128,7 @@ export function Workspace() {
                 })
               }
               onAccount={() => setAccount(true)}
-              onReset={() => {
-                if (
-                  window.confirm(
-                    configured
-                      ? "Ersätt kontots plan, mål och reflektioner med en ny plan? Ändringen sparas i molnet. Exportera först om du vill behålla den nuvarande planen."
-                      : "Återställ allt till en ny plan? Detta ersätter den lokala planen, alla mål och reflektioner. Exportera först om du vill behålla dem.",
-                  )
-                ) {
-                  setBlockedSave(false);
-                  setData(newWorkspace());
-                  setWeek(monday(today()));
-                  navigate("dashboard");
-                  notify("En ny plan har skapats.");
-                }
-              }}
+              onReset={() => setResetOpen(true)}
             />
           )}
           <BackCoverInfo
@@ -1154,6 +1167,20 @@ export function Workspace() {
             <X size={16} />
           </button>
         </div>
+      )}
+      {resetOpen && (
+        <ResetPlanningModal
+          data={data}
+          cloudEnabled={configured}
+          protectedCopy={blockedSave}
+          blockedReason={
+            configured && cloud.phase === "conflict"
+              ? "Lös versionskonflikten innan du nollställer. Välj vilken plan som ska användas under Konto & molnlagring."
+              : undefined
+          }
+          onClose={() => setResetOpen(false)}
+          onConfirm={resetPlanAndStatistics}
+        />
       )}
       {googleOpen && (
         <GoogleCalendarModal

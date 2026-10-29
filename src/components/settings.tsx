@@ -646,7 +646,7 @@ export function SettingsView({
             Konto & molnlagring
           </button>
           <button className="text-button danger" onClick={onReset}>
-            Skapa ny plan
+            Nollställ planering och statistik
           </button>
         </div>
         <input
