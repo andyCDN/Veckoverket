@@ -7,6 +7,11 @@ const palette: Record<string, { ink: string; fill: string; label: string }> = {
   music: { ink: "#F04B31", fill: "#FBD9CE", label: "Musik" },
   health: { ink: "#243D9B", fill: "#F1F4F8", label: "Träning" },
   family: { ink: "#191918", fill: "#FFF9E9", label: "Familj" },
+  "google-calendar": {
+    ink: "#243D9B",
+    fill: "#E3E9F7",
+    label: "Google Kalender",
+  },
   rest: { ink: "#191918", fill: "#FFF9E9", label: "Övrigt" },
 };
 export function categoryInk(category?: Category) {

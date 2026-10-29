@@ -1763,3 +1763,98 @@ body {
     display: none !important;
   }
 }
+
+.google-connection-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.google-calendar-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+}
+.google-calendar-choice {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 9px;
+  min-height: 28px;
+  font: 700 12px/1.5 var(--body);
+}
+.google-calendar-choice input {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  padding: 0;
+  margin: 2px 0 0;
+  flex: 0 0 18px;
+  accent-color: var(--blue);
+}
+.google-calendar-choice span {
+  overflow-wrap: anywhere;
+}
+.google-calendar-panel p {
+  font-size: 12px;
+}
+.integration-setup,
+.google-import-preview {
+  padding: 15px;
+  border: 2px solid var(--ink);
+  background: var(--paper-light);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.google-import-conflicts {
+  padding: 10px;
+  background: var(--red-soft);
+  border-left: 4px solid var(--red);
+}
+.google-import-conflicts p {
+  margin-top: 6px;
+}
+.google-event-preview {
+  list-style: none;
+  max-height: 300px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+}
+.google-event-preview li {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 0;
+  border-bottom: 1px dashed var(--ink);
+  overflow-wrap: anywhere;
+}
+.google-event-preview span {
+  font: 10px/1.5 var(--mono);
+}
+.external-event-description {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 700px) {
+  .week-actions .google-calendar-button {
+    font-size: 0;
+    min-width: 25px;
+    min-height: 28px;
+    padding: 4px;
+    border: 1px solid var(--ink);
+  }
+  .week-actions .google-calendar-button svg {
+    width: 15px;
+    height: 15px;
+  }
+  .google-calendar-panel .button {
+    white-space: normal;
+  }
+  .google-connection-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

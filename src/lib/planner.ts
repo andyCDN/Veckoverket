@@ -8,6 +8,7 @@ import type {
   WeekPlan,
 } from "./types";
 import { addDays, weekday } from "./date";
+import { blocksTime, GOOGLE_CATEGORY_ID } from "./external-calendar";
 
 export function plannedDays(s: Settings): number[] {
   return [
@@ -17,18 +18,28 @@ export function plannedDays(s: Settings): number[] {
     ]),
   ].sort();
 }
+export function visibleDays(s: Settings, activities: Activity[]): number[] {
+  return [
+    ...new Set([...plannedDays(s), ...activities.map((a) => weekday(a.date))]),
+  ].sort();
+}
 export function categoryMinutes(
   activities: Activity[],
   status?: Activity["status"],
 ): Record<string, number> {
   return activities
-    .filter((a) => !status || a.status === status)
+    .filter(
+      (a) =>
+        (!status || a.status === status) &&
+        (!a.external || (a.external.busy && !a.external.allDay)),
+    )
     .reduce<Record<string, number>>((totals, a) => {
       totals[a.categoryId] = (totals[a.categoryId] || 0) + a.end - a.start;
       return totals;
     }, {});
 }
 export function targetMinutes(category: Category, s: Settings) {
+  if (category.id === GOOGLE_CATEGORY_ID) return 0;
   if (category.id === "music")
     return s.musicMornings * (s.lunchStart - s.start);
   if (category.id === "health") return s.trainingSessions * s.trainingMinutes;
@@ -90,7 +101,10 @@ export function validatePlan(activities: Activity[], s: Settings): Conflict[] {
         suggestion: "Välj en sluttid efter starttiden.",
         severity: "error",
       });
-    if (!days.includes(weekday(a.date)) || a.start < s.start || a.end > s.end)
+    if (
+      !a.external &&
+      (!days.includes(weekday(a.date)) || a.start < s.start || a.end > s.end)
+    )
       issues.push({
         id: `availability-${a.id}`,
         message: `”${a.title}” ligger utanför din tillgängliga tid.`,
@@ -101,6 +115,8 @@ export function validatePlan(activities: Activity[], s: Settings): Conflict[] {
     for (let j = i + 1; j < ordered.length; j++) {
       const b = ordered[j];
       if (b.date !== a.date) break;
+      if (!blocksTime(a) || !blocksTime(b) || (a.external && b.external))
+        continue;
       if (overlap(a, b))
         issues.push({
           id: `overlap-${a.id}-${b.id}`,
@@ -176,7 +192,8 @@ export function generateWeek(
   data: Pick<AppData, "settings" | "categories" | "recurring">,
   existing?: WeekPlan,
 ): PlanResult {
-  const { settings: s, categories, recurring } = data;
+  const { settings: s, recurring } = data;
+  const categories = data.categories.filter((c) => c.id !== GOOGLE_CATEGORY_ID);
   const days = plannedDays(s),
     activities: Activity[] = [],
     conflicts: Conflict[] = [];
@@ -280,15 +297,17 @@ export function generateWeek(
   function gaps(day: number) {
     const date = addDays(week, day),
       busy = activities
-        .filter((a) => a.date === date)
+        .filter((a) => a.date === date && blocksTime(a))
         .sort((a, b) => a.start - b.start);
     let cursor = s.start;
     const result: { date: string; start: number; end: number; day: number }[] =
       [];
     for (const a of busy) {
-      if (a.start - s.buffer > cursor)
-        result.push({ date, start: cursor, end: a.start - s.buffer, day });
-      cursor = Math.max(cursor, a.end + s.buffer);
+      const from = Math.max(s.start, a.start - s.buffer),
+        to = Math.min(s.end, a.end + s.buffer);
+      if (to <= s.start || from >= s.end) continue;
+      if (from > cursor) result.push({ date, start: cursor, end: from, day });
+      cursor = Math.max(cursor, to);
     }
     if (cursor < s.end) result.push({ date, start: cursor, end: s.end, day });
     return result;

@@ -20,6 +20,7 @@ import {
 } from "@/lib/planner";
 import { decodeData, downloadData } from "@/lib/storage";
 import { categoryInk, categoryStyle } from "@/lib/presentation";
+import { GOOGLE_CATEGORY_ID } from "@/lib/external-calendar";
 import { Modal } from "./modal";
 function CategoryForm({
   onSave,
@@ -88,6 +89,7 @@ export function SettingsView({
   onAccount,
   onReset,
   cloudEnabled = false,
+  onGoogle,
 }: {
   data: AppData;
   week: string;
@@ -97,6 +99,7 @@ export function SettingsView({
   onAccount: () => void;
   onReset: () => void;
   cloudEnabled?: boolean;
+  onGoogle: () => void;
 }) {
   const [s, setS] = useState(data.settings),
     [cats, setCats] = useState(data.categories),
@@ -388,7 +391,12 @@ export function SettingsView({
             </div>
             <div className="category-settings">
               {cats
-                .filter((c) => !["music", "family", "health"].includes(c.id))
+                .filter(
+                  (c) =>
+                    !["music", "family", "health", GOOGLE_CATEGORY_ID].includes(
+                      c.id,
+                    ),
+                )
                 .map((c) => (
                   <div className="category-setting" key={c.id}>
                     <span className="category-label" style={categoryStyle(c)}>
@@ -560,7 +568,9 @@ export function SettingsView({
             <small>för dina valda aktiviteter</small>
           </div>
           {cats
-            .filter((c) => !["family", "rest"].includes(c.id))
+            .filter(
+              (c) => !["family", "rest", GOOGLE_CATEGORY_ID].includes(c.id),
+            )
             .map((c) => (
               <div className="preview-row" key={c.id}>
                 <span>
@@ -594,6 +604,18 @@ export function SettingsView({
           </div>
         </aside>
       </form>
+      <section className="data-section">
+        <div>
+          <h3>Google Kalender</h3>
+          <p>
+            Hämta bokade tider från ditt Google-konto och reservera dem i
+            veckoplanen.
+          </p>
+        </div>
+        <button className="button secondary" onClick={onGoogle}>
+          Hantera Google Kalender
+        </button>
+      </section>
       <section className="data-section" id="storage-settings" tabIndex={-1}>
         <div>
           <h3>Lagring och säkerhetskopiering</h3>

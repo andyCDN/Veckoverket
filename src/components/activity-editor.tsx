@@ -2,8 +2,17 @@
 import { useState } from "react";
 import { Check, Trash2, LockKeyhole, ShieldCheck, Move } from "lucide-react";
 import { Modal } from "./modal";
-import { addDays, monday, parseTime, time, uid, weekday } from "@/lib/date";
+import {
+  addDays,
+  fullDate,
+  monday,
+  parseTime,
+  time,
+  uid,
+  weekday,
+} from "@/lib/date";
 import { validatePlan } from "@/lib/planner";
+import { GOOGLE_CATEGORY_ID } from "@/lib/external-calendar";
 import type { Activity, AppData, RecurringActivity } from "@/lib/types";
 export function ActivityEditor({
   activity,
@@ -106,6 +115,7 @@ export function ActivityEditor({
         source: _source,
         recurrenceId: _r,
         followUpOf: _followUp,
+        external: _external,
         ...values
       } = updated;
       recurring = {
@@ -118,6 +128,59 @@ export function ActivityEditor({
       updated.recurrenceId = recurring.id;
     } else delete updated.recurrenceId;
     onSave(updated, recurring, Boolean(form.recurrenceId && repeat === "none"));
+  }
+  if (activity?.external) {
+    const source = activity.external;
+    const format = (value: string) =>
+      new Intl.DateTimeFormat("sv-SE", {
+        timeZone: "Europe/Stockholm",
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZoneName: "short",
+      }).format(new Date(value));
+    return (
+      <Modal
+        title={activity.title}
+        description="Importerad händelse från Google Kalender."
+        onClose={onClose}
+      >
+        <div className="stack">
+          <p>
+            {source.allDay
+              ? `${fullDate(source.originalStart)} – ${fullDate(addDays(source.originalEnd, -1))}`
+              : `${format(source.originalStart)} – ${format(source.originalEnd)}`}
+          </p>
+          <p>
+            {source.busy
+              ? "Upptagen tid reserveras i Veckoverket."
+              : "Händelsen visas som ledig och blockerar inte planeringen."}
+          </p>
+          {activity.description && (
+            <p className="external-event-description">{activity.description}</p>
+          )}
+          <p>
+            Datum, tid och innehåll ändras i Google Kalender. Hämta sedan veckan
+            igen via kalenderkopplingen.
+          </p>
+          {source.url && (
+            <a
+              className="button secondary"
+              href={source.url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Öppna i Google Kalender
+            </a>
+          )}
+          <button className="button primary" onClick={onClose}>
+            Stäng
+          </button>
+        </div>
+      </Modal>
+    );
   }
   return (
     <Modal
@@ -156,11 +219,13 @@ export function ActivityEditor({
               value={form.categoryId}
               onChange={(e) => patch({ categoryId: e.target.value })}
             >
-              {data.categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
+              {data.categories
+                .filter((c) => c.id !== GOOGLE_CATEGORY_ID)
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
             </select>
           </label>
           <label>

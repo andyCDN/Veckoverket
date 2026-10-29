@@ -80,10 +80,10 @@ export function EditorialSidebar({
   onComplete: (a: Activity) => void;
 }) {
   const totals = categoryMinutes(plan.activities);
-  const total = plan.activities.reduce((n, a) => n + a.end - a.start, 0);
-  const locked = plan.activities
-    .filter((a) => a.blockType === "locked")
-    .reduce((n, a) => n + a.end - a.start, 0);
+  const total = Object.values(totals).reduce((sum, n) => sum + n, 0);
+  const locked = Object.values(
+    categoryMinutes(plan.activities.filter((a) => a.blockType === "locked")),
+  ).reduce((sum, n) => sum + n, 0);
   return (
     <aside className="editorial-sidebar" aria-label="Veckosammanfattning">
       <section className="riso-total">

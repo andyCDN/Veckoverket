@@ -9,6 +9,16 @@ export type Category = {
   movable: boolean;
 };
 export type BlockType = "locked" | "protected" | "flexible";
+export type GoogleEventSource = {
+  provider: "google-calendar";
+  calendarId: string;
+  eventId: string;
+  allDay: boolean;
+  busy: boolean;
+  originalStart: string;
+  originalEnd: string;
+  url?: string;
+};
 export type Activity = {
   id: string;
   title: string;
@@ -24,11 +34,18 @@ export type Activity = {
   goalId?: string;
   recurrenceId?: string;
   followUpOf?: { week: string; activityId: string };
-  source: "generated" | "manual" | "recurring";
+  source: "generated" | "manual" | "recurring" | "external";
+  external?: GoogleEventSource;
 };
 export type RecurringActivity = Omit<
   Activity,
-  "id" | "date" | "status" | "source" | "recurrenceId" | "followUpOf"
+  | "id"
+  | "date"
+  | "status"
+  | "source"
+  | "recurrenceId"
+  | "followUpOf"
+  | "external"
 > & {
   id: string;
   weekdays: number[];
@@ -84,6 +101,11 @@ export type AppData = {
   tasks: Task[];
   recurring: RecurringActivity[];
   reflections: Record<string, Reflection>;
+  googleCalendar?: {
+    calendarIds: string[];
+    lastImportedWeek: string;
+    lastImportedAt: string;
+  };
 };
 export type Conflict = {
   id: string;

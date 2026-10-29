@@ -48,6 +48,7 @@ import {
   validateMove,
   validatePlan,
   plannedDays,
+  visibleDays,
 } from "@/lib/planner";
 import { downloadData } from "@/lib/storage";
 import { useWorkspaceStorage } from "@/lib/use-workspace-storage";
@@ -62,6 +63,13 @@ import { Account } from "./account";
 import { Modal } from "./modal";
 import { EditorialSidebar, CategoryFilter } from "./riso";
 import { PlannerMasthead, WorkspaceTools, BackCoverInfo } from "./punk";
+import { GoogleCalendarModal } from "./google-calendar";
+import { useGoogleCalendar } from "@/lib/use-google-calendar";
+import {
+  previewGoogleImport,
+  removeGoogleImports,
+  type GoogleSnapshot,
+} from "@/lib/google-calendar";
 import { FollowUpPanel } from "./follow-up";
 import { followUps, type FollowUp } from "@/lib/follow-up";
 type View = "dashboard" | "planner" | "goals" | "reflection" | "settings";
@@ -128,7 +136,11 @@ export function Workspace() {
     [generator, setGenerator] = useState(false),
     [account, setAccount] = useState(false),
     [help, setHelp] = useState(false),
+    [googleOpen, setGoogleOpen] = useState(false),
     [notice, setNotice] = useState("");
+  const google = useGoogleCalendar(
+    configured ? (user?.id ?? "signed-out") : "local",
+  );
   const notify = useCallback((message: string) => setNotice(message), []);
   useEffect(() => {
     if (!notice) return;
@@ -141,15 +153,20 @@ export function Workspace() {
     setGenerator(false);
     setAccount(false);
     setHelp(false);
+    setGoogleOpen(false);
     setNotice("");
     setView("dashboard");
     setWeek(monday(today()));
     setDaySelection(null);
   }, [user?.id]);
   useLayoutEffect(() => {
-    setEditing(Boolean(editor || newGoal || generator || view === "settings"));
+    setEditing(
+      Boolean(
+        editor || newGoal || generator || googleOpen || view === "settings",
+      ),
+    );
     return () => setEditing(false);
-  }, [editor, newGoal, generator, view, setEditing]);
+  }, [editor, newGoal, generator, googleOpen, view, setEditing]);
   const navigate = (v: View) => {
     setView(v);
   };
@@ -275,7 +292,7 @@ export function Workspace() {
   const goals = data.goals.filter((g) => g.week === week);
   const currentWeek = week === monday(today());
   const weekData = { ...data, settings: plan.rules ?? data.settings };
-  const days = plannedDays(weekData.settings);
+  const days = visibleDays(weekData.settings, activities);
   const activeDay =
     daySelection?.week === week && days.includes(daySelection.day)
       ? daySelection.day
@@ -293,7 +310,7 @@ export function Workspace() {
     const settings = weekData.settings;
     let slot: { date: string; start: number } | undefined;
     // Suggest a real free slot without moving or deleting existing passes.
-    for (const day of days) {
+    for (const day of plannedDays(settings)) {
       const date = addDays(week, day);
       if (date < item.activity.date) continue;
       for (
@@ -377,6 +394,10 @@ export function Workspace() {
     removeRecurrence?: boolean,
   ) {
     const current = data!;
+    if (editor?.activity?.external) {
+      notify("Ändra Google-händelsens datum och tid i Google Kalender.");
+      return;
+    }
     if (editor?.followUp) {
       const item = followUps(current).find(
         (item) =>
@@ -443,8 +464,28 @@ export function Workspace() {
         wp.activities,
         wp.rules ?? current.settings,
       ).filter((c) => c.severity === "error");
-      if (errors.length && wp.week >= week) {
-        notify(`Ändringen kunde inte sparas: ${errors[0].message}`);
+      const before = current.weeks[wp.week];
+      const previousErrors = new Set(
+        validatePlan(
+          before?.activities ?? [],
+          before?.rules ?? current.settings,
+        )
+          .filter((c) => c.severity === "error")
+          .map((c) => c.id),
+      );
+      const changed = wp.activities
+        .filter(
+          (a) =>
+            JSON.stringify(a) !==
+            JSON.stringify(before?.activities.find((old) => old.id === a.id)),
+        )
+        .map((a) => a.id);
+      const relevant = errors.filter(
+        (c) =>
+          !previousErrors.has(c.id) || changed.some((id) => c.id.includes(id)),
+      );
+      if (relevant.length && wp.week >= week) {
+        notify(`Ändringen kunde inte sparas: ${relevant[0].message}`);
         return;
       }
     }
@@ -465,6 +506,10 @@ export function Workspace() {
   function deleteActivity(id: string, series: boolean) {
     const a = activities.find((a) => a.id === id);
     if (!a) return;
+    if (a.external) {
+      notify("Ta bort händelsen i Google Kalender och uppdatera importen.");
+      return;
+    }
     const weeks = { ...data!.weeks };
     if (series && a.recurrenceId) {
       for (const [w, p] of Object.entries(weeks))
@@ -528,6 +573,15 @@ export function Workspace() {
     setView("dashboard");
     notify("Planen har lästs in.");
   }
+  function importGoogle(snapshot: GoogleSnapshot, replan: boolean) {
+    setData((current) =>
+      current ? previewGoogleImport(current, snapshot, replan).data : current,
+    );
+    setGoogleOpen(false);
+    notify(
+      "Google-händelserna har importerats. Planeringskonflikter visas under kalendern.",
+    );
+  }
   const generation = generator ? generateWeek(week, data, plan) : null;
   return (
     <div className="app-shell" data-view={view}>
@@ -536,7 +590,10 @@ export function Workspace() {
       </a>
       <PlannerMasthead
         settings={weekData.settings}
-        minutes={activities.reduce((n, a) => n + a.end - a.start, 0)}
+        minutes={Object.values(categoryMinutes(activities)).reduce(
+          (sum, n) => sum + n,
+          0,
+        )}
       />
       <div className="navigation-bar">
         <nav className="workspace-navigation" aria-label="Huvudnavigation">
@@ -643,6 +700,14 @@ export function Workspace() {
                     >
                       <Sparkles size={13} />
                       Planera veckan
+                    </button>
+                    <button
+                      className="text-button google-calendar-button"
+                      onClick={() => setGoogleOpen(true)}
+                      aria-label="Öppna Google Kalender"
+                    >
+                      <CalendarDays size={13} />
+                      <span>Google Kalender</span>
                     </button>
                     <button
                       className="button primary new-session"
@@ -908,6 +973,7 @@ export function Workspace() {
               data={data}
               week={week}
               cloudEnabled={configured}
+              onGoogle={() => setGoogleOpen(true)}
               onApply={applySettings}
               onImport={replaceData}
               onRemoveRecurring={(id) =>
@@ -970,6 +1036,23 @@ export function Workspace() {
             <X size={16} />
           </button>
         </div>
+      )}
+      {googleOpen && (
+        <GoogleCalendarModal
+          data={data}
+          week={week}
+          connection={google}
+          onImport={importGoogle}
+          onRemove={() => {
+            setData((current) =>
+              current ? removeGoogleImports(current) : current,
+            );
+            notify(
+              "Importerade Google-händelser har tagits bort från Veckoverket.",
+            );
+          }}
+          onClose={() => setGoogleOpen(false)}
+        />
       )}
       {editor && (
         <ActivityEditor

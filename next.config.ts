@@ -1,10 +1,15 @@
 import type { NextConfig } from "next";
-import { validateCloudConfig } from "./src/lib/cloud-config";
+import {
+  validateCloudConfig,
+  validateGoogleClientId,
+} from "./src/lib/cloud-config";
 validateCloudConfig(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
 );
+
+validateGoogleClientId(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
 
 // GitHub Pages serves a static export; local development keeps its normal server.
 // configure-pages supplies the base path (empty for a custom domain/user site).

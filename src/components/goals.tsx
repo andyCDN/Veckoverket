@@ -4,6 +4,7 @@ import { Plus, ArrowUpRight, Trash2, Check, Target } from "lucide-react";
 import { Modal } from "./modal";
 import { hours, uid } from "@/lib/date";
 import { categoryMinutes } from "@/lib/planner";
+import { GOOGLE_CATEGORY_ID } from "@/lib/external-calendar";
 import { categoryStyle } from "@/lib/presentation";
 import type { AppData, Goal, Task } from "@/lib/types";
 export function GoalForm({
@@ -72,11 +73,13 @@ export function GoalForm({
               value={category}
               onChange={(e) => setCategory(e.target.value)}
             >
-              {data.categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
+              {data.categories
+                .filter((c) => c.id !== GOOGLE_CATEGORY_ID)
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
             </select>
           </label>
           <label>

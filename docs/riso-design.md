@@ -41,4 +41,6 @@ Molnlagringens revisionskontroll installeras med `202610290002_workspace_sync.sq
 
 `npm test` testar planeringsmotor, datumval, lagring och ombokningens livscykel. Efter `npm run build:pages` kontrollerar `npm run test:pages` den statiskt exporterade appen: redigering, lagring, avbockning, missat/klart, ombokning över veckogränser, ändring och borttagning av ersättningspass, drag och släpp, filter, utskrift och tillgänglighet.
 
-Layoutkontroller omfattar 1440, 1024, 768, 390 och 320 px. Skärmbilder och PDF sparas i den ignorerade katalogen `test-results/`. Statisk export och typkontroll körs separat. Produktionskonfigurerad Supabase-anslutning kräver en egen integrationskontroll.
+Google Kalender öppnas från kalenderns verktygsrad eller inställningarna. Importen förhandsgranskas i en dialog med kalenderval, upptagen/ledig tid och planeringskonflikter. Importerade kort använder blått, visar Heldag vid behov och har samma kryssruta för genomförd som övriga pass. Källhändelser redigeras i Google Kalender. Helg- och kvällshändelser visas även utanför planeringsreglerna; lediga poster blockerar inte planering och heldagsposter räknas inte som 24 arbetstimmar.
+
+Layoutkontroller omfattar 1440, 1024, 768, 390 och 320 px. Skärmbilder och PDF sparas i den ignorerade katalogen `test-results/`. Statisk export och typkontroll körs separat. Produktionskonfigurerade Supabase- och Google-anslutningar kräver egna integrationskontroller.

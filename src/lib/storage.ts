@@ -1,4 +1,6 @@
 import type { AppData } from "./types";
+import { GOOGLE_CATEGORY_ID, googleEventUrl } from "./external-calendar";
+import { isLocalDate } from "./google-time";
 import { refreshDemoCopy } from "./defaults";
 export const STORAGE_KEY = "veckoverket.workspace.v1";
 export interface StorageLike {
@@ -109,6 +111,38 @@ export function decodeData(raw: string): AppData {
               "string"))
       )
         throw new Error("En aktivitet är ogiltig.");
+      if (a.external !== undefined || a.source === "external") {
+        const e = a.external as Record<string, unknown> | undefined;
+        if (
+          !e ||
+          e.provider !== "google-calendar" ||
+          a.source !== "external" ||
+          a.blockType !== "locked" ||
+          a.categoryId !== GOOGLE_CATEGORY_ID ||
+          typeof e.calendarId !== "string" ||
+          !e.calendarId ||
+          typeof e.eventId !== "string" ||
+          !e.eventId ||
+          typeof e.allDay !== "boolean" ||
+          typeof e.busy !== "boolean" ||
+          typeof e.originalStart !== "string" ||
+          typeof e.originalEnd !== "string" ||
+          (e.allDay
+            ? !isLocalDate(String(e.originalStart)) ||
+              !isLocalDate(String(e.originalEnd)) ||
+              String(e.originalEnd) <= String(e.originalStart)
+            : !/T.*(?:Z|[+-]\d{2}:\d{2})$/i.test(String(e.originalStart)) ||
+              !/T.*(?:Z|[+-]\d{2}:\d{2})$/i.test(String(e.originalEnd)) ||
+              !Number.isFinite(Date.parse(String(e.originalStart))) ||
+              !Number.isFinite(Date.parse(String(e.originalEnd))) ||
+              Date.parse(String(e.originalEnd)) <=
+                Date.parse(String(e.originalStart))) ||
+          (e.url !== undefined && !googleEventUrl(e.url)) ||
+          Number(a.start) < 0 ||
+          Number(a.end) > 1440
+        )
+          throw new Error("En importerad kalenderhändelse är ogiltig.");
+      }
       activityIds.add(a.id);
     }
   }
@@ -131,6 +165,7 @@ export function decodeData(raw: string): AppData {
       throw new Error("En uppgift är ogiltig.");
   for (const r of d.recurring)
     if (
+      r.external !== undefined ||
       typeof r.id !== "string" ||
       typeof r.title !== "string" ||
       !ids.has(r.categoryId) ||
@@ -152,6 +187,22 @@ export function decodeData(raw: string): AppData {
       )
     )
       throw new Error("En reflektion är ogiltig.");
+  if (d.googleCalendar !== undefined) {
+    const g = d.googleCalendar;
+    if (
+      !g ||
+      !Array.isArray(g.calendarIds) ||
+      g.calendarIds.length > 20 ||
+      !g.calendarIds.every(
+        (id: unknown) => typeof id === "string" && id.length > 0,
+      ) ||
+      typeof g.lastImportedWeek !== "string" ||
+      !isLocalDate(g.lastImportedWeek) ||
+      typeof g.lastImportedAt !== "string" ||
+      !Number.isFinite(Date.parse(g.lastImportedAt))
+    )
+      throw new Error("Google-kalenderns importinställningar är ogiltiga.");
+  }
   return refreshDemoCopy(d as AppData);
 }
 export function loadLocal(

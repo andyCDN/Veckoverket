@@ -44,3 +44,13 @@ export function validateCloudConfig(
       "Use a Supabase publishable key or the public anon JWT key.",
     );
 }
+
+export function validateGoogleClientId(clientId: string | undefined) {
+  if (
+    clientId &&
+    !/^\d+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/.test(clientId)
+  )
+    throw new Error(
+      "NEXT_PUBLIC_GOOGLE_CLIENT_ID must be a public Google OAuth web client ID, not a client secret.",
+    );
+}

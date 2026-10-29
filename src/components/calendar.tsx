@@ -23,7 +23,7 @@ import {
 import type { Activity, AppData } from "@/lib/types";
 import { addDays, DAY_NAMES, fullDate, time, today } from "@/lib/date";
 import { canFollowUp } from "@/lib/follow-up";
-import { plannedDays } from "@/lib/planner";
+import { visibleDays } from "@/lib/planner";
 import { categoryLabel, categoryStyle } from "@/lib/presentation";
 function CalendarBlock({
   a,
@@ -78,7 +78,7 @@ function CalendarBlock({
         className={`calendar-block ${filteredOut ? "is-filtered-out" : ""} ${family ? "family" : ""} ${lunch ? "lunch" : ""} ${a.status === "done" ? "is-done" : ""} ${a.status === "skipped" ? "is-skipped" : ""} ${isDragging ? "dragging" : ""}`}
       >
         <span className="block-time">
-          {time(a.start)}–{time(a.end)}
+          {a.external?.allDay ? "Heldag" : `${time(a.start)}–${time(a.end)}`}
           <span>
             {a.blockType === "locked" ? (
               <LockKeyhole size={11} />
@@ -89,7 +89,10 @@ function CalendarBlock({
             ) : null}
           </span>
         </span>
-        <span className="block-category">{categoryLabel(category)}</span>
+        <span className="block-category">
+          {categoryLabel(category)}
+          {a.external ? (a.external.busy ? " · Upptagen" : " · Ledig") : ""}
+        </span>
         <span className="block-title">{a.title}</span>
         {a.end - a.start >= 100 && (
           <span className="block-subtitle">
@@ -151,14 +154,16 @@ function CalendarBlock({
             </span>
           </label>
         )}
-        <button
-          className="session-remove"
-          aria-label={`Ta bort pass: ${a.title}, ${a.date}`}
-          tabIndex={filteredOut ? -1 : 0}
-          onClick={onDelete}
-        >
-          <X size={14} />
-        </button>
+        {!a.external && (
+          <button
+            className="session-remove"
+            aria-label={`Ta bort pass: ${a.title}, ${a.date}`}
+            tabIndex={filteredOut ? -1 : 0}
+            onClick={onDelete}
+          >
+            <X size={14} />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -212,7 +217,7 @@ export function Calendar({
   onSelectDay: (day: number) => void;
   onDelete: (a: Activity) => void;
 }) {
-  const days = plannedDays(data.settings);
+  const days = visibleDays(data.settings, activities);
   const viewport = useRef<HTMLDivElement>(null);
   const activeDate = addDays(week, activeDay);
   const currentDate = today();

@@ -50,6 +50,7 @@ Utan ett konfigurerat molnprojekt sparas planen på den här enheten. Med Supaba
 - Långsiktiga mål, veckomål, uppgifter, aktiviteters målkoppling, genomförd tid och veckoreflektion. Tid och resultat visas separat.
 - Återkommande aktiviteter varje vecka eller varje vardag. Befintliga och tidigare veckor bevaras. Nya veckor genereras vid navigering. Regeln läggs även in när en befintlig vecka genereras om.
 - Automatisk lokal lagring, JSON-export och validerad import. Korrupt lagring skrivs inte över. Vid lagringsfel visas ett meddelande; exportera då en säkerhetskopia.
+- Google Kalender för Gmail- och Google-konton: välj kalendrar, förhandsgranska och importera bokningar. Upptagen tid ingår i planeringen; importerade händelser kan bockas av. [Installationsguide på engelska](docs/google-calendar-setup.md).
 - Supabase-inloggning med automatisk hämtning och sparning av hela kontots arbetsyta, en separat enhetscache, återhämtning efter avbrott och revisionskontroll vid samtidiga ändringar. Befintlig lokal plan flyttas efter ett uttryckligt val vid första inloggningen.
 
 ## Planeringsregler och antaganden
@@ -66,7 +67,7 @@ Buffert gäller mellan aktiviteter, även intill lunch och familjetid, men inte 
 
 Återkommande regler startar på det valda datumet. Ändring av en series tider uppdaterar framtida, planerade tillfällen atomiskt om inga hårda konflikter uppstår. Ändring av veckodagar används vid kommande generering; befintliga tillfällens datum flyttas inte automatiskt. Borttagning av regeln i inställningarna lämnar befintliga tillfällen kvar. Kalenderns ”Ta bort serien” tar också bort framtida planerade tillfällen. Om ett enskilt tillfälle tas bort kan regeln återskapa det vid en ny generering; undantag för enstaka datum är ännu inte implementerade.
 
-Datum lagras som lokala `YYYY-MM-DD`, tider som minuter från midnatt i Europe/Stockholm. Ren datumaritmetik använder UTC mitt på dagen för att undvika fel vid sommar-/vintertid. Framtida kalenderintegration ska konvertera externa tidsstämplar vid integrationsgränsen.
+Datum lagras som lokala `YYYY-MM-DD`, tider som minuter från midnatt i Europe/Stockholm. Ren datumaritmetik använder UTC mitt på dagen för att undvika fel vid sommar-/vintertid. Google-importen konverterar externa tidsstämplar vid integrationsgränsen, inklusive tidsomställningar och händelser över midnatt.
 
 ## Struktur
 
@@ -80,6 +81,8 @@ src/lib/defaults.ts       Exempelprofil och startvärden
 src/lib/storage.ts        Lokal lagring, import/export och validering
 src/lib/supabase.ts       Supabase Auth och versionskontrollerad molnadapter
 src/lib/workspace-sync.ts Automatisk sparning, kontoavgränsad cache och konflikter
+src/lib/google-calendar.ts Google Calendar API, import och uppdatering av källhändelser
+src/lib/google-time.ts    Tidszoner och uppdelning av externa händelser
 src/test/                 Automatiska tester av regler och lagring
 e2e/                      Webbläsartester för dator och mobil
 supabase/migrations/      PostgreSQL-schema och RLS
@@ -110,14 +113,14 @@ RLS begränsar alla dokument till det inloggade kontot. `save_workspace` kontrol
 
 Automatisk sparning sker efter kort debounce. Uppdateringar hämtas vid inloggning, när sidan åter får fokus, när nätverket återkommer och var 30:e sekund i en synlig flik. Bakgrundshämtning pausas under redigeringsformulär. Väntande ändringar har en separat cache per konto; den gamla lokala lagringsnyckeln laddas aldrig automatiskt upp till ett annat konto. Utloggning tar bort kontots data från gränssnittet.
 
-`npm test` verifierar även synkmotorn och kör SQL-skriptet i lokal PostgreSQL via PGlite, inklusive RLS, ägarkontroll och samtidiga revisionskonflikter. `npm run test:cloud` använder en simulerad Supabase-tjänst för webbläsarflödena. Ett nytt produktionsprojekt måste fortfarande verifieras efter installationen; inga externa Supabase-uppgifter finns i repositoryt.
+`npm test` verifierar även synkmotorn och kör SQL-skriptet i lokal PostgreSQL via PGlite, inklusive RLS, ägarkontroll och samtidiga revisionskonflikter. `npm run test:cloud` använder en simulerad Supabase-tjänst för webbläsarflödena. Google-flödena testas med simulerad Google-inloggning och Calendar API. Ett nytt produktionsprojekt måste fortfarande verifieras efter installationen; inga externa Supabase-uppgifter finns i repositoryt.
 
 ## Begränsningar och nästa steg
 
-Appen fungerar lokalt och har en förberedd automatisk Supabase-anslutning. Den har ingen Google Calendar-synk, AI-tolkning, automatisk historikbaserad optimering, notifieringar eller samarbete mellan flera användare. Integrationsgränssnitt finns i `types.ts`; externa förslag ska alltid gå genom samma regelvalidering.
+Appen fungerar lokalt och har en förberedd automatisk Supabase-anslutning. Google Kalender har läsande veckoimport med uttrycklig uppdatering; automatisk bakgrundssynk och skrivning till Google ingår inte. Appen har ingen AI-tolkning, automatisk historikbaserad optimering, notifieringar eller samarbete mellan flera användare. Integrationsgränssnitt finns i `types.ts`; externa förslag ska alltid gå genom samma regelvalidering.
 
 De tre viktigaste nästa stegen är:
 
 1. Skapa och anslut ett riktigt Supabase-projekt, verifiera e-post och produktionens RLS enligt installationsguiden och besluta om eventuell normaliserad lagring.
 2. Utöka motorn med sökning efter alternativa giltiga placeringar, undantag för återkommande aktiviteter och godkända omprioriteringar.
-3. Implementera Google Calendar via en separat connector, följt av en AI-assistent som enbart lämnar validerbara förslag.
+3. Lägg vid behov till bakgrundsuppdatering via en serverbaserad kalenderanslutning, följt av en AI-assistent som enbart lämnar validerbara förslag.
