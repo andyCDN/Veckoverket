@@ -41,7 +41,7 @@ Utan ett konfigurerat molnprojekt sparas planen på den här enheten. Med Supaba
 
 ## Det som fungerar
 
-- Svensk kalender med måndag som veckostart och rullbart veckoschema på mobil och surfplatta. Separata vyer för översikt, planerare, mål, inställningar och reflektion.
+- Svensk kalender med måndag som veckostart. Telefonen visar dagens aktiviteter i en dagsagenda med stora tryckytor och dagbyte; surfplattan och datorn visar veckoschema. Separata vyer för översikt, planerare, mål, inställningar och reflektion.
 - Varje kalenderhändelse har en kryssruta för Genomförd. Markeringen kan återställas och sparas med planen; genomförd tid visas i veckoreflektionen.
 - Skapa, redigera och ta bort aktiviteter. Dra till en annan dag med samma starttid; ändra datum och klockslag i formuläret. Alla redigeringar kan göras utan mus.
 - Låst tid kan bara ändras uttryckligen i formuläret eller genom inställningarna; den kan inte dras. Skyddad tid flyttas som ett helt block om dess regel tillåter det.

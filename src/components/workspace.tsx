@@ -17,6 +17,8 @@ import {
   AlertCircle,
   ShieldCheck,
   Printer,
+  MoreHorizontal,
+  ListFilter,
 } from "lucide-react";
 import type {
   Activity,
@@ -126,6 +128,8 @@ export function Workspace() {
     day: number;
   } | null>(null);
   const [categoryFilter, setCategoryFilter] = useState("all"),
+    [mobile, setMobile] = useState(false),
+    [mobileFiltersOpen, setMobileFiltersOpen] = useState(false),
     [editor, setEditor] = useState<{
       activity?: Activity;
       date: string;
@@ -142,6 +146,13 @@ export function Workspace() {
     configured ? (user?.id ?? "signed-out") : "local",
   );
   const notify = useCallback((message: string) => setNotice(message), []);
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 700px)");
+    const update = () => setMobile(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
   useEffect(() => {
     if (!notice) return;
     const id = setTimeout(() => setNotice(""), 6000);
@@ -292,11 +303,18 @@ export function Workspace() {
   const goals = data.goals.filter((g) => g.week === week);
   const currentWeek = week === monday(today());
   const weekData = { ...data, settings: plan.rules ?? data.settings };
-  const days = visibleDays(weekData.settings, activities);
+  const days = mobile
+    ? [0, 1, 2, 3, 4, 5, 6]
+    : visibleDays(weekData.settings, activities);
   const activeDay =
     daySelection?.week === week && days.includes(daySelection.day)
       ? daySelection.day
-      : initialDay(week, days);
+      : mobile && currentWeek
+        ? weekday(today())
+        : initialDay(week, days);
+  const filterActivities = mobile
+    ? activities.filter((a) => a.date === addDays(week, activeDay))
+    : activities;
   const selectDay = (day: number) => setDaySelection({ week, day });
   function editInWeek(targetWeek: string, activity: Activity) {
     changeWeek(targetWeek);
@@ -582,6 +600,53 @@ export function Workspace() {
       "Google-händelserna har importerats. Planeringskonflikter visas under kalendern.",
     );
   }
+  const weekControls = (
+    <div className="week-controls">
+      <button
+        className="icon-button"
+        aria-label="Föregående vecka"
+        onClick={() => changeWeek(addDays(week, -7))}
+      >
+        <ChevronLeft size={18} />
+      </button>
+      <div className="week-title">
+        <h2>Vecka {weekNumber(week)}</h2>
+        <span>{weekLabel(week)}</span>
+      </div>
+      <button
+        className="icon-button"
+        aria-label="Nästa vecka"
+        onClick={() => changeWeek(addDays(week, 7))}
+      >
+        <ChevronRight size={18} />
+      </button>
+    </div>
+  );
+  const calendarTools = (
+    <>
+      <button
+        className="text-button print-button"
+        onClick={() => window.print()}
+      >
+        <Printer size={16} /> Skriv ut
+      </button>
+      <button
+        className="text-button generate-button"
+        aria-label="Planera veckan"
+        onClick={() => setGenerator(true)}
+      >
+        <Sparkles size={16} /> Planera veckan
+      </button>
+      <button
+        className="text-button google-calendar-button"
+        onClick={() => setGoogleOpen(true)}
+        aria-label="Öppna Google Kalender"
+      >
+        <CalendarDays size={16} />
+        <span>Google Kalender</span>
+      </button>
+    </>
+  );
   const generation = generator ? generateWeek(week, data, plan) : null;
   return (
     <div className="app-shell" data-view={view}>
@@ -659,56 +724,55 @@ export function Workspace() {
             <>
               <section className="week-section">
                 <div className="week-toolbar">
-                  <div className="week-controls">
-                    <button
-                      className="icon-button"
-                      aria-label="Föregående vecka"
-                      onClick={() => changeWeek(addDays(week, -7))}
-                    >
-                      <ChevronLeft size={18} />
-                    </button>
-                    <div className="week-title">
-                      <h2>Vecka {weekNumber(week)}</h2>
-                      <span>{weekLabel(week)}</span>
-                    </div>
-                    <button
-                      className="icon-button"
-                      aria-label="Nästa vecka"
-                      onClick={() => changeWeek(addDays(week, 7))}
-                    >
-                      <ChevronRight size={18} />
-                    </button>
-                  </div>
+                  <div className="toolbar-week-controls">{weekControls}</div>
                   <div className="week-actions">
                     <button
                       className="text-button this-week-button"
                       onClick={() => changeWeek(monday(today()))}
                     >
-                      {currentWeek ? "Denna vecka" : "Till idag"}
+                      {currentWeek
+                        ? mobile
+                          ? "Idag"
+                          : "Denna vecka"
+                        : "Till idag"}
                     </button>
-                    <button
-                      className="text-button print-button"
-                      onClick={() => window.print()}
-                    >
-                      <Printer size={13} />
-                      Skriv ut
-                    </button>
-                    <button
-                      className="text-button generate-button"
-                      aria-label="Planera veckan"
-                      onClick={() => setGenerator(true)}
-                    >
-                      <Sparkles size={13} />
-                      Planera veckan
-                    </button>
-                    <button
-                      className="text-button google-calendar-button"
-                      onClick={() => setGoogleOpen(true)}
-                      aria-label="Öppna Google Kalender"
-                    >
-                      <CalendarDays size={13} />
-                      <span>Google Kalender</span>
-                    </button>
+                    {mobile ? (
+                      <details className="calendar-tools-menu">
+                        <summary>
+                          <MoreHorizontal size={19} aria-hidden="true" />{" "}
+                          Verktyg
+                        </summary>
+                        <div
+                          className="calendar-menu-options"
+                          onClick={(event) => {
+                            if ((event.target as Element).closest("button")) {
+                              const menu =
+                                event.currentTarget.closest("details");
+                              if (menu) menu.open = false;
+                              menu?.querySelector("summary")?.focus();
+                            }
+                          }}
+                        >
+                          <button
+                            className="text-button"
+                            aria-expanded={mobileFiltersOpen}
+                            aria-controls="calendar-category-filters"
+                            onClick={() =>
+                              setMobileFiltersOpen((open) => !open)
+                            }
+                          >
+                            <ListFilter size={16} />{" "}
+                            {mobileFiltersOpen
+                              ? "Dölj filter"
+                              : "Filtrera aktiviteter"}
+                          </button>
+                          {weekControls}
+                          {calendarTools}
+                        </div>
+                      </details>
+                    ) : (
+                      calendarTools
+                    )}
                     <button
                       className="button primary new-session"
                       aria-label="Ny aktivitet"
@@ -728,17 +792,39 @@ export function Workspace() {
                   className={`week-layout ${view === "planner" ? "full-calendar" : ""}`}
                 >
                   <div className="week-board">
-                    <CategoryFilter
-                      categories={data.categories}
-                      selected={categoryFilter}
-                      onChange={setCategoryFilter}
-                      count={
-                        activities.filter(
-                          (a) => a.categoryId === categoryFilter,
-                        ).length
-                      }
-                      total={activities.length}
-                    />
+                    {mobile && categoryFilter !== "all" && (
+                      <div className="mobile-active-filter">
+                        <span>
+                          Visar{" "}
+                          {
+                            data.categories.find((c) => c.id === categoryFilter)
+                              ?.name
+                          }
+                        </span>
+                        <button
+                          className="text-button"
+                          onClick={() => setCategoryFilter("all")}
+                        >
+                          Visa alla
+                        </button>
+                      </div>
+                    )}
+                    <div
+                      id="calendar-category-filters"
+                      className={`calendar-filters ${mobileFiltersOpen ? "is-open" : ""}`}
+                    >
+                      <CategoryFilter
+                        categories={data.categories}
+                        selected={categoryFilter}
+                        onChange={setCategoryFilter}
+                        count={
+                          filterActivities.filter(
+                            (a) => a.categoryId === categoryFilter,
+                          ).length
+                        }
+                        total={filterActivities.length}
+                      />
+                    </div>
                     <FollowUpPanel
                       data={data}
                       week={week}
@@ -746,6 +832,7 @@ export function Workspace() {
                       onEdit={editInWeek}
                     />
                     <Calendar
+                      mobile={mobile}
                       activeDay={activeDay}
                       onSelectDay={selectDay}
                       onDelete={(a) => deleteActivity(a.id, false)}

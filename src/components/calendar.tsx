@@ -204,6 +204,7 @@ export function Calendar({
   onMove,
   onCreate,
   onStatusChange,
+  mobile = false,
 }: {
   week: string;
   data: AppData;
@@ -216,8 +217,10 @@ export function Calendar({
   activeDay: number;
   onSelectDay: (day: number) => void;
   onDelete: (a: Activity) => void;
+  mobile?: boolean;
 }) {
-  const days = visibleDays(data.settings, activities);
+  const weekDays = visibleDays(data.settings, activities);
+  const days = mobile ? [0, 1, 2, 3, 4, 5, 6] : weekDays;
   const completedDays = new Set(
     days.filter((day) => {
       const entries = activities.filter((a) => a.date === addDays(week, day));
@@ -226,6 +229,7 @@ export function Calendar({
   );
   const viewport = useRef<HTMLDivElement>(null);
   const activeDate = addDays(week, activeDay);
+  const activeActivities = activities.filter((a) => a.date === activeDate);
   const currentDate = today();
   const dayTone = (date: string) =>
     date < currentDate
@@ -284,6 +288,11 @@ export function Calendar({
         <div className="day-focus-name" aria-live="polite" aria-atomic="true">
           <strong>{DAY_NAMES[activeDay]}</strong>
           <span>{fullDate(activeDate)}</span>
+          <span className="mobile-day-summary">
+            {activeActivities.length} pass ·{" "}
+            {activeActivities.filter((a) => a.status === "done").length}{" "}
+            genomförda
+          </span>
         </div>
         <div className="day-focus-nav">
           <button
@@ -326,14 +335,19 @@ export function Calendar({
           data-active-day={activeDay}
           ref={viewport}
           role="region"
-          aria-label="Kalender, rulla i sidled för fler dagar"
-          tabIndex={0}
+          aria-label={
+            mobile
+              ? `Aktiviteter för ${fullDate(activeDate)}`
+              : "Kalender, rulla i sidled för fler dagar"
+          }
+          tabIndex={mobile ? -1 : 0}
         >
           <div
             className="calendar-grid"
             style={
               {
-                "--days": days.length,
+                "--days": weekDays.length,
+                "--mobile-days": days.length,
                 "--day-columns": days
                   .map(
                     (d) =>
@@ -356,13 +370,14 @@ export function Calendar({
               const date = addDays(week, d);
               return (
                 <div
-                  className={`day-heading ${d === activeDay ? "is-selected mobile-active" : ""} ${dayTone(date)} ${completedDays.has(d) ? "is-completed" : ""}`}
+                  className={`day-heading ${d === activeDay ? "is-selected mobile-active" : ""} ${dayTone(date)} ${completedDays.has(d) ? "is-completed" : ""} ${weekDays.includes(d) ? "" : "is-off-plan"}`}
                   key={d}
                   data-day={d}
                   style={
                     {
-                      "--desktop-column": days.indexOf(d) + 1,
-                      "--mobile-column": mobileOrder.indexOf(d) + 1,
+                      "--desktop-column": weekDays.indexOf(d) + 1,
+                      "--mobile-column":
+                        (mobile ? days : mobileOrder).indexOf(d) + 1,
                     } as React.CSSProperties
                   }
                 >
@@ -374,9 +389,14 @@ export function Calendar({
                     onClick={() => onSelectDay(d)}
                   >
                     <span className="day-name">
-                      {d === activeDay
-                        ? DAY_NAMES[d]
-                        : DAY_NAMES[d].slice(0, 3)}
+                      <span className="day-name-wide">
+                        {d === activeDay
+                          ? DAY_NAMES[d]
+                          : DAY_NAMES[d].slice(0, 3)}
+                      </span>
+                      <span className="day-name-short" aria-hidden="true">
+                        {DAY_NAMES[d].slice(0, 2)}
+                      </span>
                     </span>
                     <span className="day-meta">
                       <strong>
@@ -422,12 +442,13 @@ export function Calendar({
               const date = addDays(week, d);
               return (
                 <div
-                  className={`day-shell ${d === activeDay ? "is-selected mobile-active" : ""} ${dayTone(date)} ${completedDays.has(d) ? "is-completed" : ""}`}
+                  className={`day-shell ${d === activeDay ? "is-selected mobile-active" : ""} ${dayTone(date)} ${completedDays.has(d) ? "is-completed" : ""} ${weekDays.includes(d) ? "" : "is-off-plan"}`}
                   key={date}
                   style={
                     {
-                      "--desktop-column": days.indexOf(d) + 1,
-                      "--mobile-column": mobileOrder.indexOf(d) + 1,
+                      "--desktop-column": weekDays.indexOf(d) + 1,
+                      "--mobile-column":
+                        (mobile ? days : mobileOrder).indexOf(d) + 1,
                     } as React.CSSProperties
                   }
                 >
@@ -449,6 +470,7 @@ export function Calendar({
                             (c) => c.id === a.categoryId,
                           )}
                           canMove={
+                            !mobile &&
                             a.blockType !== "locked" &&
                             Boolean(
                               data.categories.find((c) => c.id === a.categoryId)

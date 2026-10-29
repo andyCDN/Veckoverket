@@ -160,18 +160,20 @@ test("överlappning nekas i editorn och låst tid kan inte dras", async ({
   const lunch = page.locator(".calendar-block.lunch").first();
   expect(await lunch.getAttribute("aria-roledescription")).toBeNull();
 });
-test("mobil dagrullning, navigation, redigering och ingen sidscroll", async ({
+test("mobil dagsagenda, navigation, redigering och ingen sidscroll", async ({
   page,
 }) => {
+  await page.clock.install({ time: new Date("2026-10-29T10:00:00+01:00") });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("./");
   await expect(page.locator(".day-focus")).toBeVisible();
-  await expect(page.locator(".day-shell:visible")).toHaveCount(5);
+  await expect(page.locator(".day-shell:visible")).toHaveCount(1);
+  await expect(page.locator(".day-shell:visible")).toHaveClass(/is-today/);
   expect(
     await page
       .locator(".calendar-viewport")
       .evaluate((el) => el.scrollWidth > el.clientWidth),
-  ).toBe(true);
+  ).toBe(false);
   await page.getByRole("button", { name: /^Visa måndag/ }).click();
   await expect(page.locator(".day-heading.mobile-active")).toContainText(
     "Måndag",
@@ -185,6 +187,26 @@ test("mobil dagrullning, navigation, redigering och ingen sidscroll", async ({
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).not.toBeVisible();
+  await page.locator(".calendar-tools-menu > summary").click();
+  await page
+    .getByRole("button", { name: "Filtrera aktiviteter", exact: true })
+    .click();
+  const filters = page.getByRole("group", { name: "Filtrera aktiviteter" });
+  await expect(filters).toBeVisible();
+  await filters.getByRole("button", { name: "Musik", exact: true }).click();
+  await expect(page.locator(".day-shell:visible .day-empty")).toHaveText(
+    "Inga pass i vald kategori",
+  );
+  await page
+    .getByRole("button", { name: "Visa alla", exact: true })
+    .first()
+    .click();
+  await page.getByRole("button", { name: /^Visa lördag/ }).click();
+  await expect(page.locator(".day-shell:visible .day-empty")).toHaveText(
+    "Inga pass denna dag",
+  );
+  await page.getByRole("button", { name: "Idag", exact: true }).click();
+  await expect(page.locator(".day-shell:visible")).toHaveClass(/is-today/);
   await nav(page, "Inställningar");
   await expect(
     page.getByRole("heading", { name: "Tillgänglighet och tidsmål" }),
@@ -194,6 +216,14 @@ test("mobil dagrullning, navigation, redigering och ingen sidscroll", async ({
       () => document.documentElement.scrollWidth > innerWidth,
     ),
   ).toBe(false);
+  await page.clock.setSystemTime(new Date("2026-10-31T10:00:00+01:00"));
+  await page.reload();
+  await expect(page.locator(".day-focus-name")).toContainText(
+    "Lördag31 oktober 2026",
+  );
+  await expect(page.locator(".day-shell:visible .day-empty")).toHaveText(
+    "Inga pass denna dag",
+  );
 });
 test("dra och släpp flyttar flexibelt block och avvisar upptagen tid", async ({
   page,
@@ -345,9 +375,10 @@ test("kategorifilter ändrar bara visningen och utskrift visar hela veckan", asy
     .locator(".calendar-viewport")
     .evaluate((el) => (el.scrollLeft = 200));
   await page.emulateMedia({ media: "print" });
+  await expect(page.locator(".week-title:visible")).toContainText("Vecka");
   await expect(page.locator(".day-shell:visible")).toHaveCount(5);
   await expect(page.locator(".calendar-block:visible")).toHaveCount(total);
-  for (const count of await page.locator(".print-count").all())
+  for (const count of await page.locator(".print-count:visible").all())
     await expect(count).toHaveText("4 pass");
   await expect(filters).not.toBeVisible();
   await expect(
@@ -493,7 +524,7 @@ test("v2.5: aktiv dag, exakta datum, veckobyte och nytt pass på vald dag", asyn
     await page.goto("./");
     const focus = page.getByRole("group", { name: "Vald dag", exact: true });
     await expect(focus.locator(".focus-marker")).toHaveText("Idag");
-    await expect(focus.locator(".day-focus-name")).toHaveText(
+    await expect(focus.locator(".day-focus-name")).toContainText(
       "Torsdag29 oktober 2026",
     );
     const selected = page.locator(".day-heading.is-selected");
@@ -519,6 +550,17 @@ test("v2.5: aktiv dag, exakta datum, veckobyte och nytt pass på vald dag", asyn
         .first()
         .boundingBox())!;
       expect(active.width / inactive.width).toBeCloseTo(1.9, 1);
+    } else if (width <= 700) {
+      await expect(page.locator(".day-shell:visible")).toHaveCount(1);
+      const agenda = (await page
+        .locator(".day-shell.is-selected")
+        .boundingBox())!;
+      expect(agenda.width / viewport.width).toBeCloseTo(1, 1);
+      expect(
+        await page
+          .locator(".calendar-viewport")
+          .evaluate((el) => el.scrollWidth <= el.clientWidth),
+      ).toBe(true);
     } else {
       expect(Math.abs(active.x - viewport.x - 2)).toBeLessThan(2);
       expect(active.width / viewport.width).toBeCloseTo(0.92, 1);
@@ -526,13 +568,13 @@ test("v2.5: aktiv dag, exakta datum, veckobyte och nytt pass på vald dag", asyn
     await page.screenshot({ path: `test-results/v25-${width}.png` });
     await page.getByRole("button", { name: /^Visa måndag/ }).click();
     await expect(focus.locator(".focus-marker")).toHaveText("Vald dag");
-    await expect(focus.locator(".day-focus-name")).toHaveText(
+    await expect(focus.locator(".day-focus-name")).toContainText(
       "Måndag26 oktober 2026",
     );
     await page
       .getByRole("button", { name: "Välj nästa dag", exact: true })
       .click();
-    await expect(focus.locator(".day-focus-name")).toHaveText(
+    await expect(focus.locator(".day-focus-name")).toContainText(
       "Tisdag27 oktober 2026",
     );
     await page
@@ -542,17 +584,19 @@ test("v2.5: aktiv dag, exakta datum, veckobyte och nytt pass på vald dag", asyn
       "2026-10-27",
     );
     await page.keyboard.press("Escape");
+    if (width <= 700)
+      await page.locator(".calendar-tools-menu > summary").click();
     await page
       .getByRole("button", { name: "Nästa vecka", exact: true })
       .click();
-    await expect(focus.locator(".day-focus-name")).toHaveText(
+    await expect(focus.locator(".day-focus-name")).toContainText(
       "Måndag2 november 2026",
     );
     await expect(focus.locator(".focus-marker")).toHaveText("Vald dag");
     await expect(page.locator(".day-heading.is-today")).toHaveCount(0);
     await page.getByRole("button", { name: "Till idag", exact: true }).click();
     await expect(focus.locator(".focus-marker")).toHaveText("Idag");
-    await expect(focus.locator(".day-focus-name")).toHaveText(
+    await expect(focus.locator(".day-focus-name")).toContainText(
       "Torsdag29 oktober 2026",
     );
   }

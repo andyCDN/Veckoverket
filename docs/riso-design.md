@@ -21,7 +21,9 @@ En dag med minst en aktivitet där samtliga är genomförda får etiketten `Avkl
 
 Pass visas i tidsordning som kort med naturlig höjd, enligt v2.5-referensen. Start- och sluttid visas alltid; kortens höjd representerar inte tidslängden. Dra och släpp flyttar ett tillåtet pass till en annan dag med samma starttid. Redigeringsformuläret används för att ändra klockslag. Befintliga regler för låst och skyddad tid, konflikter och buffertar gäller fortfarande.
 
-Under 950 px kommer den valda dagen först och tar cirka 92 procent av kalenderns bredd. Kalendern rullar internt i sidled; hela dokumentet ska inte få horisontell överströmning. Utskrift återställer kronologisk ordning, lika breda dagar och alla kategorier även efter filtrering och mobilrullning.
+På telefoner upp till 700 px visas en dagsagenda i full bredd. Dagens datum är startvy, även på helger och dagar utan inplanerade pass. En kompakt datumrad och stora pilar byter dag, och `Idag` återställer dagens datum. Passens kryssrutor, borttagning och huvudknappar har minst 44 px höga tryckytor. Dragning är avstängd på telefonen; datum och tid ändras i formuläret. Menyn `Verktyg` samlar veckobyte, filter, planering, utskrift och Google Kalender. Ett aktivt kategorifilter visas uttryckligen med möjlighet att återställa alla aktiviteter. Uppföljning ligger efter dagens pass.
+
+Mellan 701 och 950 px visas fortfarande ett rullbart veckoschema där den valda dagen tar cirka 92 procent av kalenderns bredd. Hela dokumentet ska inte få horisontell överströmning. Utskrift återställer planeringsveckans kronologiska ordning, lika breda dagar och alla kategorier även efter filtrering och dagbyte på mobil.
 
 ## Missade pass och ombokning
 

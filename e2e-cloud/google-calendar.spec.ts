@@ -85,6 +85,13 @@ async function googleMock(page: Page) {
   };
 }
 async function open(page: Page) {
+  if (
+    !(await page
+      .getByRole("button", { name: "Öppna Google Kalender", exact: true })
+      .isVisible())
+  ) {
+    await page.locator(".calendar-tools-menu > summary").click();
+  }
   await page
     .getByRole("button", { name: "Öppna Google Kalender", exact: true })
     .click();
