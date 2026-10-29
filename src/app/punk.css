@@ -2396,6 +2396,35 @@ body {
       var(--app-tabbar-height) + var(--app-safe-bottom) + 20px
     );
   }
+  :root[data-app-mode="standalone"][data-layout="daily"]
+    .app-shell:is([data-view="dashboard"], [data-view="planner"])
+    :is(.planner-header, .storage-status.is-settled) {
+    display: none;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .week-toolbar {
+    padding-block: 2px;
+    margin-bottom: 3px;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .day-focus {
+    min-height: 68px;
+    padding-block: 5px;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"] .day-focus-name {
+    gap: 2px;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"]
+    .calendar-viewport
+    .calendar-grid
+    > .day-heading {
+    min-height: 46px;
+    padding-block: 0;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"]
+    .calendar-viewport
+    .calendar-grid
+    > .day-heading.is-selected {
+    padding-block: 0;
+  }
   :root[data-app-mode="standalone"][data-layout="daily"] .planner-header {
     min-height: 44px;
     padding: 7px 4px;
