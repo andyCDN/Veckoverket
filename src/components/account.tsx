@@ -8,6 +8,7 @@ import type { AppData } from "@/lib/types";
 import type { SyncSnapshot } from "@/lib/workspace-sync";
 import type { User } from "@supabase/supabase-js";
 import { syncLabel } from "./storage-status";
+import { AppInstallButton } from "./app-install";
 export function Account({
   data,
   user,
@@ -200,6 +201,9 @@ export function Account({
       <h1 id="cloud-auth-title">Veckoverket</h1>
       <p>Logga in för att öppna din molnplan.</p>
       {contents}
+      <div className="auth-install">
+        <AppInstallButton className="text-button" />
+      </div>
     </section>
   ) : (
     <Modal

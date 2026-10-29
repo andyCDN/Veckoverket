@@ -28,7 +28,10 @@ body {
   --page-gutter: clamp(13px, 2.1vw, 32px);
   max-width: 1560px;
   margin: auto;
-  padding: 0 var(--page-gutter) 20px;
+  padding: env(safe-area-inset-top, 0px)
+    max(var(--page-gutter), env(safe-area-inset-right, 0px))
+    max(20px, env(safe-area-inset-bottom, 0px))
+    max(var(--page-gutter), env(safe-area-inset-left, 0px));
   background: var(--paper);
   min-height: 100vh;
   overflow-x: clip;
@@ -2211,5 +2214,85 @@ body {
 @media print {
   .calendar-viewport .calendar-grid > .is-off-plan {
     display: none !important;
+  }
+}
+.app-install-section {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+}
+.install-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.install-help > .install-icon {
+  width: 80px;
+  height: 80px;
+}
+.install-help ol {
+  padding-left: 22px;
+  line-height: 1.7;
+}
+.install-help li + li {
+  margin-top: 10px;
+}
+.install-help li svg {
+  vertical-align: middle;
+}
+.install-complete {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+}
+.auth-install {
+  margin-top: 18px;
+  border-top: 1px dashed var(--ink);
+  padding-top: 8px;
+}
+.auth-install .text-button {
+  min-height: 44px;
+}
+.install-message {
+  position: fixed;
+  z-index: 80;
+  bottom: max(14px, env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 24px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 5px 6px 5px 14px;
+  border: 2px solid var(--ink);
+  background: var(--paper-light);
+  box-shadow: 3px 3px 0 var(--ink);
+  font-size: 13px;
+}
+.install-message button {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  font-size: 24px;
+}
+@media (max-width: 650px) {
+  .app-install-section {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 14px;
+  }
+  .app-install-section > .button,
+  .app-install-section > .install-complete {
+    grid-column: 1 / -1;
+    min-height: 44px;
+  }
+}
+@media print {
+  .install-message {
+    display: none;
   }
 }

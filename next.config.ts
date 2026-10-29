@@ -18,6 +18,10 @@ const basePath = process.env.PAGES_BASE_PATH ?? "/Veckoverket";
 const config: NextConfig = {
   poweredByHeader: false,
   devIndicators: false,
+  env: {
+    NEXT_PUBLIC_APP_BASE_PATH: pages ? basePath : "",
+    NEXT_PUBLIC_PWA_ENABLED: pages ? "true" : "false",
+  },
   ...(pages ? { output: "export", basePath, trailingSlash: true } : {}),
 };
 export default config;

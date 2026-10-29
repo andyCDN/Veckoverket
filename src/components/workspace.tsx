@@ -63,6 +63,7 @@ import { SettingsView } from "./settings";
 import { ReflectionView } from "./reflection";
 import { Account } from "./account";
 import { Modal } from "./modal";
+import { AppInstallButton } from "./app-install";
 import { EditorialSidebar, CategoryFilter } from "./riso";
 import { PlannerMasthead, WorkspaceTools, BackCoverInfo } from "./punk";
 import { GoogleCalendarModal } from "./google-calendar";
@@ -768,6 +769,7 @@ export function Workspace() {
                           </button>
                           {weekControls}
                           {calendarTools}
+                          <AppInstallButton className="text-button" />
                         </div>
                       </details>
                     ) : (

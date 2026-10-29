@@ -183,6 +183,13 @@ test("inloggning och molnstatus fungerar på mobil och uppfyller tillgänglighet
   const f = await mock(page);
   await page.setViewportSize({ width: 320, height: 740 });
   await page.goto("./");
+  await page
+    .getByRole("button", { name: "Installera appen", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toHaveAccessibleName(
+    "Installera Veckoverket",
+  );
+  await page.keyboard.press("Escape");
   const { default: AxeBuilder } = await import("@axe-core/playwright");
   for (const signedIn of [false, true]) {
     if (signedIn) {

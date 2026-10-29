@@ -13,6 +13,7 @@ const types = {
   ".js": "application/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".json": "application/json; charset=utf-8",
+  ".webmanifest": "application/manifest+json; charset=utf-8",
   ".txt": "text/plain; charset=utf-8",
   ".svg": "image/svg+xml",
   ".woff": "font/woff",
@@ -51,6 +52,7 @@ createServer(async (request, response) => {
     file = await open(filename);
     response.writeHead(200, {
       "Content-Type": types[extname(filename)] ?? "application/octet-stream",
+      ...(relative === "sw.js" ? { "Cache-Control": "no-cache" } : {}),
     });
     if (request.method === "HEAD") {
       await file.close();

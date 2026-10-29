@@ -2,6 +2,8 @@
 
 En svensk webbapp för veckoplanering, målhantering och uppföljning.
 
+Appen kan installeras på hemskärmen med en egen RISO-ikon. På mobilen finns **Installera appen** under **Verktyg**, och på datorn finns alternativet i **Inställningar**. Följ [installationsguiden på engelska](docs/install-app.md). Den sparade appvyn kan öppnas utan nät; inloggning, molnsynk och Google-import kräver anslutning.
+
 ## Starta lokalt
 
 Kräver Node.js 22 eller 24 och npm. Node 24 har använts vid verifiering.

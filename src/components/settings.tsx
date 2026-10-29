@@ -22,6 +22,7 @@ import { decodeData, downloadData } from "@/lib/storage";
 import { categoryInk, categoryStyle } from "@/lib/presentation";
 import { GOOGLE_CATEGORY_ID } from "@/lib/external-calendar";
 import { Modal } from "./modal";
+import { AppInstallCard } from "./app-install";
 function CategoryForm({
   onSave,
   onClose,
@@ -604,6 +605,7 @@ export function SettingsView({
           </div>
         </aside>
       </form>
+      <AppInstallCard />
       <section className="data-section">
         <div>
           <h3>Google Kalender</h3>

@@ -43,6 +43,8 @@ Molnlagringens revisionskontroll installeras med `202610290002_workspace_sync.sq
 
 ## Verifiering
 
+Appikonen använder ett ljust V, en gul bock och röd förskjutning på blå botten. Separata PNG-varianter finns för webbläsare, iOS och Androids maskade hemskärmsikoner. Installationsknappen ligger under mobilens Verktyg och i Inställningar. Manifestet öppnar appen i ett eget fönster; safe-area-marginaler skyddar innehållet vid skärmutskärningar och hemindikatorn.
+
 `npm test` testar planeringsmotor, datumval, lagring och ombokningens livscykel. Efter `npm run build:pages` kontrollerar `npm run test:pages` den statiskt exporterade appen: redigering, lagring, avbockning, missat/klart, ombokning över veckogränser, ändring och borttagning av ersättningspass, drag och släpp, filter, utskrift och tillgänglighet.
 
 Google Kalender öppnas från kalenderns verktygsrad eller inställningarna. Importen förhandsgranskas i en dialog med kalenderval, upptagen/ledig tid och planeringskonflikter. Importerade kort använder blått, visar Heldag vid behov och har samma kryssruta för genomförd som övriga pass. Källhändelser redigeras i Google Kalender. Helg- och kvällshändelser visas även utanför planeringsreglerna; lediga poster blockerar inte planering och heldagsposter räknas inte som 24 arbetstimmar.

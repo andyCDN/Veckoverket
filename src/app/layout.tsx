@@ -1,17 +1,53 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { AppInstallProvider } from "@/components/app-install";
+import { appPath } from "@/lib/app-path";
 import "./globals.css";
 import "./punk.css";
 export const metadata: Metadata = {
   title: "Veckoverket – Veckoplanering",
   description: "Veckoplanering med aktiviteter, tidsmål och uppföljning.",
   applicationName: "Veckoverket",
+  appleWebApp: {
+    capable: true,
+    title: "Veckoverket",
+    statusBarStyle: "default",
+  },
+  icons: {
+    icon: [
+      {
+        url: appPath("/icons/veckoverket-32.png"),
+        sizes: "32x32",
+        type: "image/png",
+      },
+      {
+        url: appPath("/icons/veckoverket-192.png"),
+        sizes: "192x192",
+        type: "image/png",
+      },
+    ],
+    apple: [
+      {
+        url: appPath("/icons/veckoverket-180.png"),
+        sizes: "180x180",
+        type: "image/png",
+      },
+    ],
+  },
+};
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#243d9b",
 };
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="sv">
-      <body>{children}</body>
+      <body>
+        <AppInstallProvider>{children}</AppInstallProvider>
+      </body>
     </html>
   );
 }
