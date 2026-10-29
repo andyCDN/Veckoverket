@@ -379,3 +379,56 @@ test("RISO-layout i 1440, 768 och 390 px utan horisontell överströmning", asyn
     }
   }
 });
+test("varje kalenderhändelse kan bockas av, återställas och sparas utan att öppna editorn", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await expect(page.locator(".calendar-grid")).toBeVisible();
+  const before = await stored(page),
+    week = Object.keys(before.weeks)[0],
+    first = before.weeks[week].activities[0];
+  await expect(
+    page.locator(".calendar-entry input[type=checkbox]"),
+  ).toHaveCount(before.weeks[week].activities.length);
+  const firstEntry = page.locator(".calendar-entry").first(),
+    firstCheck = firstEntry.getByRole("checkbox");
+  await firstCheck.check();
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await expect(firstEntry.locator(".calendar-block")).toHaveClass(/is-done/);
+  expect(
+    (await stored(page)).weeks[week].activities.find(
+      (a: { id: string }) => a.id === first.id,
+    ),
+  ).toEqual({ ...first, status: "done" });
+  await page.reload();
+  await expect(firstCheck).toBeChecked();
+  await firstCheck.uncheck();
+  await expect(firstEntry.locator(".calendar-block")).not.toHaveClass(
+    /is-done/,
+  );
+  const lunch = page
+    .locator(".calendar-entry")
+    .filter({ has: page.locator(".lunch") })
+    .first();
+  await lunch.getByRole("checkbox").check();
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await nav(page, "Veckoreflektion");
+  await expect(
+    page
+      .locator(".comparison-row")
+      .filter({ hasText: "Återhämtning" })
+      .locator("strong"),
+  ).toHaveText("5 h / 1 h");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await nav(page, "Min vecka");
+  await page
+    .getByRole("group", { name: "Välj dag", exact: true })
+    .getByRole("button", { name: /Mån/ })
+    .click();
+  await lunch.getByRole("checkbox").focus();
+  await page.keyboard.press("Space");
+  await expect(lunch.getByRole("checkbox")).not.toBeChecked();
+  expect((await stored(page)).weeks[week].activities).toEqual(
+    before.weeks[week].activities,
+  );
+});

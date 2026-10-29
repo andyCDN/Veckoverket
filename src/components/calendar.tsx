@@ -29,6 +29,7 @@ function CalendarBlock({
   canMove,
   filteredOut,
   onEdit,
+  onStatusChange,
 }: {
   a: Activity;
   category: AppData["categories"][number] | undefined;
@@ -36,22 +37,22 @@ function CalendarBlock({
   canMove: boolean;
   filteredOut: boolean;
   onEdit: () => void;
+  onStatusChange: (status: Activity["status"]) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({ id: a.id, disabled: !canMove });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    isDragging,
+  } = useDraggable({ id: a.id, disabled: !canMove });
   const family = a.categoryId === "family",
     lunch = a.categoryId === "rest" && a.blockType === "locked";
   return (
-    <button
+    <div
       ref={setNodeRef}
-      {...(canMove ? attributes : {})}
-      {...(canMove ? listeners : {})}
-      type="button"
-      onClick={onEdit}
-      title={`${a.title} · ${categoryLabel(category)} · ${time(a.start)}–${time(a.end)}`}
-      tabIndex={filteredOut ? -1 : 0}
-      aria-label={`${a.title}, ${categoryLabel(category)}, ${time(a.start)} till ${time(a.end)}${a.status === "done" ? ", genomförd" : ""}. Redigera aktivitet`}
-      className={`calendar-block ${a.end - a.start < 90 ? "is-short" : ""} ${a.end - a.start < 60 ? "is-compact" : ""} ${filteredOut ? "is-filtered-out" : ""} ${family ? "family" : ""} ${lunch ? "lunch" : ""} ${a.status === "done" ? "is-done" : ""} ${a.status === "skipped" ? "is-skipped" : ""} ${isDragging ? "dragging" : ""}`}
+      className={`calendar-entry ${filteredOut ? "is-filtered-out" : ""} ${isDragging ? "is-dragging" : ""}`}
       style={
         {
           top,
@@ -63,28 +64,62 @@ function CalendarBlock({
         } as React.CSSProperties
       }
     >
-      <span className="block-time">
-        {time(a.start)}–{time(a.end)}
-        <span>
-          {a.status === "done" ? (
-            <Check size={12} />
-          ) : a.blockType === "locked" ? (
-            <LockKeyhole size={11} />
-          ) : a.blockType === "protected" ? (
-            <ShieldCheck size={12} />
-          ) : canMove ? (
-            <GripVertical size={12} />
-          ) : null}
+      <button
+        ref={setActivatorNodeRef}
+        {...(canMove ? attributes : {})}
+        {...(canMove ? listeners : {})}
+        type="button"
+        onClick={onEdit}
+        title={`${a.title} · ${categoryLabel(category)} · ${time(a.start)}–${time(a.end)}`}
+        tabIndex={filteredOut ? -1 : 0}
+        aria-label={`${a.title}, ${categoryLabel(category)}, ${time(a.start)} till ${time(a.end)}${a.status === "done" ? ", genomförd" : ""}. Redigera aktivitet`}
+        className={`calendar-block ${a.end - a.start < 90 ? "is-short" : ""} ${a.end - a.start < 60 ? "is-compact" : ""} ${filteredOut ? "is-filtered-out" : ""} ${family ? "family" : ""} ${lunch ? "lunch" : ""} ${a.status === "done" ? "is-done" : ""} ${a.status === "skipped" ? "is-skipped" : ""} ${isDragging ? "dragging" : ""}`}
+        style={{ top: 0, height: "100%" }}
+      >
+        <span className="block-time">
+          {time(a.start)}–{time(a.end)}
+          <span>
+            {a.blockType === "locked" ? (
+              <LockKeyhole size={11} />
+            ) : a.blockType === "protected" ? (
+              <ShieldCheck size={12} />
+            ) : canMove ? (
+              <GripVertical size={12} />
+            ) : null}
+          </span>
         </span>
-      </span>
-      <span className="block-category">{categoryLabel(category)}</span>
-      <span className="block-title">{a.title}</span>
-      {a.end - a.start >= 100 && (
-        <span className="block-subtitle">
-          {a.blockType === "protected" ? "Sammanhängande pass" : category?.name}
+        <span className="block-category">{categoryLabel(category)}</span>
+        <span className="block-title">{a.title}</span>
+        {a.end - a.start >= 100 && (
+          <span className="block-subtitle">
+            {a.blockType === "protected"
+              ? "Sammanhängande pass"
+              : category?.name}
+          </span>
+        )}
+      </button>
+      <label
+        className="calendar-completion"
+        title={
+          a.status === "done"
+            ? "Återställ till planerad"
+            : "Markera som genomförd"
+        }
+      >
+        <input
+          type="checkbox"
+          checked={a.status === "done"}
+          tabIndex={filteredOut ? -1 : 0}
+          aria-label={`Genomförd: ${a.title}, ${a.date} ${time(a.start)}–${time(a.end)}`}
+          onChange={(event) =>
+            onStatusChange(event.target.checked ? "done" : "planned")
+          }
+        />
+        <span className="completion-box" aria-hidden="true">
+          {a.status === "done" && <Check size={11} />}
         </span>
-      )}
-    </button>
+      </label>
+    </div>
   );
 }
 function DayColumn({
@@ -123,6 +158,7 @@ export function Calendar({
   onEdit,
   onMove,
   onCreate,
+  onStatusChange,
 }: {
   week: string;
   data: AppData;
@@ -131,6 +167,7 @@ export function Calendar({
   onEdit: (a: Activity) => void;
   onMove: (a: Activity, date: string, start: number) => void;
   onCreate: (date: string, start?: number) => void;
+  onStatusChange: (activity: Activity, status: Activity["status"]) => void;
 }) {
   const days = plannedDays(data.settings);
   const [mobileDay, setMobileDay] = useState(
@@ -304,6 +341,7 @@ export function Calendar({
                             data.settings.musicMovable)
                         }
                         onEdit={() => onEdit(a)}
+                        onStatusChange={(status) => onStatusChange(a, status)}
                       />
                     ))}
                 </DayColumn>

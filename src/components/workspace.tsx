@@ -520,6 +520,14 @@ export function Workspace() {
                       categoryFilter={categoryFilter}
                       onEdit={(a) => setEditor({ activity: a, date: a.date })}
                       onMove={move}
+                      onStatusChange={(activity, status) =>
+                        updatePlan({
+                          ...plan,
+                          activities: activities.map((a) =>
+                            a.id === activity.id ? { ...a, status } : a,
+                          ),
+                        })
+                      }
                       onCreate={(date, start) =>
                         setEditor({
                           date,

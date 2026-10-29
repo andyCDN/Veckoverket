@@ -3139,3 +3139,92 @@ legend {
     display: block !important;
   }
 }
+/* Completion is a separate control so checking never opens or drags the event. */
+.calendar-entry {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+}
+.calendar-entry.is-dragging {
+  z-index: 20;
+}
+.calendar-entry.is-filtered-out {
+  display: none;
+}
+.calendar-entry .block-time {
+  padding-right: 20px;
+}
+.calendar-completion {
+  position: absolute;
+  top: 2px;
+  right: 10px;
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  z-index: 3;
+  cursor: pointer;
+  gap: 0;
+}
+.calendar-completion input {
+  position: absolute;
+  inset: 0;
+  width: 25px;
+  height: 25px;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+.completion-box {
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border: 1.5px solid var(--ink);
+  background: var(--paper-light);
+  color: white;
+}
+.calendar-completion input:checked + .completion-box {
+  background: var(--blue);
+}
+.calendar-completion input:focus-visible + .completion-box {
+  outline: 3px dashed var(--blue);
+  outline-offset: 3px;
+}
+.calendar-completion:hover .completion-box {
+  box-shadow: 2px 2px 0 var(--red);
+}
+@media (max-width: 1200px) {
+  .calendar-completion {
+    right: 8px;
+  }
+}
+@media (max-width: 600px) {
+  .calendar-completion {
+    right: 11px;
+  }
+}
+@media print {
+  .calendar-entry.is-filtered-out {
+    display: block !important;
+  }
+  .calendar-completion {
+    right: 10px;
+  }
+  .calendar-completion:hover .completion-box {
+    box-shadow: none;
+  }
+}
+.calendar-entry:has(.is-compact) .calendar-completion {
+  top: auto;
+  bottom: 0;
+}
+.calendar-entry .is-compact .block-time {
+  padding-right: 0;
+}
+.calendar-entry .is-compact .block-title {
+  padding-right: 23px;
+}
