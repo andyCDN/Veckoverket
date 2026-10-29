@@ -227,6 +227,12 @@ export function Calendar({
   const viewport = useRef<HTMLDivElement>(null);
   const activeDate = addDays(week, activeDay);
   const currentDate = today();
+  const dayTone = (date: string) =>
+    date < currentDate
+      ? "is-past"
+      : date === currentDate
+        ? "is-today"
+        : "is-future";
   const isToday = activeDate === currentDate;
   const activeIndex = days.indexOf(activeDay);
   const mobileOrder = [activeDay, ...days.filter((day) => day !== activeDay)];
@@ -261,7 +267,11 @@ export function Calendar({
     );
   return (
     <div className="calendar-wrap">
-      <div className="day-focus" role="group" aria-label="Vald dag">
+      <div
+        className={`day-focus ${dayTone(activeDate)}`}
+        role="group"
+        aria-label="Vald dag"
+      >
         <div className="day-focus-status">
           <span className={`focus-marker ${isToday ? "" : "is-past"}`}>
             {isToday ? "Idag" : "Vald dag"}
@@ -346,7 +356,7 @@ export function Calendar({
               const date = addDays(week, d);
               return (
                 <div
-                  className={`day-heading ${d === activeDay ? "is-selected mobile-active" : ""} ${date === currentDate ? "is-today" : ""} ${completedDays.has(d) ? "is-completed" : ""}`}
+                  className={`day-heading ${d === activeDay ? "is-selected mobile-active" : ""} ${dayTone(date)} ${completedDays.has(d) ? "is-completed" : ""}`}
                   key={d}
                   data-day={d}
                   style={
@@ -412,7 +422,7 @@ export function Calendar({
               const date = addDays(week, d);
               return (
                 <div
-                  className={`day-shell ${d === activeDay ? "is-selected mobile-active" : ""} ${completedDays.has(d) ? "is-completed" : ""}`}
+                  className={`day-shell ${d === activeDay ? "is-selected mobile-active" : ""} ${dayTone(date)} ${completedDays.has(d) ? "is-completed" : ""}`}
                   key={date}
                   style={
                     {

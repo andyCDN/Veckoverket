@@ -15,7 +15,7 @@ Utformningen bygger på det uppladdade kittet `Veckoverket-PUNK-RISO-v2.5-komple
 
 En blå fokusremsa visar fullständigt veckodagsnamn och exakt datum. `IDAG` används endast när valt datum är dagens datum i Europe/Stockholm. `VALD DAG` används för övriga datum. På aktuell vecka väljs dagens vardag; andra veckor och helger väljer måndag. Om egna planeringsregler utesluter den dagen används första tillgängliga dag.
 
-Dagrubriker är tangentbordsstyrda knappar med `aria-pressed`. Pilarna flyttar valet inom de planerade dagarna. Nytt pass använder den valda dagen. Alla dagar är gråtonade. Den aktiva kolumnen har tydlig ram och etikett, större typografi och cirka 1,9 gånger övriga oavklarade kolumners bredd.
+Dagrubriker är tangentbordsstyrda knappar med `aria-pressed`. Pilarna flyttar valet inom de planerade dagarna. Nytt pass använder den valda dagen. Historiska dagar är gråtonade, dagens datum är tydligt markerat med full färg och kommande dagar har nedtonade färger. Färgerna följer datumen i Europe/Stockholm oavsett vilken dag som är vald eller genomförd. Den aktiva kolumnen har tydlig ram och etikett, större typografi och cirka 1,9 gånger övriga oavklarade kolumners bredd.
 
 En dag med minst en aktivitet där samtliga är genomförda får etiketten `Avklarad` och blir smalare när den inte är vald. Kategorifilter påverkar inte bedömningen. När dagen väljs återfår den full bredd; om en aktivitet återställs eller läggs till återfår dagen vanlig bredd. Statusen beräknas från aktiviteterna och kräver inget nytt lagringsfält.
 
