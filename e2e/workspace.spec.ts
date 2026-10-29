@@ -1,9 +1,5 @@
 import { test, expect } from "@playwright/test";
 async function nav(page: import("@playwright/test").Page, name: string) {
-  if ((await page.viewportSize())!.width <= 760)
-    await page
-      .getByRole("button", { name: "Öppna menyn", exact: true })
-      .click();
   await page
     .getByRole("navigation")
     .getByRole("button", { name, exact: true })
@@ -297,4 +293,89 @@ test("tillgänglighet i huvudvyer och aktivitetsdialog", async ({ page }) => {
       })),
     })),
   ).toEqual([]);
+});
+test("kategorifilter ändrar bara visningen och utskrift visar hela veckan", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await expect(page.locator(".calendar-grid")).toBeVisible();
+  const before = await stored(page),
+    week = Object.keys(before.weeks)[0],
+    total = before.weeks[week].activities.length;
+  const filters = page.getByRole("group", { name: "Filtrera aktiviteter" });
+  await filters.getByRole("button", { name: "Musik", exact: true }).click();
+  await expect(page.locator(".calendar-block:visible")).toHaveCount(2);
+  for (const a of await page.locator(".calendar-block:visible").all())
+    await expect(a.locator(".block-category")).toHaveText("Musik");
+  expect(await stored(page)).toEqual(before);
+  // A filtered-out job block still occupies its time in the scheduling rules.
+  await page.getByRole("button", { name: "Ny aktivitet", exact: true }).click();
+  await page
+    .getByLabel("Namn", { exact: true })
+    .fill("Tid som redan är upptagen");
+  await page
+    .getByRole("button", { name: "Spara aktivitet", exact: true })
+    .click();
+  await expect(page.locator(".inline-error")).toContainText("överlappar");
+  await page.getByRole("button", { name: "Stäng dialog", exact: true }).click();
+  expect(await stored(page)).toEqual(before);
+  await page.evaluate(() => {
+    window.print = () => {
+      document.documentElement.dataset.printRequested = "true";
+    };
+  });
+  await page.getByRole("button", { name: "Skriv ut", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-print-requested",
+    "true",
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ media: "print" });
+  await expect(page.locator(".day-shell:visible")).toHaveCount(5);
+  await expect(page.locator(".calendar-block:visible")).toHaveCount(total);
+  for (const count of await page.locator(".print-count").all())
+    await expect(count).toHaveText("4 pass");
+  await expect(filters).not.toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Skriv ut", exact: true }),
+  ).not.toBeVisible();
+  const pdf = await page.pdf({
+    path: "test-results/veckoschema-riso.pdf",
+    preferCSSPageSize: true,
+    printBackground: true,
+  });
+  const pages = pdf.toString("latin1").match(/\/Type\s*\/Page\b/g) ?? [];
+  expect(pages.length).toBe(1);
+});
+test("RISO-layout i 1440, 768 och 390 px utan horisontell överströmning", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  const { default: AxeBuilder } = await import("@axe-core/playwright");
+  for (const width of [1440, 768, 390]) {
+    await page.setViewportSize({ width, height: 1024 });
+    await page.goto("./");
+    await expect(page.locator(".calendar-grid")).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: `test-results/riso-${width}.png`,
+      fullPage: true,
+    });
+    if (width === 768) {
+      const result = await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+        .analyze();
+      expect(
+        result.violations.map((v) => ({
+          id: v.id,
+          nodes: v.nodes.map((n) => n.failureSummary),
+        })),
+      ).toEqual([]);
+    }
+  }
 });

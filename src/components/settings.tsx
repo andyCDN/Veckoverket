@@ -19,6 +19,7 @@ import {
   targetMinutes,
 } from "@/lib/planner";
 import { decodeData, downloadData } from "@/lib/storage";
+import { categoryInk, categoryStyle } from "@/lib/presentation";
 import { Modal } from "./modal";
 function CategoryForm({
   onSave,
@@ -388,10 +389,7 @@ export function SettingsView({
                 .filter((c) => !["music", "family", "health"].includes(c.id))
                 .map((c) => (
                   <div className="category-setting" key={c.id}>
-                    <span
-                      className="category-label"
-                      style={{ "--category": c.color } as React.CSSProperties}
-                    >
+                    <span className="category-label" style={categoryStyle(c)}>
                       <i />
                       {c.name}
                     </span>
@@ -564,7 +562,7 @@ export function SettingsView({
             .map((c) => (
               <div className="preview-row" key={c.id}>
                 <span>
-                  <i style={{ background: c.color }} />
+                  <i style={{ background: categoryInk(c) }} />
                   {c.name}
                 </span>
                 <strong>

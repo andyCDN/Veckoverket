@@ -4,6 +4,7 @@ import { Plus, ArrowUpRight, Trash2, Check, Target } from "lucide-react";
 import { Modal } from "./modal";
 import { hours, uid } from "@/lib/date";
 import { categoryMinutes } from "@/lib/planner";
+import { categoryStyle } from "@/lib/presentation";
 import type { AppData, Goal, Task } from "@/lib/types";
 export function GoalForm({
   data,
@@ -167,7 +168,7 @@ export function GoalsView({
                   <article
                     className="goal-card"
                     key={g.id}
-                    style={{ "--category": c?.color } as React.CSSProperties}
+                    style={categoryStyle(c)}
                   >
                     <div className="goal-card-top">
                       <span className="category-label">

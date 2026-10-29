@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import "@fontsource-variable/dm-sans/index.css";
-import "@fontsource-variable/manrope/index.css";
+import "@fontsource/anton/latin-400.css";
 import "./globals.css";
 export const metadata: Metadata = {
   title: "Veckoverket – Veckoplanering",

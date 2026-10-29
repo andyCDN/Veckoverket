@@ -7,9 +7,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  CircleHelp,
   LayoutDashboard,
-  Menu,
   Plus,
   Settings2,
   Sparkles,
@@ -17,8 +15,8 @@ import {
   X,
   BookOpen,
   AlertCircle,
-  Cloud,
   ShieldCheck,
+  Printer,
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import type {
@@ -46,7 +44,6 @@ import {
   assessWeek,
   categoryMinutes,
   generateWeek,
-  targetMinutes,
   validateMove,
   validatePlan,
 } from "@/lib/planner";
@@ -59,6 +56,7 @@ import { SettingsView } from "./settings";
 import { ReflectionView } from "./reflection";
 import { Account } from "./account";
 import { Modal } from "./modal";
+import { Masthead, EditorialSidebar, CategoryFilter } from "./riso";
 type View = "dashboard" | "planner" | "goals" | "reflection" | "settings";
 const NAV = [
   { id: "dashboard", label: "Min vecka", icon: LayoutDashboard },
@@ -92,7 +90,7 @@ export function Workspace() {
   const [data, setData] = useState<AppData | null>(null),
     [week, setWeek] = useState(monday(today())),
     [view, setView] = useState<View>("dashboard");
-  const [mobileMenu, setMobileMenu] = useState(false),
+  const [categoryFilter, setCategoryFilter] = useState("all"),
     [editor, setEditor] = useState<{
       activity?: Activity;
       date: string;
@@ -146,7 +144,6 @@ export function Workspace() {
   }, []);
   const navigate = (v: View) => {
     setView(v);
-    setMobileMenu(false);
   };
   function changeWeek(w: string) {
     setWeek(w);
@@ -176,9 +173,7 @@ export function Workspace() {
     );
   const plan = data.weeks[week] ?? generateWeek(week, data).plan,
     activities = plan.activities,
-    conflicts = assessWeek(plan, data),
-    totals = categoryMinutes(activities),
-    completed = categoryMinutes(activities, "done");
+    conflicts = assessWeek(plan, data);
   const focus =
     activities.find(
       (a) =>
@@ -363,98 +358,36 @@ export function Workspace() {
   }
   const generation = generator ? generateWeek(week, data, plan) : null;
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-view={view}>
       <a className="skip-link" href="#main-content">
         Hoppa till innehållet
       </a>
-      {mobileMenu && (
-        <button
-          className="sidebar-scrim"
-          onClick={() => setMobileMenu(false)}
-          aria-label="Stäng menyn"
-        />
-      )}
-      <aside className={`sidebar ${mobileMenu ? "is-open" : ""}`}>
-        <button
-          className="brand"
-          onClick={() => navigate("dashboard")}
-          aria-label="Veckoverket, startsida"
-        >
-          <span className="brand-symbol">
-            <i />
-            <i />
-            <i />
-          </span>
-          veckoverket<span className="brand-dot">.</span>
-        </button>
-        <button
-          className="mobile-menu-close icon-button"
-          onClick={() => setMobileMenu(false)}
-          aria-label="Stäng menyn"
-        >
-          <X size={20} />
-        </button>
-        <div className="workspace-label">NAVIGATION</div>
-        <nav aria-label="Huvudnavigation">
-          {NAV.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              className={`nav-item ${view === id ? "active" : ""}`}
-              aria-current={view === id ? "page" : undefined}
-              onClick={() => navigate(id)}
-            >
-              <Icon size={19} />
-              {label}
-              {view === id && <span className="nav-active-dot" />}
-            </button>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <button className="help-button" onClick={() => setHelp(true)}>
-            <CircleHelp size={18} />
-            Hjälp
-            <ArrowUpRight size={14} />
-          </button>
-          <button className="profile-button" onClick={() => setAccount(true)}>
-            <span className="avatar">
-              {data.profile.name.slice(0, 1).toUpperCase()}
+      <Masthead
+        week={week}
+        name={data.profile.name}
+        connected={Boolean(user)}
+        onHome={() => navigate("dashboard")}
+        onAccount={() => setAccount(true)}
+        onHelp={() => setHelp(true)}
+      />
+      <nav className="workspace-navigation" aria-label="Huvudnavigation">
+        {NAV.map(({ id, label, icon: Icon }, index) => (
+          <button
+            key={id}
+            aria-label={label}
+            className={`nav-item ${view === id ? "active" : ""}`}
+            aria-current={view === id ? "page" : undefined}
+            onClick={() => navigate(id)}
+          >
+            <span className="nav-index" aria-hidden="true">
+              0{index + 1}
             </span>
-            <span>
-              <strong>{data.profile.name}</strong>
-              <small>{user ? "Anslutet konto" : "Lokal profil"}</small>
-            </span>
-            <Settings2 size={16} />
+            <Icon size={15} />
+            {label}
           </button>
-        </div>
-      </aside>
+        ))}
+      </nav>
       <div className="main-shell">
-        <header className="topbar">
-          <div>
-            <button
-              className="icon-button mobile-menu-button"
-              onClick={() => setMobileMenu(true)}
-              aria-label="Öppna menyn"
-            >
-              <Menu size={21} />
-            </button>
-            <span className="breadcrumb">
-              Planering<span>/</span>
-              <strong>{NAV.find((n) => n.id === view)?.label}</strong>
-            </span>
-          </div>
-          <button className="local-badge" onClick={() => setAccount(true)}>
-            <span />
-            {user ? (
-              <>
-                <Cloud size={13} />
-                Anslutet konto
-              </>
-            ) : (
-              "Lokalt demoläge"
-            )}
-            <ChevronRight size={13} />
-          </button>
-        </header>
         <main id="main-content" tabIndex={-1}>
           <div className="main-heading">
             <div>
@@ -490,49 +423,6 @@ export function Workspace() {
           )}
           {(view === "dashboard" || view === "planner") && (
             <>
-              <section
-                className="balance-section"
-                aria-label="Veckans tidsfördelning"
-              >
-                <div className="balance-heading">
-                  <h2>Veckans tidsfördelning</h2>
-                  <span>Planerad tid per livsområde</span>
-                </div>
-                <div className="balance-stats">
-                  {data.categories.map((c) => (
-                    <button
-                      className="balance-stat"
-                      key={c.id}
-                      onClick={() => navigate("settings")}
-                      style={{ "--category": c.color } as React.CSSProperties}
-                    >
-                      <span className="stat-name">
-                        <i />
-                        {c.name}
-                      </span>
-                      <strong>
-                        {hours(totals[c.id] ?? 0)}
-                        <span>
-                          {c.id === "career"
-                            ? "planerad jobbtid"
-                            : c.id === "family"
-                              ? "reserverad tid"
-                              : c.id === "rest"
-                                ? "inklusive lunch & paus"
-                                : `av ${hours(plan.targets?.[c.id] ?? targetMinutes(c, weekData.settings))}`}
-                        </span>
-                      </strong>
-                      <div className="stat-track">
-                        <span
-                          style={{
-                            width: `${Math.min(100, ((totals[c.id] ?? 0) / ((plan.targets?.[c.id] ?? targetMinutes(c, weekData.settings)) || 300)) * 100)}%`,
-                          }}
-                        />
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </section>
               <section className="week-section">
                 <div className="week-toolbar">
                   <div className="week-title">
@@ -563,6 +453,13 @@ export function Workspace() {
                       </button>
                     </div>
                     <button
+                      className="text-button print-button"
+                      onClick={() => window.print()}
+                    >
+                      <Printer size={15} />
+                      Skriv ut
+                    </button>
+                    <button
                       className="button secondary generate-button"
                       onClick={() => setGenerator(true)}
                     >
@@ -574,130 +471,68 @@ export function Workspace() {
                 <div
                   className={`week-layout ${view === "planner" ? "full-calendar" : ""}`}
                 >
-                  <Calendar
-                    week={week}
-                    data={weekData}
-                    activities={activities}
-                    onEdit={(a) => setEditor({ activity: a, date: a.date })}
-                    onMove={move}
-                    onCreate={(date, start) =>
-                      setEditor({
-                        date,
-                        start: start ?? weekData.settings.start,
-                      })
-                    }
-                  />
                   {view === "dashboard" && (
-                    <aside className="week-aside">
-                      <section className="focus-panel">
-                        <h3>Nästa aktivitet</h3>
-                        {focus ? (
-                          <>
-                            <span
-                              className="focus-category"
-                              style={{
-                                color: data.categories.find(
-                                  (c) => c.id === focus.categoryId,
-                                )?.color,
-                              }}
-                            >
-                              {
-                                data.categories.find(
-                                  (c) => c.id === focus.categoryId,
-                                )?.name
-                              }
-                            </span>
-                            <button
-                              className="focus-title"
-                              onClick={() =>
-                                setEditor({ activity: focus, date: focus.date })
-                              }
-                            >
-                              {focus.title}
-                              <ArrowUpRight size={16} />
-                            </button>
-                            <p>
-                              {new Intl.DateTimeFormat("sv-SE", {
-                                weekday: "long",
-                                day: "numeric",
-                                month: "short",
-                                timeZone: "UTC",
-                              }).format(
-                                new Date(`${focus.date}T12:00:00Z`),
-                              )}{" "}
-                              · {time(focus.start)}–{time(focus.end)}
-                            </p>
-                            <button
-                              className="text-button"
-                              onClick={() => {
-                                updatePlan({
-                                  ...plan,
-                                  activities: activities.map((a) =>
-                                    a.id === focus.id
-                                      ? { ...a, status: "done" }
-                                      : a,
-                                  ),
-                                });
-                                notify("Genomförd tid är sparad.");
-                              }}
-                            >
-                              <Check size={15} />
-                              Markera som genomförd
-                            </button>
-                          </>
-                        ) : (
-                          <p>Inga återstående planerade aktiviteter.</p>
-                        )}
-                      </section>
-                      <section className="weekly-goals">
-                        <div className="aside-heading">
-                          <h3>Veckans mål</h3>
-                          <Target size={16} />
-                        </div>
-                        {goals.slice(0, 3).map((g) => (
-                          <div className="mini-goal" key={g.id}>
-                            <span className="mini-goal-title">
-                              <i
-                                style={{
-                                  background: data.categories.find(
-                                    (c) => c.id === g.categoryId,
-                                  )?.color,
-                                }}
-                              />
-                              {g.title}
-                            </span>
-                            {data.tasks
-                              .filter((t) => t.goalId === g.id)
-                              .slice(0, 2)
-                              .map((t) => (
-                                <label
-                                  className={`task ${t.done ? "complete" : ""}`}
-                                  key={t.id}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={t.done}
-                                    onChange={() => toggleTask(t.id)}
-                                  />
-                                  <span className="custom-check">
-                                    {t.done && <Check size={11} />}
-                                  </span>
-                                  <span>{t.title}</span>
-                                </label>
-                              ))}
-                          </div>
-                        ))}
-                        {!goals.length && <p>Inga mål för den här veckan.</p>}
-                        <button
-                          className="text-button"
-                          onClick={() => navigate("goals")}
-                        >
-                          Alla mål & aktiviteter
-                          <ArrowRight size={14} />
-                        </button>
-                      </section>
-                    </aside>
+                    <EditorialSidebar
+                      data={weekData}
+                      plan={plan}
+                      goals={goals}
+                      focus={focus}
+                      onToggleTask={toggleTask}
+                      onGoalView={() => navigate("goals")}
+                      onSettings={() => navigate("settings")}
+                      onEdit={(a) => setEditor({ activity: a, date: a.date })}
+                      onComplete={(activity) => {
+                        updatePlan({
+                          ...plan,
+                          activities: activities.map((a) =>
+                            a.id === activity.id ? { ...a, status: "done" } : a,
+                          ),
+                        });
+                        notify("Genomförd tid är sparad.");
+                      }}
+                    />
                   )}
+                  <div className="week-board">
+                    <div className="board-heading">
+                      <span className="section-index">
+                        Schema / {activities.length} aktiviteter
+                      </span>
+                      <span className="board-key">
+                        <span className="riso-key-blue" />
+                        <span className="riso-key-red" />
+                      </span>
+                    </div>
+                    <CategoryFilter
+                      categories={data.categories}
+                      selected={categoryFilter}
+                      onChange={setCategoryFilter}
+                      count={
+                        activities.filter(
+                          (a) => a.categoryId === categoryFilter,
+                        ).length
+                      }
+                      total={activities.length}
+                    />
+                    <Calendar
+                      week={week}
+                      data={weekData}
+                      activities={activities}
+                      categoryFilter={categoryFilter}
+                      onEdit={(a) => setEditor({ activity: a, date: a.date })}
+                      onMove={move}
+                      onCreate={(date, start) =>
+                        setEditor({
+                          date,
+                          start: start ?? weekData.settings.start,
+                        })
+                      }
+                    />
+                    <div className="bottomstrip">
+                      <span>{time(weekData.settings.start)} / Start</span>
+                      <span className="registration-line" aria-hidden="true" />
+                      <span>{time(weekData.settings.end)} / Slut</span>
+                    </div>
+                  </div>
                 </div>
               </section>
               <div
@@ -886,6 +721,7 @@ export function Workspace() {
             />
           )}
           <footer className="page-footer">
+            <span>Veckoverket / Riso 02</span>
             <span>
               {storageError
                 ? "Lagring behöver ses över"

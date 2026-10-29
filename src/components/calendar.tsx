@@ -20,18 +20,21 @@ import {
 import type { Activity, AppData } from "@/lib/types";
 import { addDays, DAY_NAMES, time, today, weekday } from "@/lib/date";
 import { plannedDays } from "@/lib/planner";
-const PX_PER_MINUTE = 1.12;
+import { categoryLabel, categoryStyle } from "@/lib/presentation";
+const PX_PER_MINUTE = 1.35;
 function CalendarBlock({
   a,
   category,
   top,
   canMove,
+  filteredOut,
   onEdit,
 }: {
   a: Activity;
   category: AppData["categories"][number] | undefined;
   top: number;
   canMove: boolean;
+  filteredOut: boolean;
   onEdit: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
@@ -45,13 +48,15 @@ function CalendarBlock({
       {...(canMove ? listeners : {})}
       type="button"
       onClick={onEdit}
-      aria-label={`${a.title}, ${time(a.start)} till ${time(a.end)}${a.status === "done" ? ", genomförd" : ""}. Redigera aktivitet`}
-      className={`calendar-block ${family ? "family" : ""} ${lunch ? "lunch" : ""} ${a.status === "done" ? "is-done" : ""} ${a.status === "skipped" ? "is-skipped" : ""} ${isDragging ? "dragging" : ""}`}
+      title={`${a.title} · ${categoryLabel(category)} · ${time(a.start)}–${time(a.end)}`}
+      tabIndex={filteredOut ? -1 : 0}
+      aria-label={`${a.title}, ${categoryLabel(category)}, ${time(a.start)} till ${time(a.end)}${a.status === "done" ? ", genomförd" : ""}. Redigera aktivitet`}
+      className={`calendar-block ${a.end - a.start < 90 ? "is-short" : ""} ${a.end - a.start < 60 ? "is-compact" : ""} ${filteredOut ? "is-filtered-out" : ""} ${family ? "family" : ""} ${lunch ? "lunch" : ""} ${a.status === "done" ? "is-done" : ""} ${a.status === "skipped" ? "is-skipped" : ""} ${isDragging ? "dragging" : ""}`}
       style={
         {
           top,
           height: Math.max(24, (a.end - a.start) * PX_PER_MINUTE - 5),
-          "--category": category?.color ?? "#83847e",
+          ...categoryStyle(category),
           transform: transform
             ? `translate3d(${transform.x}px,${transform.y}px,0)`
             : undefined,
@@ -72,6 +77,7 @@ function CalendarBlock({
           ) : null}
         </span>
       </span>
+      <span className="block-category">{categoryLabel(category)}</span>
       <span className="block-title">{a.title}</span>
       {a.end - a.start >= 100 && (
         <span className="block-subtitle">
@@ -113,6 +119,7 @@ export function Calendar({
   week,
   data,
   activities,
+  categoryFilter = "all",
   onEdit,
   onMove,
   onCreate,
@@ -120,6 +127,7 @@ export function Calendar({
   week: string;
   data: AppData;
   activities: Activity[];
+  categoryFilter?: string;
   onEdit: (a: Activity) => void;
   onMove: (a: Activity, date: string, start: number) => void;
   onCreate: (date: string, start?: number) => void;
@@ -203,9 +211,28 @@ export function Calendar({
                 className={`day-heading ${d === activeDay ? "mobile-active" : ""} ${date === today() ? "is-today" : ""}`}
                 key={d}
               >
-                <span>{DAY_NAMES[d]}</span>
-                <strong>{Number(date.slice(8))}</strong>
-                {date === today() && <i aria-label="Idag" />}
+                <span className="day-name">
+                  <span className="sr-only">{DAY_NAMES[d]}</span>
+                  <span aria-hidden="true">{DAY_NAMES[d].slice(0, 3)}</span>
+                </span>
+                <strong>
+                  {Number(date.slice(8))} / {date.slice(5, 7)}
+                </strong>
+                <span className="day-count screen-count">
+                  {
+                    activities.filter(
+                      (a) =>
+                        a.date === date &&
+                        (categoryFilter === "all" ||
+                          a.categoryId === categoryFilter),
+                    ).length
+                  }{" "}
+                  pass
+                </span>
+                <span className="day-count print-count">
+                  {activities.filter((a) => a.date === date).length} pass
+                </span>
+                {date === today() && <span className="sr-only">Idag</span>}
                 <button
                   className="day-add"
                   aria-label={`Lägg till aktivitet ${DAY_NAMES[d].toLowerCase()}`}
@@ -259,6 +286,10 @@ export function Calendar({
                       <CalendarBlock
                         key={a.id}
                         a={a}
+                        filteredOut={
+                          categoryFilter !== "all" &&
+                          a.categoryId !== categoryFilter
+                        }
                         category={data.categories.find(
                           (c) => c.id === a.categoryId,
                         )}
