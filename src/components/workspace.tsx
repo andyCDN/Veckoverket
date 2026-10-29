@@ -56,7 +56,8 @@ import { SettingsView } from "./settings";
 import { ReflectionView } from "./reflection";
 import { Account } from "./account";
 import { Modal } from "./modal";
-import { Masthead, EditorialSidebar, CategoryFilter } from "./riso";
+import { EditorialSidebar, CategoryFilter } from "./riso";
+import { MastheadCover, IssueSpread, BackCoverInfo } from "./punk";
 type View = "dashboard" | "planner" | "goals" | "reflection" | "settings";
 const NAV = [
   { id: "dashboard", label: "Min vecka", icon: LayoutDashboard },
@@ -144,6 +145,14 @@ export function Workspace() {
   }, []);
   const navigate = (v: View) => {
     setView(v);
+  };
+  const navigateAndReveal = (v: View, target: string) => {
+    navigate(v);
+    requestAnimationFrame(() => {
+      const section = document.getElementById(target);
+      section?.scrollIntoView({ block: "start", behavior: "instant" });
+      section?.focus({ preventScroll: true });
+    });
   };
   function changeWeek(w: string) {
     setWeek(w);
@@ -362,7 +371,8 @@ export function Workspace() {
       <a className="skip-link" href="#main-content">
         Hoppa till innehållet
       </a>
-      <Masthead
+      <MastheadCover
+        settings={weekData.settings}
         week={week}
         name={data.profile.name}
         connected={Boolean(user)}
@@ -395,6 +405,9 @@ export function Workspace() {
                 {view === "dashboard"
                   ? "Min vecka"
                   : NAV.find((n) => n.id === view)?.label}
+                <span className="punk-issue-number" aria-hidden="true">
+                  #02
+                </span>
               </h1>
             </div>
             {(view === "dashboard" || view === "planner") && (
@@ -493,15 +506,7 @@ export function Workspace() {
                     />
                   )}
                   <div className="week-board">
-                    <div className="board-heading">
-                      <span className="section-index">
-                        Schema / {activities.length} aktiviteter
-                      </span>
-                      <span className="board-key">
-                        <span className="riso-key-blue" />
-                        <span className="riso-key-red" />
-                      </span>
-                    </div>
+                    <IssueSpread settings={weekData.settings} />
                     <CategoryFilter
                       categories={data.categories}
                       selected={categoryFilter}
@@ -728,8 +733,12 @@ export function Workspace() {
               }}
             />
           )}
+          <BackCoverInfo
+            onReflection={() => navigateAndReveal("reflection", "main-content")}
+            onStorage={() => navigateAndReveal("settings", "storage-settings")}
+          />
           <footer className="page-footer">
-            <span>Veckoverket / Riso 02</span>
+            <span>Veckoverket / Nr 002 / Punk × Riso</span>
             <span>
               {storageError
                 ? "Lagring behöver ses över"

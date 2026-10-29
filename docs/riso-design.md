@@ -1,31 +1,36 @@
-# RISO-gränssnitt
+# PUNK × RISO v2.1
 
-Utformningen bygger på det uppladdade Veckoverket RISO Design Kit. Användarens instruktion om neutrala texter gäller framför designkittets exempeltexter. Manifest, slogans, motiverande stämplar och peppande statusmeddelanden ingår inte.
+Utformningen bygger på det uppladdade kittet `Veckoverket-PUNK-RISO-v2.1-utan-pepp`. Alla texter är sakliga. Manifest, motiverande uppmaningar och slogans ingår inte.
 
 ## Formspråk
 
-- Papper `#F3EEDF`, ljust papper `#FAF6EB`, trycksvart `#24231F`.
-- Blått `#234B8C`, korall `#E85B45`, blekt blått `#DBE5ED`, blekt korall `#F6D9CE`.
-- Gemensamma variabler finns i `src/app/globals.css`. Konturer är 2 px, hörn är raka och skuggor har hård offset utan oskärpa. Text ligger över pappersstrukturen; dekorativa raster ligger i separata ytor.
-- Anton är ett lokalt levererat, kondenserat rubriktypsnitt. Mastheaden breddas för att motsvara referensens Impact-uttryck. Övrig text använder Arial och metadata Courier New. Typsnittslicensen finns i `public/fonts/Anton-OFL.txt`.
-- Kategorier har alltid textetiketter. RISO-paletten appliceras i presentationslagret via `src/lib/presentation.ts`; användarens sparade kategorifärger och övriga planeringsdata ändras inte.
+- Papper `#F1EAD6`, ljust papper `#FFF9E9`, xeroxsvart `#191918`.
+- Blått `#243D9B`, rött `#F04B31`, gult `#F9C845`, blått papper `#DCE4F4` och rött papper `#FAE1D7`.
+- Tema och referensens `--vv-*`-variabler finns i `src/app/punk.css`. `globals.css` innehåller gemensam layout, formulär, kalenderbeteende och utskriftsregler.
+- Tvåradig masthead, omslagskollage, rött mittuppslag, gula utgåvemärken, svart kanttryck och blå baksida följer referensens struktur. Raster placeras i dekorativa fält; kompakt löptext ligger på solida ytor. Inmatning och navigering roteras inte.
+- Anton levereras lokalt; Arial och Courier New används för löptext respektive metadata. Licensen finns i `public/fonts/Anton-OFL.txt`. Inga externa fontanrop eller nya bibliotek krävs.
+- RISO-paletten appliceras via `src/lib/presentation.ts`. Användarens sparade kategorifärger, tider, mål och övriga planeringsdata ändras inte.
 
-## Komponenter och interaktion
+## Komponenter
 
-`src/components/riso.tsx` innehåller `Masthead`, `RisoMark`, `EditorialSidebar` och `CategoryFilter`. Den befintliga kalendern, redigeringsdialogen, målhanteringen, inställningarna och reflektionen använder samma tema.
+`src/components/punk.tsx` innehåller `MastheadCover`, `CutoutMark`, `IssueSpread` och `BackCoverInfo`. Omslagets asterisk och favicon kommer från det nya kitets SVG-resurser. Raster och övrigt kollage byggs med CSS.
 
-Kategorifiltret ändrar enbart vilka aktiviteter som visas. Alla aktiviteter finns kvar i lagring, tidsberäkning och konfliktvalidering. En filtrerad bort aktivitet gör därför inte den upptagna tiden bokningsbar.
+`src/components/riso.tsx` innehåller `EditorialSidebar` och `CategoryFilter`, kopplade till appens riktiga mål, tidsberäkningar och aktiviteter. Den befintliga kalendern, redigeringsdialogen, inställningarna och reflektionen använder samma tema.
 
-Skriv ut-knappen anropar webbläsarens utskrift. Utskriftsstilen visar hela veckan och samtliga kategorier, oberoende av aktivt filter eller vald dag på mobilen. Kontroller och sidospalt döljs. Standardformat är liggande A4.
+Baksidans knappar öppnar befintlig veckoreflektion respektive lagringsinställningar. Baksidans information beskriver appens faktiska lagring, inte prototypens begränsningar.
 
-## Anpassningar från prototypen
+## Responsivitet och utskrift
 
-- Den tidsproportionella kalendern och dess validerade dra-och-släpp behålls i stället för att ersättas av prototypens fristående passlista.
-- Mobilen behåller en dagvy med dagval. Surfplatta och dator visar veckokolumner.
-- Samtliga produktvyer nås via navigationen under mastheaden.
-- Sidospalten visar riktiga mål, tidsfördelning och nästa aktivitet från appens state. Den innehåller inte prototypens manifest eller exempeldata.
-- Utskrift och kategorifilter är kopplade till den befintliga datamodellen. Prototypens separata localStorage och provschema används inte.
+Datorer visar tidsproportionella veckokolumner. Under 950 px rullar enbart kalenderns egen yta horisontellt. Mobilens dagknappar navigerar till respektive kolumn, och markeringen följer den synliga dagen. Hela dokumentet ska inte rulla i sidled.
+
+Utskrift visar hela veckan och alla kategorier, även efter filtrering eller rullning till en senare dag. Omslagsdekoration, sidospalt, kontroller och baksida döljs. Standardformat är liggande A4.
+
+## Bevarad funktionalitet
+
+Planeringsmotor, datamodell, databasstruktur och lagringsnycklar är oförändrade. Kategorifiltret ändrar enbart visningen; dolda aktiviteter ligger kvar i konfliktvalideringen. Alla kalenderhändelser kan bockas av och återställas direkt. Redigering, låsta/skyddade block, återkommande aktiviteter, uppgifter och veckohistorik använder den befintliga implementationen.
+
+Prototypens JavaScript, lokala demolagring och exempelpass har inte importerats till produktionsappen. Befintliga sparade veckor ersätts inte med provdata.
 
 ## Verifiering
 
-`npm test` kontrollerar planeringsmotor och lagring. `npm run test:pages` efter `npm run build:pages` kontrollerar de exporterade filerna: redigering, veckobyte, persistens, drag-and-drop, tillgänglighet, kategorifilter, utskrift och layout i 1440, 768 och 390 px. Webbläsartesterna sparar skärmbilder och ett PDF-schema i den ignorerade katalogen `test-results/`.
+`npm test` kontrollerar planeringsmotor och lagring. `npm run test:pages` efter `npm run build:pages` kontrollerar de exporterade filerna: aktivitetsredigering, veckobyte, lagring, avbockning, dra-och-släpp, tillgänglighet, filter och utskrift. Layouten kontrolleras i 1440, 1024, 768 och 390 px. Tester sparar skärmbilder och ett PDF-schema i den ignorerade katalogen `test-results/`.

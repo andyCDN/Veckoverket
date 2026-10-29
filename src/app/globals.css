@@ -1,11 +1,11 @@
 :root {
-  --paper: #f3eedf;
-  --paper-light: #faf6eb;
-  --ink: #24231f;
-  --blue: #234b8c;
-  --red: #e85b45;
-  --blue-soft: #dbe5ed;
-  --red-soft: #f6d9ce;
+  --paper: #f1ead6;
+  --paper-light: #fff9e9;
+  --ink: #191918;
+  --blue: #243d9b;
+  --red: #f04b31;
+  --blue-soft: #dce4f4;
+  --red-soft: #fae1d7;
   --line: #292721;
   --muted: #625b50;
   --shadow: 5px 5px 0 var(--ink);
@@ -844,7 +844,7 @@ main:focus {
     to bottom,
     transparent,
     transparent 35px,
-    #234b8c09 36px,
+    #243d9b09 36px,
     transparent 37px
   );
 }
@@ -855,7 +855,7 @@ main:focus {
   position: absolute;
   left: 0;
   right: 0;
-  border-top: 1px solid #24231f1a;
+  border-top: 1px solid #1919181a;
   pointer-events: none;
 }
 .hour-line:first-child {
@@ -925,8 +925,8 @@ main:focus {
     135deg,
     var(--paper-light),
     var(--paper-light) 5px,
-    #24231f05 5px,
-    #24231f05 6px
+    #19191805 5px,
+    #19191805 6px
   );
   box-shadow: 2px 2px 0 var(--ink);
 }

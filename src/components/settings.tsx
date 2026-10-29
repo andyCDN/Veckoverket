@@ -592,7 +592,7 @@ export function SettingsView({
           </div>
         </aside>
       </form>
-      <section className="data-section">
+      <section className="data-section" id="storage-settings" tabIndex={-1}>
         <div>
           <h3>Lagring och säkerhetskopiering</h3>
           <p>

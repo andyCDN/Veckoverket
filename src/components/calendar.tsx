@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   DndContext,
   useDraggable,
@@ -170,10 +170,60 @@ export function Calendar({
   onStatusChange: (activity: Activity, status: Activity["status"]) => void;
 }) {
   const days = plannedDays(data.settings);
+  const viewport = useRef<HTMLDivElement>(null);
+  function selectDay(day: number) {
+    setMobileDay(day);
+    const heading = viewport.current?.querySelector<HTMLElement>(
+      `[data-day="${day}"]`,
+    );
+    if (
+      heading &&
+      viewport.current &&
+      viewport.current.scrollWidth > viewport.current.clientWidth
+    )
+      viewport.current.scrollTo({
+        left: Math.max(0, heading.offsetLeft - 42),
+        behavior: "instant",
+      });
+  }
+  function syncVisibleDay() {
+    const container = viewport.current;
+    if (!container || container.scrollWidth <= container.clientWidth) return;
+    const midpoint =
+      container.getBoundingClientRect().left + container.clientWidth / 2;
+    const headings = [...container.querySelectorAll<HTMLElement>("[data-day]")];
+    headings.sort(
+      (a, b) =>
+        Math.abs(
+          a.getBoundingClientRect().left + a.offsetWidth / 2 - midpoint,
+        ) -
+        Math.abs(b.getBoundingClientRect().left + b.offsetWidth / 2 - midpoint),
+    );
+    if (headings[0]) setMobileDay(Number(headings[0].dataset.day));
+  }
   const [mobileDay, setMobileDay] = useState(
     weekday(today()) < 5 ? weekday(today()) : 0,
   );
   const activeDay = days.includes(mobileDay) ? mobileDay : days[0];
+  useEffect(() => {
+    const container = viewport.current;
+    if (!container) return;
+    const align = () => {
+      if (container.scrollWidth <= container.clientWidth) return;
+      const heading = container.querySelector<HTMLElement>(
+        `[data-day="${container.dataset.activeDay}"]`,
+      );
+      if (heading)
+        container.scrollTo({
+          left: Math.max(0, heading.offsetLeft - 42),
+          behavior: "instant",
+        });
+    };
+    const observer = new ResizeObserver(align);
+    observer.observe(container);
+    align();
+    return () => observer.disconnect();
+  }, [week]);
   const start = Math.min(
       data.settings.start,
       ...activities.map((a) => a.start),
@@ -210,7 +260,7 @@ export function Calendar({
           <button
             className={d === activeDay ? "active" : ""}
             key={d}
-            onClick={() => setMobileDay(d)}
+            onClick={() => selectDay(d)}
           >
             {DAY_NAMES[d].slice(0, 3)}
             <strong>{Number(addDays(week, d).slice(8))}</strong>
@@ -237,117 +287,131 @@ export function Calendar({
         }}
       >
         <div
-          className="calendar-grid"
-          style={{ "--days": days.length } as React.CSSProperties}
+          className="calendar-viewport"
+          data-active-day={activeDay}
+          ref={viewport}
+          onScroll={syncVisibleDay}
+          role="region"
+          aria-label="Kalender, rulla i sidled för fler dagar"
+          tabIndex={0}
         >
-          <div className="time-heading">Tid</div>
-          {days.map((d) => {
-            const date = addDays(week, d);
-            return (
-              <div
-                className={`day-heading ${d === activeDay ? "mobile-active" : ""} ${date === today() ? "is-today" : ""}`}
-                key={d}
-              >
-                <span className="day-name">
-                  <span className="sr-only">{DAY_NAMES[d]}</span>
-                  <span aria-hidden="true">{DAY_NAMES[d].slice(0, 3)}</span>
-                </span>
-                <strong>
-                  {Number(date.slice(8))} / {date.slice(5, 7)}
-                </strong>
-                <span className="day-count screen-count">
-                  {
-                    activities.filter(
-                      (a) =>
-                        a.date === date &&
-                        (categoryFilter === "all" ||
-                          a.categoryId === categoryFilter),
-                    ).length
-                  }{" "}
-                  pass
-                </span>
-                <span className="day-count print-count">
-                  {activities.filter((a) => a.date === date).length} pass
-                </span>
-                {date === today() && <span className="sr-only">Idag</span>}
-                <button
-                  className="day-add"
-                  aria-label={`Lägg till aktivitet ${DAY_NAMES[d].toLowerCase()}`}
-                  onClick={() => onCreate(date)}
+          <div
+            className="calendar-grid"
+            style={{ "--days": days.length } as React.CSSProperties}
+          >
+            <div className="time-heading">Tid</div>
+            {days.map((d) => {
+              const date = addDays(week, d);
+              return (
+                <div
+                  className={`day-heading ${d === activeDay ? "mobile-active" : ""} ${date === today() ? "is-today" : ""}`}
+                  key={d}
+                  data-day={d}
                 >
-                  <Plus size={15} />
-                </button>
-              </div>
-            );
-          })}
-          <div className="time-axis" style={{ height }}>
-            {ticks.map((n) => (
-              <span key={n} style={{ top: (n - start) * PX_PER_MINUTE }}>
-                {time(n)}
-              </span>
-            ))}
-          </div>
-          {days.map((d) => {
-            const date = addDays(week, d);
-            return (
-              <div
-                className={`day-shell ${d === activeDay ? "mobile-active" : ""}`}
-                key={date}
-              >
-                <DayColumn
-                  date={date}
-                  height={height}
-                  onCreate={(y) =>
-                    onCreate(
-                      date,
-                      Math.max(
-                        start,
-                        Math.min(
-                          end - 30,
-                          start + Math.floor(y / PX_PER_MINUTE / 15) * 15,
+                  <span className="day-name">
+                    <span className="sr-only">{DAY_NAMES[d]}</span>
+                    <span aria-hidden="true">{DAY_NAMES[d].slice(0, 3)}</span>
+                  </span>
+                  <strong>
+                    {Number(date.slice(8))} / {date.slice(5, 7)}
+                  </strong>
+                  <span className="day-count screen-count">
+                    {
+                      activities.filter(
+                        (a) =>
+                          a.date === date &&
+                          (categoryFilter === "all" ||
+                            a.categoryId === categoryFilter),
+                      ).length
+                    }{" "}
+                    pass
+                  </span>
+                  <span className="day-count print-count">
+                    {activities.filter((a) => a.date === date).length} pass
+                  </span>
+                  <span className="day-index" aria-hidden="true">
+                    {String(days.indexOf(d) + 1).padStart(2, "0")}
+                  </span>
+                  {date === today() && <span className="sr-only">Idag</span>}
+                  <button
+                    className="day-add"
+                    aria-label={`Lägg till aktivitet ${DAY_NAMES[d].toLowerCase()}`}
+                    onClick={() => onCreate(date)}
+                  >
+                    <Plus size={15} />
+                  </button>
+                </div>
+              );
+            })}
+            <div className="time-axis" style={{ height }}>
+              {ticks.map((n) => (
+                <span key={n} style={{ top: (n - start) * PX_PER_MINUTE }}>
+                  {time(n)}
+                </span>
+              ))}
+            </div>
+            {days.map((d) => {
+              const date = addDays(week, d);
+              return (
+                <div
+                  className={`day-shell ${d === activeDay ? "mobile-active" : ""}`}
+                  key={date}
+                >
+                  <DayColumn
+                    date={date}
+                    height={height}
+                    onCreate={(y) =>
+                      onCreate(
+                        date,
+                        Math.max(
+                          start,
+                          Math.min(
+                            end - 30,
+                            start + Math.floor(y / PX_PER_MINUTE / 15) * 15,
+                          ),
                         ),
-                      ),
-                    )
-                  }
-                >
-                  {ticks.map((n) => (
-                    <div
-                      className="hour-line"
-                      key={n}
-                      style={{ top: (n - start) * PX_PER_MINUTE }}
-                    />
-                  ))}
-                  {activities
-                    .filter((a) => a.date === date)
-                    .map((a) => (
-                      <CalendarBlock
-                        key={a.id}
-                        a={a}
-                        filteredOut={
-                          categoryFilter !== "all" &&
-                          a.categoryId !== categoryFilter
-                        }
-                        category={data.categories.find(
-                          (c) => c.id === a.categoryId,
-                        )}
-                        top={(a.start - start) * PX_PER_MINUTE}
-                        canMove={
-                          a.blockType !== "locked" &&
-                          Boolean(
-                            data.categories.find((c) => c.id === a.categoryId)
-                              ?.movable,
-                          ) &&
-                          (a.categoryId !== "music" ||
-                            data.settings.musicMovable)
-                        }
-                        onEdit={() => onEdit(a)}
-                        onStatusChange={(status) => onStatusChange(a, status)}
+                      )
+                    }
+                  >
+                    {ticks.map((n) => (
+                      <div
+                        className="hour-line"
+                        key={n}
+                        style={{ top: (n - start) * PX_PER_MINUTE }}
                       />
                     ))}
-                </DayColumn>
-              </div>
-            );
-          })}
+                    {activities
+                      .filter((a) => a.date === date)
+                      .map((a) => (
+                        <CalendarBlock
+                          key={a.id}
+                          a={a}
+                          filteredOut={
+                            categoryFilter !== "all" &&
+                            a.categoryId !== categoryFilter
+                          }
+                          category={data.categories.find(
+                            (c) => c.id === a.categoryId,
+                          )}
+                          top={(a.start - start) * PX_PER_MINUTE}
+                          canMove={
+                            a.blockType !== "locked" &&
+                            Boolean(
+                              data.categories.find((c) => c.id === a.categoryId)
+                                ?.movable,
+                            ) &&
+                            (a.categoryId !== "music" ||
+                              data.settings.musicMovable)
+                          }
+                          onEdit={() => onEdit(a)}
+                          onStatusChange={(status) => onStatusChange(a, status)}
+                        />
+                      ))}
+                  </DayColumn>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </DndContext>
       <div className="calendar-footer">

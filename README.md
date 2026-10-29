@@ -41,7 +41,7 @@ Demoläget kräver inga externa nycklar. Varje besökares plan sparas i den egna
 
 ## Det som fungerar
 
-- Svensk kalender med måndag som veckostart och mobil dagvy. Separata vyer för översikt, planerare, mål, inställningar och reflektion.
+- Svensk kalender med måndag som veckostart och rullbart veckoschema på mobil och surfplatta. Separata vyer för översikt, planerare, mål, inställningar och reflektion.
 - Varje kalenderhändelse har en kryssruta för Genomförd. Markeringen kan återställas och sparas med planen; genomförd tid visas i veckoreflektionen.
 - Skapa, redigera, ta bort och dra aktiviteter mellan dagar och tider. Tiden snäpps till 15 minuter. Alla redigeringar kan göras utan mus, via formuläret.
 - Låst tid kan bara ändras uttryckligen i formuläret eller genom inställningarna; den kan inte dras. Skyddad tid flyttas som ett helt block om dess regel tillåter det.

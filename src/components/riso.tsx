@@ -1,90 +1,10 @@
 "use client";
-import {
-  ArrowRight,
-  ArrowUpRight,
-  Check,
-  CircleHelp,
-  Settings2,
-} from "lucide-react";
-import { hours, time, weekNumber, weekLabel } from "@/lib/date";
+import { ArrowRight, ArrowUpRight, Check, Settings2 } from "lucide-react";
+import { hours, time, weekNumber } from "@/lib/date";
 import { categoryMinutes, targetMinutes } from "@/lib/planner";
 import { categoryInk, categoryLabel, categoryStyle } from "@/lib/presentation";
 import type { Activity, AppData, Category, Goal, WeekPlan } from "@/lib/types";
 
-export function RisoMark() {
-  return (
-    <svg className="riso-mark" aria-hidden="true" viewBox="0 0 128 128">
-      <path
-        fill="currentColor"
-        d="M64 4 76 47 108 20 87 56 124 64 87 76 108 108 76 87 64 124 52 87 20 108 41 76 4 64 41 52 20 20 52 41Z"
-      />
-    </svg>
-  );
-}
-export function Masthead({
-  week,
-  name,
-  connected,
-  onHome,
-  onAccount,
-  onHelp,
-}: {
-  week: string;
-  name: string;
-  connected: boolean;
-  onHome: () => void;
-  onAccount: () => void;
-  onHelp: () => void;
-}) {
-  return (
-    <header className="riso-header">
-      <div className="riso-topline">
-        <span>
-          <RisoMark />
-          Veckoplanering
-        </span>
-        <span className="topline-center">Europe/Stockholm</span>
-        <span>
-          {name} /{" "}
-          <button className="text-button" onClick={onHelp}>
-            <CircleHelp size={13} />
-            Hjälp
-          </button>
-        </span>
-      </div>
-      <div className="masthead">
-        <div className="masthead-main">
-          <div className="brandline">
-            <RisoMark />
-            <span>Jobb / lärande / musik / träning / familj</span>
-          </div>
-          <button
-            className="masthead-brand"
-            onClick={onHome}
-            aria-label="Veckoverket, startsida"
-          >
-            Vecko<span>verket</span>
-          </button>
-        </div>
-        <div className="issue-box">
-          <span className="issue-label">
-            Veckoplan / {new Date(`${week}T12:00:00Z`).getUTCFullYear()}
-          </span>
-          <strong>Vecka {weekNumber(week)}</strong>
-          <span className="issue-date">{weekLabel(week)}</span>
-        </div>
-      </div>
-      <div className="masthead-bottom">
-        <span>Aktiviteter / mål / uppföljning</span>
-        <button className="local-badge" onClick={onAccount}>
-          <span className="status-square" />
-          {connected ? "Anslutet konto" : "Lokalt demoläge"}
-          <ArrowUpRight size={13} />
-        </button>
-      </div>
-    </header>
-  );
-}
 export function CategoryFilter({
   categories,
   selected,
@@ -100,6 +20,11 @@ export function CategoryFilter({
 }) {
   return (
     <div className="filter-section">
+      <span className="filter-caption" aria-hidden="true">
+        Visa
+        <br />
+        kategori ↘
+      </span>
       <div
         className="category-filter"
         role="group"
@@ -163,6 +88,23 @@ export function EditorialSidebar({
     .reduce((n, a) => n + a.end - a.start, 0);
   return (
     <aside className="editorial-sidebar" aria-label="Veckosammanfattning">
+      <section className="editorial-index">
+        <span className="section-tag">[ Innehåll / 01 ]</span>
+        <h3>
+          Vecko
+          <br />
+          plan
+          <br />
+          <span>Nr.</span>
+          <br />
+          002.
+        </h3>
+        <p>
+          Översikt över aktiviteter, mål och tidsfördelning för vecka{" "}
+          {weekNumber(plan.week)}.
+        </p>
+        <span className="hand-underline" aria-hidden="true" />
+      </section>
       <section className="riso-total">
         <span className="overprint">Veckans timmar</span>
         <strong>{hours(total)}</strong>

@@ -159,13 +159,18 @@ test("överlappning nekas i editorn och låst tid kan inte dras", async ({
   const lunch = page.locator(".calendar-block.lunch").first();
   expect(await lunch.getAttribute("aria-roledescription")).toBeNull();
 });
-test("mobil dagvy, meny, redigering och ingen horisontell överströmning", async ({
+test("mobil dagrullning, navigation, redigering och ingen sidscroll", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("./");
   await expect(page.locator(".mobile-days")).toBeVisible();
-  await expect(page.locator(".day-shell:visible")).toHaveCount(1);
+  await expect(page.locator(".day-shell:visible")).toHaveCount(5);
+  expect(
+    await page
+      .locator(".calendar-viewport")
+      .evaluate((el) => el.scrollWidth > el.clientWidth),
+  ).toBe(true);
   await page.getByRole("button", { name: /Mån/ }).first().click();
   await expect(page.locator(".day-heading.mobile-active")).toContainText(
     "Måndag",
@@ -330,6 +335,15 @@ test("kategorifilter ändrar bara visningen och utskrift visar hela veckan", asy
     "true",
   );
   await page.setViewportSize({ width: 390, height: 844 });
+  await page
+    .getByRole("group", { name: "Välj dag", exact: true })
+    .getByRole("button", { name: /Fre/ })
+    .click();
+  await expect
+    .poll(() =>
+      page.locator(".calendar-viewport").evaluate((el) => el.scrollLeft),
+    )
+    .toBeGreaterThan(0);
   await page.emulateMedia({ media: "print" });
   await expect(page.locator(".day-shell:visible")).toHaveCount(5);
   await expect(page.locator(".calendar-block:visible")).toHaveCount(total);
@@ -347,12 +361,12 @@ test("kategorifilter ändrar bara visningen och utskrift visar hela veckan", asy
   const pages = pdf.toString("latin1").match(/\/Type\s*\/Page\b/g) ?? [];
   expect(pages.length).toBe(1);
 });
-test("RISO-layout i 1440, 768 och 390 px utan horisontell överströmning", async ({
+test("PUNK RISO-layout i 1440, 1024, 768 och 390 px utan sidscroll", async ({
   page,
 }) => {
   test.setTimeout(60000);
   const { default: AxeBuilder } = await import("@axe-core/playwright");
-  for (const width of [1440, 768, 390]) {
+  for (const width of [1440, 1024, 768, 390]) {
     await page.setViewportSize({ width, height: 1024 });
     await page.goto("./");
     await expect(page.locator(".calendar-grid")).toBeVisible();
@@ -431,4 +445,30 @@ test("varje kalenderhändelse kan bockas av, återställas och sparas utan att �
   expect((await stored(page)).weeks[week].activities).toEqual(
     before.weeks[week].activities,
   );
+});
+test("baksidans länkar visar och fokuserar reflektion respektive lagringsinställningar", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await expect(page.locator(".calendar-grid")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Visa veckoreflektioner", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Veckoreflektion", exact: true }),
+  ).toBeInViewport();
+  await expect(page.locator("#main-content")).toBeFocused();
+  await page
+    .getByRole("button", {
+      name: "Lagring och säkerhetskopiering",
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByRole("heading", {
+      name: "Lagring och säkerhetskopiering",
+      exact: true,
+    }),
+  ).toBeInViewport();
+  await expect(page.locator("#storage-settings")).toBeFocused();
 });
