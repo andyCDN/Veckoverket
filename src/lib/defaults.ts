@@ -91,35 +91,35 @@ export function createData(): AppData {
     goals: [
       {
         id: "g-career",
-        title: "Ta nästa steg i arbetslivet",
+        title: "Jobbsökande och nätverkande",
         categoryId: "career",
         horizon: "week",
         week,
-        description: "Meningsfulla kontakter och genomarbetade ansökningar.",
+        description: "Två ansökningar, tre kontakter och fem arbetsgivare.",
       },
       {
         id: "g-learning",
-        title: "Bygg vidare på din kompetens",
+        title: "Kompetensutveckling",
         categoryId: "learning",
         horizon: "week",
         week,
-        description: "Lärande som får ta tid och bli konkret.",
+        description: "Två utbildningsmoduler och fyra timmar projektarbete.",
       },
       {
         id: "g-music",
-        title: "Ge musiken utrymme",
+        title: "Musikproduktion",
         categoryId: "music",
         horizon: "week",
         week,
-        description: "Skapa för skapandets skull.",
+        description: "Spela in en gitarrdel och färdigställ ett arrangemang.",
       },
       {
         id: "g-long",
-        title: "Hitta en hållbar riktning i arbetslivet",
+        title: "Hitta en anställning",
         categoryId: "career",
         horizon: "long",
         week,
-        description: "Ett arbete som passar både din kompetens och ditt liv.",
+        description: "Långsiktigt mål för jobbsökandet.",
       },
     ],
     tasks: [
@@ -166,5 +166,60 @@ export function createData(): AppData {
         done: false,
       },
     ],
+  };
+}
+
+// Refresh only known, unchanged demo copy in existing local/cloud documents.
+// User-written goals, notes, times and activity outcomes are preserved.
+export function refreshDemoCopy(data: AppData): AppData {
+  const legacy: Record<string, { title: string; description: string }> = {
+    "g-career": {
+      title: "Ta nästa steg i arbetslivet",
+      description: "Meningsfulla kontakter och genomarbetade ansökningar.",
+    },
+    "g-learning": {
+      title: "Bygg vidare på din kompetens",
+      description: "Lärande som får ta tid och bli konkret.",
+    },
+    "g-music": {
+      title: "Ge musiken utrymme",
+      description: "Skapa för skapandets skull.",
+    },
+    "g-long": {
+      title: "Hitta en hållbar riktning i arbetslivet",
+      description: "Ett arbete som passar både din kompetens och ditt liv.",
+    },
+  };
+  const defaults = createData().goals;
+  return {
+    ...data,
+    goals: data.goals.map((goal) => {
+      const old = legacy[goal.id];
+      const current = defaults.find((g) => g.id === goal.id);
+      if (!old || !current) return goal;
+      return {
+        ...goal,
+        title: goal.title === old.title ? current.title : goal.title,
+        description:
+          goal.description === old.description
+            ? current.description
+            : goal.description,
+      };
+    }),
+    weeks: Object.fromEntries(
+      Object.entries(data.weeks).map(([week, plan]) => [
+        week,
+        {
+          ...plan,
+          activities: plan.activities.map((a) =>
+            a.source === "generated" &&
+            a.categoryId === "health" &&
+            a.title === "Träning & ny energi"
+              ? { ...a, title: "Träning" }
+              : a,
+          ),
+        },
+      ]),
+    ),
   };
 }

@@ -1,6 +1,6 @@
 # Veckoverket
 
-En svensk webbapp för balanserad livs- och veckoplanering. **Planera livet först, uppgifterna sedan.**
+En svensk webbapp för veckoplanering, målhantering och uppföljning.
 
 ## Starta lokalt
 

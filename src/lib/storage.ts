@@ -1,4 +1,5 @@
 import type { AppData } from "./types";
+import { refreshDemoCopy } from "./defaults";
 export const STORAGE_KEY = "veckoverket.workspace.v1";
 export interface StorageLike {
   getItem(key: string): string | null;
@@ -141,7 +142,7 @@ export function decodeData(raw: string): AppData {
       )
     )
       throw new Error("En reflektion är ogiltig.");
-  return d as AppData;
+  return refreshDemoCopy(d as AppData);
 }
 export function loadLocal(
   storage: StorageLike,

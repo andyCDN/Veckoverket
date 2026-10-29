@@ -38,7 +38,7 @@ export function Account({
   }
   return (
     <Modal
-      title="Din plan, även i molnet"
+      title="Konto och molnlagring"
       description="Det lokala demoläget fungerar alltid utan konto."
       onClose={onClose}
     >
@@ -55,7 +55,7 @@ export function Account({
             Installationsanvisningarna i README beskriver hur den aktiveras.
           </p>
           <button className="button primary" onClick={onClose}>
-            Fortsätt planera
+            Stäng
           </button>
         </div>
       ) : user ? (
@@ -168,9 +168,7 @@ export function Account({
             type="button"
             onClick={() => setSignup(!signup)}
           >
-            {signup
-              ? "Har du redan ett konto? Logga in"
-              : "Ny här? Skapa ett konto"}
+            {signup ? "Har du redan ett konto? Logga in" : "Skapa ett konto"}
           </button>
         </form>
       )}

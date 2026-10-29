@@ -23,8 +23,8 @@ export function GoalForm({
     [taskText, setTaskText] = useState("");
   return (
     <Modal
-      title="Vad vill du ge riktning?"
-      description="Ett mål får vara litet. Det viktiga är att det är ditt."
+      title="Nytt mål"
+      description="Ange mål, livsområde och tillhörande uppgifter."
       onClose={onClose}
     >
       <form
@@ -90,7 +90,7 @@ export function GoalForm({
           </label>
         </div>
         <label>
-          Varför är det viktigt?
+          Beskrivning
           <textarea
             rows={2}
             value={description}
@@ -136,9 +136,8 @@ export function GoalsView({
     <section className="page-section">
       <div className="section-heading">
         <div>
-          <span className="eyebrow">Riktning framför prestation</span>
-          <h2>Små steg. Meningsfulla mål.</h2>
-          <p>Skilj på tiden du ger och det som faktiskt blir gjort.</p>
+          <h2>Veckomål och långsiktiga mål</h2>
+          <p>Hantera mål och tillhörande uppgifter.</p>
         </div>
         <button className="button primary" onClick={onNew}>
           <Plus size={17} />
@@ -248,8 +247,8 @@ export function GoalsView({
               <Target size={28} />
               <p>
                 {horizon === "week"
-                  ? "Här finns plats för den nya veckans mål."
-                  : "Vad vill du röra dig mot på sikt?"}
+                  ? "Inga veckomål."
+                  : "Inga långsiktiga mål."}
               </p>
               <button className="text-button" onClick={onNew}>
                 Skapa ett mål <Plus size={14} />

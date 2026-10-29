@@ -4,17 +4,21 @@ import { categoryMinutes } from "@/lib/planner";
 import { hours, weekLabel, weekNumber } from "@/lib/date";
 import type { AppData, Reflection } from "@/lib/types";
 const prompts = [
-  ["good", "Vad fungerade bra?", "Även de små sakerna räknas."],
-  ["unfinished", "Vad blev inte gjort?", "Utan att döma – bara notera."],
+  ["good", "Vad fungerade bra?", "Beskriv vad som fungerade."],
+  [
+    "unfinished",
+    "Vad blev inte gjort?",
+    "Ange aktiviteter eller uppgifter som återstår.",
+  ],
   [
     "balance",
     "Hur fungerade balansen?",
-    "Fick livet och arbetet det utrymme du behövde?",
+    "Beskriv fördelningen mellan livsområdena.",
   ],
   [
     "next",
     "Vad vill du förändra nästa vecka?",
-    "En liten justering kan räcka.",
+    "Ange ändringar inför nästa vecka.",
   ],
 ] as const;
 export function ReflectionView({
@@ -44,9 +48,8 @@ export function ReflectionView({
     <section className="page-section">
       <div className="section-heading">
         <div>
-          <span className="eyebrow">Stanna upp en stund</span>
-          <h2>Hur kändes veckan?</h2>
-          <p>Det här är en reflektion, inte en utvärdering av dig.</p>
+          <h2>Uppföljning av veckan</h2>
+          <p>Jämför planerad tid, genomförd tid och resultat.</p>
         </div>
         <span className="saved-label">
           <Check size={14} />
@@ -93,15 +96,11 @@ export function ReflectionView({
                 </button>
               ))}
             {Object.keys(data.reflections).filter((w) => w !== week).length ===
-              0 && (
-              <p className="muted">
-                Dina sparade reflektioner får en plats här.
-              </p>
-            )}
+              0 && <p className="muted">Inga tidigare reflektioner.</p>}
           </div>
         </div>
         <aside className="reflection-summary">
-          <h3>Tiden du gav</h3>
+          <h3>Planerad och genomförd tid</h3>
           <p>
             Markera en aktivitet som genomförd i kalendern för att följa din
             faktiska tid.

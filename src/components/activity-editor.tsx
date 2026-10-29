@@ -110,8 +110,8 @@ export function ActivityEditor({
   }
   return (
     <Modal
-      title={activity ? "Redigera aktivitet" : "En ny bit av veckan"}
-      description="Ge det som är viktigt en egen plats."
+      title={activity ? "Redigera aktivitet" : "Ny aktivitet"}
+      description="Ange livsområde, datum och tid för aktiviteten."
       onClose={onClose}
     >
       <form onSubmit={submit} className="stack">
@@ -121,7 +121,7 @@ export function ActivityEditor({
             autoFocus
             required
             maxLength={100}
-            placeholder="Vad vill du ge tid till?"
+            placeholder="Aktivitetens namn"
             value={form.title}
             onChange={(e) => patch({ title: e.target.value })}
           />
@@ -278,7 +278,7 @@ export function ActivityEditor({
           <textarea
             rows={2}
             maxLength={2000}
-            placeholder="En liten anteckning, om du vill."
+            placeholder="Beskrivning (valfritt)"
             value={form.description}
             onChange={(e) => patch({ description: e.target.value })}
           />

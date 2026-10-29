@@ -20,9 +20,7 @@ test("svensk vecka, musikalternativ, överbelastning och beständig lagring", as
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("./");
-  await expect(
-    page.getByRole("heading", { name: "Lite mer balans i vardagen." }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Min vecka" })).toBeVisible();
   await page.screenshot({ path: "test-results/desktop.png", fullPage: true });
   let data = await stored(page),
     week = Object.keys(data.weeks)[0];
@@ -37,9 +35,7 @@ test("svensk vecka, musikalternativ, överbelastning och beständig lagring", as
     page.locator(".preview-row").filter({ hasText: "Jobb & nätverk" }),
   ).toContainText("8,5 h");
   await page.getByRole("button", { name: "Spara och planera veckan" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Lite mer balans i vardagen." }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Min vecka" })).toBeVisible();
   await page.reload();
   await expect(
     page.locator(".balance-stat").filter({ hasText: "Jobb & nätverk" }),
@@ -189,7 +185,7 @@ test("mobil dagvy, meny, redigering och ingen horisontell överströmning", asyn
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await nav(page, "Inställningar");
   await expect(
-    page.getByRole("heading", { name: "En vecka som passar ditt liv." }),
+    page.getByRole("heading", { name: "Tillgänglighet och tidsmål" }),
   ).toBeVisible();
   expect(
     await page.evaluate(

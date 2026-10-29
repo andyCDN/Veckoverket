@@ -312,3 +312,34 @@ describe("historik och skyddade placeringar", () => {
     expect(assessWeek(plan, d)).toEqual([]);
   });
 });
+describe("uppdatering av standardtexter", () => {
+  it("ersätter äldre demotexter utan att ändra egna texter eller planeringsdata", () => {
+    const data = createData();
+    data.weeks[week] = generateWeek(week, data).plan;
+    data.goals[0].title = "Ta nästa steg i arbetslivet";
+    data.goals[0].description =
+      "Meningsfulla kontakter och genomarbetade ansökningar.";
+    data.goals[1].title = "Min egen utbildningsplan";
+    data.goals[1].description = "Min egen beskrivning";
+    data.goals.push({ ...data.goals[0], id: "custom-goal" });
+    data.tasks[0].done = true;
+    const training = data.weeks[week].activities.find(
+      (a) => a.categoryId === "health",
+    )!;
+    training.title = "Träning & ny energi";
+    training.status = "done";
+    const before = structuredClone(data);
+    const loaded = decodeData(JSON.stringify(data));
+    expect(loaded.goals[0].title).toBe("Jobbsökande och nätverkande");
+    expect(loaded.goals[0].description).toBe(createData().goals[0].description);
+    expect(loaded.goals[1]).toEqual(before.goals[1]);
+    expect(loaded.goals.at(-1)).toEqual(before.goals.at(-1));
+    expect(loaded.tasks).toEqual(before.tasks);
+    expect(loaded.settings).toEqual(before.settings);
+    const updated = loaded.weeks[week].activities.find(
+      (a) => a.id === training.id,
+    )!;
+    expect(updated).toEqual({ ...training, title: "Träning" });
+    expect(decodeData(JSON.stringify(loaded))).toEqual(loaded);
+  });
+});

@@ -8,8 +8,6 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleHelp,
-  Coffee,
-  Flower2,
   LayoutDashboard,
   Menu,
   Plus,
@@ -19,9 +17,7 @@ import {
   X,
   BookOpen,
   AlertCircle,
-  Leaf,
   Cloud,
-  RefreshCw,
   ShieldCheck,
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
@@ -175,7 +171,7 @@ export function Workspace() {
       <div className="loading">
         <div className="brand-mark">v</div>
         <h1>Veckoverket</h1>
-        <p>Vi gör plats för din vecka…</p>
+        <p>Laddar veckoplanen…</p>
       </div>
     );
   const plan = data.weeks[week] ?? generateWeek(week, data).plan,
@@ -226,7 +222,7 @@ export function Workspace() {
       ...plan,
       activities: activities.map((item) => (item.id === a.id ? moved : item)),
     });
-    notify("Aktiviteten har fått en ny plats.");
+    notify("Aktiviteten har flyttats.");
   }
   function saveActivity(
     a: Activity,
@@ -354,7 +350,7 @@ export function Workspace() {
     notify(
       result.conflicts.length
         ? "Inställningarna är sparade. Se planeringsförslagen för det som inte ryms."
-        : "Din vecka är uppdaterad. Med plats för det viktiga.",
+        : "Veckoplanen är uppdaterad.",
     );
   }
   function replaceData(imported: AppData) {
@@ -398,7 +394,7 @@ export function Workspace() {
         >
           <X size={20} />
         </button>
-        <div className="workspace-label">DITT UTRYMME</div>
+        <div className="workspace-label">NAVIGATION</div>
         <nav aria-label="Huvudnavigation">
           {NAV.map(({ id, label, icon: Icon }) => (
             <button
@@ -413,22 +409,10 @@ export function Workspace() {
             </button>
           ))}
         </nav>
-        <div className="sidebar-note">
-          <span className="note-art">
-            <Leaf size={30} strokeWidth={1.2} />
-            <span />
-          </span>
-          <p>
-            Planera livet först.
-            <br />
-            <strong>Uppgifterna sedan.</strong>
-          </p>
-          <span>Lite mer balans. Lite mer du.</span>
-        </div>
         <div className="sidebar-bottom">
           <button className="help-button" onClick={() => setHelp(true)}>
             <CircleHelp size={18} />
-            En liten introduktion
+            Hjälp
             <ArrowUpRight size={14} />
           </button>
           <button className="profile-button" onClick={() => setAccount(true)}>
@@ -437,7 +421,7 @@ export function Workspace() {
             </span>
             <span>
               <strong>{data.profile.name}</strong>
-              <small>{user ? "Anslutet konto" : "Personligt utrymme"}</small>
+              <small>{user ? "Anslutet konto" : "Lokal profil"}</small>
             </span>
             <Settings2 size={16} />
           </button>
@@ -454,7 +438,7 @@ export function Workspace() {
               <Menu size={21} />
             </button>
             <span className="breadcrumb">
-              Mitt utrymme<span>/</span>
+              Planering<span>/</span>
               <strong>{NAV.find((n) => n.id === view)?.label}</strong>
             </span>
           </div>
@@ -474,16 +458,9 @@ export function Workspace() {
         <main id="main-content" tabIndex={-1}>
           <div className="main-heading">
             <div>
-              <p className="eyebrow">
-                {view === "dashboard"
-                  ? `HEJ ${data.profile.name.toUpperCase()}, VÄLKOMMEN TILL DIN VECKA`
-                  : view === "planner"
-                    ? "TID FÖR DET SOM ÄR VIKTIGT"
-                    : "PLANERA LIVET FÖRST"}
-              </p>
               <h1>
                 {view === "dashboard"
-                  ? "Lite mer balans i vardagen."
+                  ? "Min vecka"
                   : NAV.find((n) => n.id === view)?.label}
               </h1>
             </div>
@@ -511,49 +488,6 @@ export function Workspace() {
               </button>
             </div>
           )}
-          {view === "dashboard" && (
-            <section className="welcome-banner">
-              <div className="welcome-copy">
-                <span className="eyebrow">
-                  <span className="small-sun" />
-                  EN VECKA, MÅNGA MÖJLIGHETER
-                </span>
-                <h2>
-                  Gör plats för det
-                  <br />
-                  som betyder något.
-                </h2>
-                <p>
-                  Arbete, skapande och livet däremellan.
-                  <br />
-                  Din vecka behöver inte vara full för att vara meningsfull.
-                </p>
-                <button
-                  className="text-button"
-                  onClick={() => navigate("settings")}
-                >
-                  Forma din vecka
-                  <ArrowRight size={17} />
-                </button>
-              </div>
-              <div className="balance-art" aria-hidden="true">
-                <div className="art-orbit" />
-                <div className="art-sun" />
-                <div className="art-dots" />
-                <div className="art-arch" />
-                <div className="art-stack">
-                  <i />
-                  <i />
-                  <i />
-                </div>
-                <span className="art-caption">
-                  lite arbete. lite skapande.
-                  <br />
-                  <em>mycket liv.</em>
-                </span>
-              </div>
-            </section>
-          )}
           {(view === "dashboard" || view === "planner") && (
             <>
               <section
@@ -561,8 +495,8 @@ export function Workspace() {
                 aria-label="Veckans tidsfördelning"
               >
                 <div className="balance-heading">
-                  <h2>Din vecka i balans</h2>
-                  <span>Planerad tid · inte ett prestationsmål</span>
+                  <h2>Veckans tidsfördelning</h2>
+                  <span>Planerad tid per livsområde</span>
                 </div>
                 <div className="balance-stats">
                   {data.categories.map((c) => (
@@ -580,9 +514,9 @@ export function Workspace() {
                         {hours(totals[c.id] ?? 0)}
                         <span>
                           {c.id === "career"
-                            ? "utrymme för nästa steg"
+                            ? "planerad jobbtid"
                             : c.id === "family"
-                              ? "skyddad vardag"
+                              ? "reserverad tid"
                               : c.id === "rest"
                                 ? "inklusive lunch & paus"
                                 : `av ${hours(plan.targets?.[c.id] ?? targetMinutes(c, weekData.settings))}`}
@@ -656,11 +590,7 @@ export function Workspace() {
                   {view === "dashboard" && (
                     <aside className="week-aside">
                       <section className="focus-panel">
-                        <div className="panel-label">
-                          <span className="focus-dot" />
-                          ETT STEG I TAGET
-                        </div>
-                        <h3>Nästa lilla fokus</h3>
+                        <h3>Nästa aktivitet</h3>
                         {focus ? (
                           <>
                             <span
@@ -708,9 +638,7 @@ export function Workspace() {
                                       : a,
                                   ),
                                 });
-                                notify(
-                                  "Genomförd tid är sparad. Bra att du gav den plats.",
-                                );
+                                notify("Genomförd tid är sparad.");
                               }}
                             >
                               <Check size={15} />
@@ -718,15 +646,12 @@ export function Workspace() {
                             </button>
                           </>
                         ) : (
-                          <p>
-                            Du har gett allt planerat utrymme. Ta en stund för
-                            dig själv.
-                          </p>
+                          <p>Inga återstående planerade aktiviteter.</p>
                         )}
                       </section>
                       <section className="weekly-goals">
                         <div className="aside-heading">
-                          <h3>Veckans riktning</h3>
+                          <h3>Veckans mål</h3>
                           <Target size={16} />
                         </div>
                         {goals.slice(0, 3).map((g) => (
@@ -762,12 +687,7 @@ export function Workspace() {
                               ))}
                           </div>
                         ))}
-                        {!goals.length && (
-                          <p>
-                            En ny vecka, en ny riktning. Vilket litet steg vill
-                            du ta?
-                          </p>
-                        )}
+                        {!goals.length && <p>Inga mål för den här veckan.</p>}
                         <button
                           className="text-button"
                           onClick={() => navigate("goals")}
@@ -776,14 +696,6 @@ export function Workspace() {
                           <ArrowRight size={14} />
                         </button>
                       </section>
-                      <div className="gentle-note">
-                        <Coffee size={19} />
-                        <p>
-                          Glöm inte mellanrummen.
-                          <br />
-                          <span>De är också en del av planen.</span>
-                        </p>
-                      </div>
                     </aside>
                   )}
                 </div>
@@ -802,7 +714,7 @@ export function Workspace() {
                   <h3>
                     {conflicts.length
                       ? `${conflicts.length} saker att se över`
-                      : "Det finns plats för det viktiga."}
+                      : "Inga planeringskonflikter"}
                   </h3>
                   {conflicts.length ? (
                     conflicts.map((c) => (
@@ -812,10 +724,7 @@ export function Workspace() {
                       </div>
                     ))
                   ) : (
-                    <p>
-                      Inga överlappningar. Lunch och familjetid är skyddade.
-                      Kvällarna är dina.
-                    </p>
+                    <p>Inga överlappningar eller saknade tidsmål.</p>
                   )}
                 </div>
                 {conflicts.length > 0 && (
@@ -978,10 +887,6 @@ export function Workspace() {
           )}
           <footer className="page-footer">
             <span>
-              <Flower2 size={14} />
-              Bygg en vardag att trivas i.
-            </span>
-            <span>
               {storageError
                 ? "Lagring behöver ses över"
                 : blockedSave
@@ -1028,7 +933,7 @@ export function Workspace() {
               tasks: [...data.tasks, ...tasks],
             });
             setNewGoal(false);
-            notify("Ditt nya mål har fått en plats.");
+            notify("Målet har skapats.");
           }}
           onClose={() => setNewGoal(false)}
         />
@@ -1075,7 +980,7 @@ export function Workspace() {
             ) : (
               <p className="preview-success">
                 <Check size={17} />
-                Önskemålen får plats utan överlappningar.
+                Inga konflikter i förslaget.
               </p>
             )}
             <button
@@ -1105,20 +1010,16 @@ export function Workspace() {
         />
       )}
       {help && (
-        <Modal
-          title="Välkommen till ditt Veckoverk"
-          description="Planera livet först. Uppgifterna sedan."
-          onClose={() => setHelp(false)}
-        >
+        <Modal title="Hjälp" onClose={() => setHelp(false)}>
           <div className="stack intro">
             <p>
-              <strong>1. Börja med ramarna.</strong>
+              <strong>1. Ange planeringsregler.</strong>
               <br />
               Under inställningar väljer du tider, musikförmiddagar,
               träningspass och dina livsområden.
             </p>
             <p>
-              <strong>2. Gör veckan till din.</strong>
+              <strong>2. Redigera aktiviteter.</strong>
               <br />
               Klicka på ett tidsblock för att redigera. Dra flexibla aktiviteter
               till en ledig tid. Skyddad tid hålls samman och låst tid flyttas
@@ -1126,18 +1027,18 @@ export function Workspace() {
               tangentbord i formuläret.
             </p>
             <p>
-              <strong>3. Följ riktningen.</strong>
+              <strong>3. Följ upp tid och uppgifter.</strong>
               <br />
               Skapa mål och bocka av konkreta uppgifter. Markera aktiviteter som
               genomförda för att skilja på planerad och faktisk tid. Reflektera
               när veckan är slut.
             </p>
             <p>
-              Planen sparas lokalt i den här webbläsaren. Exportera gärna en
+              Planen sparas lokalt i den här webbläsaren. Exportera en
               säkerhetskopia. Inget konto eller någon extern tjänst behövs.
             </p>
             <button className="button primary" onClick={() => setHelp(false)}>
-              Nu gör vi plats
+              Stäng
               <ArrowRight size={16} />
             </button>
           </div>

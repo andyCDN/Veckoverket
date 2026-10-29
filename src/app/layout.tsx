@@ -3,9 +3,8 @@ import "@fontsource-variable/dm-sans/index.css";
 import "@fontsource-variable/manrope/index.css";
 import "./globals.css";
 export const metadata: Metadata = {
-  title: "Veckoverket – Planera livet först",
-  description:
-    "En lugnare vecka med plats för arbete, kreativitet och livet däremellan.",
+  title: "Veckoverket – Veckoplanering",
+  description: "Veckoplanering med aktiviteter, tidsmål och uppföljning.",
   applicationName: "Veckoverket",
 };
 export default function RootLayout({

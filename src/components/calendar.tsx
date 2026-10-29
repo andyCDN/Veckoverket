@@ -75,13 +75,7 @@ function CalendarBlock({
       <span className="block-title">{a.title}</span>
       {a.end - a.start >= 100 && (
         <span className="block-subtitle">
-          {a.blockType === "protected"
-            ? "Tid att fördjupa sig"
-            : a.categoryId === "career"
-              ? "Ett steg i din riktning"
-              : a.categoryId === "learning"
-                ? "Utrymme att växa"
-                : category?.name}
+          {a.blockType === "protected" ? "Sammanhängande pass" : category?.name}
         </span>
       )}
     </button>
@@ -160,7 +154,7 @@ export function Calendar({
   if (!days.length)
     return (
       <div className="empty-state">
-        <h3>Veckan är öppen</h3>
+        <h3>Inga planeringsdagar</h3>
         <p>Välj vilka dagar du vill planera i inställningarna.</p>
       </div>
     );

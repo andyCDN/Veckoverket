@@ -31,8 +31,8 @@ function CategoryForm({
     [color, setColor] = useState("#54796d");
   return (
     <Modal
-      title="Ett nytt livsområde"
-      description="Vad mer vill du göra plats för?"
+      title="Nytt livsområde"
+      description="Ange namn och färg för livsområdet."
       onClose={onClose}
     >
       <form
@@ -130,9 +130,9 @@ export function SettingsView({
     <section className="page-section">
       <div className="section-heading">
         <div>
-          <span className="eyebrow">Dina förutsättningar</span>
-          <h2>En vecka som passar ditt liv.</h2>
-          <p>Du bestämmer ramarna. Vi hjälper dig att hitta utrymmet.</p>
+          <span className="eyebrow">Planeringsregler</span>
+          <h2>Tillgänglighet och tidsmål</h2>
+          <p>Ange dagar, tider och regler för schemagenerering.</p>
         </div>
       </div>
       <form onSubmit={apply} className="settings-layout">
@@ -141,8 +141,8 @@ export function SettingsView({
             <div className="settings-section-title">
               <span>01</span>
               <div>
-                <h3>Tid för vardagen</h3>
-                <p>Skydda det som behöver en fast plats.</p>
+                <h3>Tillgänglighet och fasta tider</h3>
+                <p>Ange tillgängliga dagar och återkommande avbrott.</p>
               </div>
             </div>
             <label className="name-input">
@@ -271,8 +271,8 @@ export function SettingsView({
             <div className="settings-section-title">
               <span>02</span>
               <div>
-                <h3>Plats för hela dig</h3>
-                <p>Sammanhängande skapande och rörelse som ger energi.</p>
+                <h3>Musik och träning</h3>
+                <p>Ange antal pass, passlängd och regler för flytt.</p>
               </div>
             </div>
             <div className="choice-row">
@@ -553,7 +553,7 @@ export function SettingsView({
         </div>
         <aside className="settings-preview">
           <SlidersHorizontal size={22} />
-          <h3>Så ryms din vecka</h3>
+          <h3>Kapacitetsberäkning</h3>
           <p>Förhandsvisningen uppdateras när du ändrar dina val.</p>
           <div className="capacity-number">
             {hours(capacity(s))}
@@ -577,7 +577,7 @@ export function SettingsView({
             <p className="inline-error">Kontrollera dina tider.</p>
           ) : preview?.conflicts.length ? (
             <div className="preview-warning">
-              <strong>Allt ryms inte ännu</strong>
+              <strong>Otillräcklig kapacitet</strong>
               {preview.conflicts.slice(0, 4).map((c) => (
                 <p key={c.id}>{c.message}</p>
               ))}
@@ -586,17 +586,17 @@ export function SettingsView({
           ) : (
             <div className="preview-success">
               <Check size={16} />
-              Dina önskemål får plats.
+              Inga konflikter i förslaget.
             </div>
           )}
           <div className="preview-note">
-            Lunch och familjetid är reserverade. Kvällarna är dina.
+            Lunch och familjetid är reserverade enligt inställningarna.
           </div>
         </aside>
       </form>
       <section className="data-section">
         <div>
-          <h3>Din plan, på dina villkor.</h3>
+          <h3>Lagring och säkerhetskopiering</h3>
           <p>
             Demoläget sparar på den här enheten. Exportera en säkerhetskopia
             eller använd ett konto för molnlagring.

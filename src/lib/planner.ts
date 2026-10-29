@@ -362,7 +362,7 @@ export function generateWeek(
         const slot = slots()[0];
         if (!slot) break;
         add({
-          title: "Träning & ny energi",
+          title: "Träning",
           categoryId: c.id,
           date: slot.date,
           start: slot.start,
