@@ -87,6 +87,7 @@ export function SettingsView({
   onRemoveRecurring,
   onAccount,
   onReset,
+  cloudEnabled = false,
 }: {
   data: AppData;
   week: string;
@@ -95,6 +96,7 @@ export function SettingsView({
   onRemoveRecurring: (id: string) => void;
   onAccount: () => void;
   onReset: () => void;
+  cloudEnabled?: boolean;
 }) {
   const [s, setS] = useState(data.settings),
     [cats, setCats] = useState(data.categories),
@@ -596,8 +598,9 @@ export function SettingsView({
         <div>
           <h3>Lagring och säkerhetskopiering</h3>
           <p>
-            Demoläget sparar på den här enheten. Exportera en säkerhetskopia
-            eller använd ett konto för molnlagring.
+            {cloudEnabled
+              ? "Planen sparas automatiskt i ditt konto. Export och import omfattar hela planen, mål och reflektioner."
+              : "Planen sparas på den här enheten. Molnanslutningen har inte aktiverats ännu."}
           </p>
         </div>
         <div className="data-actions">
@@ -619,7 +622,7 @@ export function SettingsView({
             Konto & molnlagring
           </button>
           <button className="text-button danger" onClick={onReset}>
-            Återställ demo
+            Skapa ny plan
           </button>
         </div>
         <input
@@ -635,7 +638,9 @@ export function SettingsView({
               const imported = decodeData(await selected.text());
               if (
                 window.confirm(
-                  "Ersätt den lokala planen med säkerhetskopian? Exportera din nuvarande plan först om du vill behålla den.",
+                  cloudEnabled
+                    ? "Ersätt kontots plan med säkerhetskopian? Detta sparas i molnet. Exportera din nuvarande plan först om du vill behålla den."
+                    : "Ersätt den lokala planen med säkerhetskopian? Exportera din nuvarande plan först om du vill behålla den.",
                 )
               )
                 onImport(imported);

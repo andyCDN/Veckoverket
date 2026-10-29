@@ -1,22 +1,29 @@
 "use client";
 import { useState } from "react";
-import { Cloud, Download, Upload, LogOut } from "lucide-react";
+import { Cloud, Download, LogOut, RefreshCw } from "lucide-react";
 import { Modal } from "./modal";
-import { supabase, loadCloud, saveCloud } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
+import { downloadData } from "@/lib/storage";
 import type { AppData } from "@/lib/types";
+import type { SyncSnapshot } from "@/lib/workspace-sync";
 import type { User } from "@supabase/supabase-js";
+import { syncLabel } from "./storage-status";
 export function Account({
   data,
   user,
-  onUser,
-  onLoad,
+  state,
+  onSync,
+  onLogout,
   onClose,
+  embedded = false,
 }: {
-  data: AppData;
+  data: AppData | null;
   user: User | null;
-  onUser: (u: User | null) => void;
-  onLoad: (d: AppData) => void;
+  state: SyncSnapshot;
+  onSync: () => Promise<void> | undefined;
+  onLogout: () => Promise<void>;
   onClose: () => void;
+  embedded?: boolean;
 }) {
   const [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
@@ -28,111 +35,117 @@ export function Account({
     setMessage("");
     try {
       await fn();
-    } catch (e) {
+    } catch (error) {
       setMessage(
-        e instanceof Error ? e.message : "Något gick fel. Försök igen.",
+        error instanceof Error
+          ? error.message
+          : "Försöket misslyckades. Försök igen.",
       );
     } finally {
       setBusy(false);
     }
   }
-  return (
-    <Modal
-      title="Konto och molnlagring"
-      description="Det lokala demoläget fungerar alltid utan konto."
-      onClose={onClose}
-    >
+  const contents = (
+    <>
       {!supabase ? (
         <div className="account-empty">
           <Cloud size={32} />
-          <h3>Du är i lokalt demoläge</h3>
+          <h3>Molnlagring väntar på anslutning</h3>
           <p>
-            Din plan sparas i den här webbläsaren. Du kan exportera en
-            säkerhetskopia under inställningar.
+            Planen sparas fortfarande på den här enheten. Molnlagringen
+            aktiveras när installationen har anslutits till ett projekt.
           </p>
-          <p>
-            För konton behöver miljön en Supabase-anslutning.
-            Installationsanvisningarna i README beskriver hur den aktiveras.
-          </p>
-          <button className="button primary" onClick={onClose}>
-            Stäng
-          </button>
+          <a
+            href="https://github.com/andyCDN/Veckoverket/blob/main/docs/cloud-setup.md"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Installationsguide för molnlagring
+          </a>
+          {data && (
+            <button
+              className="button secondary"
+              onClick={() => downloadData(data)}
+            >
+              <Download size={16} />
+              Exportera nuvarande plan
+            </button>
+          )}
         </div>
       ) : user ? (
         <div className="stack">
           <p>
             Inloggad som <strong>{user.email}</strong>
           </p>
+          <p role="status">{syncLabel(state)}</p>
           <p>
-            Molnlagring sker när du väljer att spara. Den senaste sparade
-            versionen ersätter föregående; samredigering stöds inte ännu.
+            Ändringar sparas automatiskt i ditt konto. Enhetens kopia används
+            vid avbrott och skickas när anslutningen återkommer.
           </p>
           <button
-            disabled={busy}
             className="button primary"
+            disabled={
+              busy || state.phase === "conflict" || state.phase === "migration"
+            }
             onClick={() =>
               run(async () => {
-                await saveCloud(user.id, data);
-                setMessage("Din plan är sparad i molnet.");
+                await onSync();
               })
             }
           >
-            <Upload size={17} />
-            Spara aktuell plan i molnet
+            <RefreshCw size={16} />
+            Synkronisera nu
           </button>
+          {data && (
+            <button
+              className="button secondary"
+              onClick={() => downloadData(data)}
+            >
+              <Download size={16} />
+              Exportera säkerhetskopia
+            </button>
+          )}
           <button
-            disabled={busy}
-            className="button secondary"
-            onClick={() =>
-              run(async () => {
-                const remote = await loadCloud(user.id);
-                if (!remote) {
-                  setMessage(
-                    "Ingen molnplan ännu. Spara din aktuella plan först.",
-                  );
-                  return;
-                }
-                if (
-                  window.confirm(
-                    "Ersätt din lokala plan med den sparade molnplanen?",
-                  )
-                ) {
-                  onLoad(remote);
-                  setMessage("Molnplanen är inläst och sparad lokalt.");
-                }
-              })
-            }
-          >
-            <Download size={17} />
-            Hämta sparad molnplan
-          </button>
-          <button
-            disabled={busy}
             className="text-button"
-            onClick={() =>
-              run(async () => {
-                const { error } = await supabase!.auth.signOut();
-                if (error) throw error;
-                onUser(null);
-              })
+            disabled={
+              busy ||
+              state.phase === "saving" ||
+              Boolean(state.pending && state.storageError)
             }
+            onClick={() => run(onLogout)}
           >
             <LogOut size={16} />
             Logga ut
           </button>
+          {state.pending && state.storageError && (
+            <p role="alert">
+              Exportera dina ändringar eller vänta på molnsparning innan du
+              loggar ut.
+            </p>
+          )}
         </div>
       ) : (
         <form
           className="stack"
-          onSubmit={(e) => {
-            e.preventDefault();
-            run(async () => {
+          onSubmit={(event) => {
+            event.preventDefault();
+            void run(async () => {
               const result = signup
-                ? await supabase!.auth.signUp({ email, password })
+                ? await supabase!.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                      emailRedirectTo: `${window.location.origin}${window.location.pathname}`,
+                    },
+                  })
                 : await supabase!.auth.signInWithPassword({ email, password });
-              if (result.error) throw result.error;
-              if (result.data.session) onUser(result.data.user);
-              else
+              if (result.error)
+                throw new Error(
+                  signup
+                    ? "Kontot kunde inte skapas. Kontrollera uppgifterna och försök igen."
+                    : "Inloggningen misslyckades. Kontrollera e-post, lösenord och anslutning.",
+                );
+              if (!result.data.session)
                 setMessage(
                   "Kontrollera din e-post för att bekräfta kontot och logga sedan in.",
                 );
@@ -166,7 +179,10 @@ export function Account({
           <button
             className="text-button"
             type="button"
-            onClick={() => setSignup(!signup)}
+            onClick={() => {
+              setSignup(!signup);
+              setMessage("");
+            }}
           >
             {signup ? "Har du redan ett konto? Logga in" : "Skapa ett konto"}
           </button>
@@ -177,6 +193,25 @@ export function Account({
           {message}
         </p>
       )}
+    </>
+  );
+  return embedded ? (
+    <section className="cloud-auth" aria-labelledby="cloud-auth-title">
+      <h1 id="cloud-auth-title">Veckoverket</h1>
+      <p>Logga in för att öppna din molnplan.</p>
+      {contents}
+    </section>
+  ) : (
+    <Modal
+      title="Konto och molnlagring"
+      description={
+        supabase
+          ? "Dina planer sparas i ditt konto."
+          : "Molnanslutning saknas för den här installationen."
+      }
+      onClose={onClose}
+    >
+      {contents}
     </Modal>
   );
 }

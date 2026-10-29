@@ -37,20 +37,20 @@ Förhandsvisningen serverar `out/` på `http://localhost:4173/Veckoverket/`. Kö
 
 `build:pages` aktiverar `output: "export"` och `trailingSlash` utan att ändra den vanliga utvecklingsservern. Standardprefixet är `/Veckoverket`. GitHubs `configure-pages` levererar rätt prefix i Actions, även för en egen domän där prefixet är tomt. För en lokal export under ett annat prefix sätter du samma `PAGES_BASE_PATH` vid både bygge och förhandsvisning. `npm start` används för det vanliga serverbygget, inte för `out/`.
 
-Demoläget kräver inga externa nycklar. Varje besökares plan sparas i den egna webbläsaren. Lokal data från utvecklingsadressen följer inte automatiskt med till GitHub-adressen; använd export/import om du vill flytta planen. Vid en framtida Supabase-anslutning behöver de publika variablerna sättas vid Pages-bygget och den publicerade adressen tillåtas i Supabase Auth.
+Utan ett konfigurerat molnprojekt sparas planen på den här enheten. Med Supabase anslutet krävs inloggning och planen läses och sparas automatiskt i kontot. GitHub Actions läser projektets publika anslutningsuppgifter från repository variables. Följ [den stegvisa installationsguiden på engelska](docs/cloud-setup.md) för att skapa projektet, installera databasen och aktivera molnlagring på den befintliga Pages-adressen.
 
 ## Det som fungerar
 
 - Svensk kalender med måndag som veckostart och rullbart veckoschema på mobil och surfplatta. Separata vyer för översikt, planerare, mål, inställningar och reflektion.
 - Varje kalenderhändelse har en kryssruta för Genomförd. Markeringen kan återställas och sparas med planen; genomförd tid visas i veckoreflektionen.
-- Skapa, redigera, ta bort och dra aktiviteter mellan dagar och tider. Tiden snäpps till 15 minuter. Alla redigeringar kan göras utan mus, via formuläret.
+- Skapa, redigera och ta bort aktiviteter. Dra till en annan dag med samma starttid; ändra datum och klockslag i formuläret. Alla redigeringar kan göras utan mus.
 - Låst tid kan bara ändras uttryckligen i formuläret eller genom inställningarna; den kan inte dras. Skyddad tid flyttas som ett helt block om dess regel tillåter det.
 - Regelbaserad planering med redigerbara dagar, tider, lunch, familjetid, tidsbudgetar, prioriteringar, passlängd, buffert och helger. Egna livsområden stöds.
 - En eller två hela musikförmiddagar, två eller tre träningspass. Omedelbar förhandsvisning av utrymmet i inställningarna, med förklaringar vid kapacitetsbrist.
 - Långsiktiga mål, veckomål, uppgifter, aktiviteters målkoppling, genomförd tid och veckoreflektion. Tid och resultat visas separat.
 - Återkommande aktiviteter varje vecka eller varje vardag. Befintliga och tidigare veckor bevaras. Nya veckor genereras vid navigering. Regeln läggs även in när en befintlig vecka genereras om.
 - Automatisk lokal lagring, JSON-export och validerad import. Korrupt lagring skrivs inte över. Vid lagringsfel visas ett meddelande; exportera då en säkerhetskopia.
-- Valbar Supabase-inloggning och explicit spara/hämta av hela arbetsytan. Se nedan.
+- Supabase-inloggning med automatisk hämtning och sparning av hela kontots arbetsyta, en separat enhetscache, återhämtning efter avbrott och revisionskontroll vid samtidiga ändringar. Befintlig lokal plan flyttas efter ett uttryckligt val vid första inloggningen.
 
 ## Planeringsregler och antaganden
 
@@ -78,7 +78,8 @@ src/lib/planner.ts        Planering, kapacitet och hård validering
 src/lib/date.ts           Datum och svensk presentation
 src/lib/defaults.ts       Exempelprofil och startvärden
 src/lib/storage.ts        Lokal lagring, import/export och validering
-src/lib/supabase.ts       Valbar autentiserad molnlagring
+src/lib/supabase.ts       Supabase Auth och versionskontrollerad molnadapter
+src/lib/workspace-sync.ts Automatisk sparning, kontoavgränsad cache och konflikter
 src/test/                 Automatiska tester av regler och lagring
 e2e/                      Webbläsartester för dator och mobil
 supabase/migrations/      PostgreSQL-schema och RLS
@@ -99,23 +100,24 @@ Webbläsartesterna använder Chromium på `/usr/bin/chromium`. Ange `CHROMIUM_PA
 
 Tester täcker musikalternativen, korrekta kategoritimmar, tredje träningspasset, helgkapacitet, överlappning, skyddade och låsta block, buffert/minimipass, återkommande aktiviteter, årsskifte, tidsomställning och lagring/återläsning. Webbläsartester täcker verkliga formulärflöden, persistens, mobilnavigation och kalender.
 
-## Valbar Supabase
+## Molnlagring med Supabase
 
-1. Skapa ett Supabase-projekt och kör `supabase/migrations/202610290001_initial.sql` i SQL-editorn eller via Supabase CLI.
-2. Kopiera `.env.example` till `.env.local` och ange projektets URL samt dess publika anon-nyckel. Använd aldrig en service-role-nyckel i klienten.
-3. Aktivera e-post/lösenord i Supabase Auth. Bekräftelsemejl styrs av projektets inställningar. Starta om appen (och bygg om en produktionsbuild när publika miljövariabler ändras).
-4. Öppna ”Lokalt demoläge” eller ”Konto & molnlagring”. Skapa ett konto eller logga in och välj sedan Spara eller Hämta.
+Följ [Activate cloud storage for Veckoverket](docs/cloud-setup.md). Guiden använder de engelska etiketterna i Supabase och GitHub. Koden fungerar med GitHub Pages; den behöver ingen separat webbserver.
 
-Adaptern lagrar MVP-arbetsytan som ett atomiskt, versionsmärkt JSON-dokument i `workspaces`. Migrationen förbereder dessutom normaliserade tabeller för profiler, livsområden, mål, uppgifter, aktiviteter, återkommande regler, planeringsregler och reflektioner. Dessa domäntabeller fylls inte av den nuvarande dokumentadaptern. Samtliga tabeller har RLS med `auth.uid() = user_id`; anonyma användare får ingen åtkomst. Sammansatta främmande nycklar i domäntabellerna förhindrar referenser till andra användares data.
+För nya projekt räcker `supabase/migrations/202610290002_workspace_sync.sql`. Det är ett fristående, återkörbart SQL-skript som också uppdaterar befintliga installationer. Det tidigare initialschemat förbereder normaliserade domäntabeller; den nuvarande molnadaptern använder i stället ett atomiskt JSON-dokument per konto i `workspaces`.
 
-Molnsparning är uttrycklig, inte automatisk synk. Senast sparade dokument gäller; samtidiga redigeringar har ingen konfliktlösning. Lokal data ligger kvar efter utloggning – exportera och återställ demoläget om du använder en delad enhet. Supabase-flödet och RLS behöver integrationstestas mot ett konfigurerat projekt; lokala tester kräver inga inloggningsuppgifter.
+RLS begränsar alla dokument till det inloggade kontot. `save_workspace` kontrollerar både kontots identitet och förväntad revision, och servern ökar revisionen vid varje uppdatering. En föråldrad enhet kan därför inte tyst skriva över en nyare version. Appen visar konfliktval och export av enhetens kopia.
+
+Automatisk sparning sker efter kort debounce. Uppdateringar hämtas vid inloggning, när sidan åter får fokus, när nätverket återkommer och var 30:e sekund i en synlig flik. Bakgrundshämtning pausas under redigeringsformulär. Väntande ändringar har en separat cache per konto; den gamla lokala lagringsnyckeln laddas aldrig automatiskt upp till ett annat konto. Utloggning tar bort kontots data från gränssnittet.
+
+`npm test` verifierar även synkmotorn och kör SQL-skriptet i lokal PostgreSQL via PGlite, inklusive RLS, ägarkontroll och samtidiga revisionskonflikter. `npm run test:cloud` använder en simulerad Supabase-tjänst för webbläsarflödena. Ett nytt produktionsprojekt måste fortfarande verifieras efter installationen; inga externa Supabase-uppgifter finns i repositoryt.
 
 ## Begränsningar och nästa steg
 
-Den första versionen är en lokalt fungerande MVP. Den har ingen Google Calendar-synk, AI-tolkning, automatisk historikbaserad optimering, notifieringar eller samarbete mellan flera användare. Integrationsgränssnitt finns i `types.ts`; externa förslag ska alltid gå genom samma regelvalidering.
+Appen fungerar lokalt och har en förberedd automatisk Supabase-anslutning. Den har ingen Google Calendar-synk, AI-tolkning, automatisk historikbaserad optimering, notifieringar eller samarbete mellan flera användare. Integrationsgränssnitt finns i `types.ts`; externa förslag ska alltid gå genom samma regelvalidering.
 
 De tre viktigaste nästa stegen är:
 
-1. Verifiera Supabase Auth och RLS i ett riktigt testprojekt, införa versionskontroll vid molnsparning och besluta om normaliserad lagring.
+1. Skapa och anslut ett riktigt Supabase-projekt, verifiera e-post och produktionens RLS enligt installationsguiden och besluta om eventuell normaliserad lagring.
 2. Utöka motorn med sökning efter alternativa giltiga placeringar, undantag för återkommande aktiviteter och godkända omprioriteringar.
 3. Implementera Google Calendar via en separat connector, följt av en AI-assistent som enbart lämnar validerbara förslag.

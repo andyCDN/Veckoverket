@@ -27,11 +27,13 @@ export function ReflectionView({
   week,
   onChange,
   onWeek,
+  storageLabel = "Sparas automatiskt på enheten",
 }: {
   data: AppData;
   week: string;
   onChange: (r: Reflection) => void;
   onWeek: (w: string) => void;
+  storageLabel?: string;
 }) {
   const activities = data.weeks[week]?.activities ?? [],
     planned = categoryMinutes(activities),
@@ -54,7 +56,7 @@ export function ReflectionView({
         </div>
         <span className="saved-label">
           <Check size={14} />
-          Sparas automatiskt lokalt
+          {storageLabel}
         </span>
       </div>
       <div className="reflection-layout">

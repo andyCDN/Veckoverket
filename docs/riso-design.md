@@ -33,9 +33,9 @@ Ombokningsformuläret föreslår en ledig tid om sådan finns och kontrollerar d
 
 ## Lagring och bevarade funktioner
 
-Lagringsnyckeln `veckoverket.workspace.v1` och filversion 1 är oförändrade. Gamla sparade planer fungerar utan migrering. Den nya valfria kopplingen följer med lokal lagring, säkerhetskopior och appens befintliga Supabase-sparning av hela arbetsytan som JSON. Kopplingen läggs inte i återkommande mallar, så en serie inte skapar nya ombokningar av samma original.
+Lagringsnyckeln `veckoverket.workspace.v1` och filversion 1 är oförändrade. Gamla sparade planer fungerar utan migrering. Den nya valfria kopplingen följer med lokal lagring, säkerhetskopior och appens automatiska Supabase-sparning av hela arbetsytan som JSON. Kopplingen läggs inte i återkommande mallar, så en serie inte skapar nya ombokningar av samma original.
 
-Ingen databasändring behövs för arbetsytans JSON-lagring. Liveanslutning till Supabase har inte verifierats i denna miljö. Kategorifiltret ändrar bara visningen; dolda pass ligger kvar i konfliktkontrollen. Användarens kategorier, färger, tider, mål, reflektioner och historik behålls.
+Molnlagringens revisionskontroll installeras med `202610290002_workspace_sync.sql`; följ `docs/cloud-setup.md`. Liveanslutning till Supabase kan verifieras när projektet har skapats. Kategorifiltret ändrar bara visningen; dolda pass ligger kvar i konfliktkontrollen. Användarens kategorier, färger, tider, mål, reflektioner och historik behålls.
 
 ## Verifiering
 

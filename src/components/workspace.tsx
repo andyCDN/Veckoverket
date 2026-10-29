@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -18,7 +18,6 @@ import {
   ShieldCheck,
   Printer,
 } from "lucide-react";
-import type { User } from "@supabase/supabase-js";
 import type {
   Activity,
   AppData,
@@ -50,7 +49,9 @@ import {
   validatePlan,
   plannedDays,
 } from "@/lib/planner";
-import { loadLocal, saveLocal } from "@/lib/storage";
+import { downloadData } from "@/lib/storage";
+import { useWorkspaceStorage } from "@/lib/use-workspace-storage";
+import { StorageStatus, syncLabel } from "./storage-status";
 import { supabase } from "@/lib/supabase";
 import { Calendar } from "./calendar";
 import { ActivityEditor } from "./activity-editor";
@@ -93,8 +94,24 @@ function newWorkspace() {
   return data;
 }
 export function Workspace() {
-  const [data, setData] = useState<AppData | null>(null),
-    [week, setWeek] = useState(monday(today())),
+  const {
+    data,
+    setData,
+    user,
+    authReady,
+    authError,
+    configured,
+    cloud,
+    retry,
+    logout,
+    setEditing,
+    chooseInitial,
+    resolveConflict,
+    storageError,
+    blockedSave,
+    setBlockedSave,
+  } = useWorkspaceStorage(newWorkspace);
+  const [week, setWeek] = useState(monday(today())),
     [view, setView] = useState<View>("dashboard");
   const [daySelection, setDaySelection] = useState<{
     week: string;
@@ -111,48 +128,28 @@ export function Workspace() {
     [generator, setGenerator] = useState(false),
     [account, setAccount] = useState(false),
     [help, setHelp] = useState(false),
-    [user, setUser] = useState<User | null>(null),
-    [notice, setNotice] = useState(""),
-    [storageError, setStorageError] = useState(""),
-    [blockedSave, setBlockedSave] = useState(false);
+    [notice, setNotice] = useState("");
   const notify = useCallback((message: string) => setNotice(message), []);
-  useEffect(() => {
-    try {
-      setData(loadLocal(localStorage) ?? newWorkspace());
-    } catch {
-      setBlockedSave(true);
-      setStorageError(
-        "Din sparade plan kunde inte läsas. Originalet har bevarats. Importera en giltig säkerhetskopia eller välj att återställa demoläget i inställningarna.",
-      );
-      setData(newWorkspace());
-    }
-  }, []);
-  useEffect(() => {
-    if (!data || blockedSave) return;
-    try {
-      saveLocal(localStorage, data);
-      setStorageError("");
-    } catch {
-      setStorageError(
-        "Planen kunde inte sparas på enheten. Exportera en säkerhetskopia innan du stänger sidan.",
-      );
-    }
-  }, [data, blockedSave]);
   useEffect(() => {
     if (!notice) return;
     const id = setTimeout(() => setNotice(""), 6000);
     return () => clearTimeout(id);
   }, [notice]);
   useEffect(() => {
-    if (!supabase) return;
-    supabase.auth
-      .getSession()
-      .then(({ data }) => setUser(data.session?.user ?? null));
-    const { data: listener } = supabase.auth.onAuthStateChange((_e, session) =>
-      setUser(session?.user ?? null),
-    );
-    return () => listener.subscription.unsubscribe();
-  }, []);
+    setEditor(null);
+    setNewGoal(false);
+    setGenerator(false);
+    setAccount(false);
+    setHelp(false);
+    setNotice("");
+    setView("dashboard");
+    setWeek(monday(today()));
+    setDaySelection(null);
+  }, [user?.id]);
+  useLayoutEffect(() => {
+    setEditing(Boolean(editor || newGoal || generator || view === "settings"));
+    return () => setEditing(false);
+  }, [editor, newGoal, generator, view, setEditing]);
   const navigate = (v: View) => {
     setView(v);
   };
@@ -183,13 +180,88 @@ export function Workspace() {
       d ? { ...d, weeks: { ...d.weeks, [plan.week]: plan } } : d,
     );
   }
-  if (!data)
+  if (configured && authReady && !user)
     return (
-      <div className="loading">
-        <div className="brand-mark">v</div>
+      <main className="cloud-gate">
+        {authError && <p role="alert">{authError}</p>}
+        <Account
+          data={null}
+          user={null}
+          state={cloud}
+          onSync={retry}
+          onLogout={logout}
+          onClose={() => {}}
+          embedded
+        />
+      </main>
+    );
+  if (configured && cloud.phase === "migration" && data)
+    return (
+      <main className="cloud-gate">
+        <section className="cloud-auth">
+          <h1>Flytta planen till molnet</h1>
+          {notice && <p role="alert">{notice}</p>}
+          <p>
+            Ingen molnplan finns på det här kontot. På den här enheten finns en
+            lokal plan med {Object.keys(data.weeks).length} sparade veckor. Välj
+            om den ska flyttas till kontot.
+          </p>
+          <button
+            className="button primary"
+            onClick={() => chooseInitial(true)}
+          >
+            Flytta min lokala plan till molnet
+          </button>
+          <button
+            className="button secondary"
+            onClick={() => downloadData(data)}
+          >
+            Exportera den lokala planen
+          </button>
+          <button className="text-button" onClick={() => chooseInitial(false)}>
+            Skapa en ny molnplan
+          </button>
+          <button
+            className="text-button"
+            onClick={() => {
+              void logout().catch((error) =>
+                notify(
+                  error instanceof Error
+                    ? error.message
+                    : "Utloggningen misslyckades.",
+                ),
+              );
+            }}
+          >
+            Logga ut
+          </button>
+        </section>
+      </main>
+    );
+  if (!data || (configured && (cloud.phase === "loading" || !authReady)))
+    return (
+      <main className="loading">
         <h1>Veckoverket</h1>
-        <p>Laddar veckoplanen…</p>
-      </div>
+        <p role="status">
+          {configured ? "Hämtar molnplanen…" : "Laddar veckoplanen…"}
+        </p>
+        {configured && cloud.error && (
+          <div className="stack">
+            <p role="alert">{cloud.error}</p>
+            <button className="button primary" onClick={retry}>
+              Försök igen
+            </button>
+            <button
+              className="text-button"
+              onClick={() => {
+                void supabase!.auth.signOut();
+              }}
+            >
+              Logga ut
+            </button>
+          </div>
+        )}
+      </main>
     );
   const plan = data.weeks[week] ?? generateWeek(week, data).plan,
     activities = plan.activities,
@@ -353,9 +425,11 @@ export function Workspace() {
         };
       }
     weeks[week] = {
-      ...weeks[week],
+      ...(weeks[week] ?? plan),
       activities: [
-        ...weeks[week].activities.filter((old) => old.id !== a.id),
+        ...(weeks[week]?.activities ?? activities).filter(
+          (old) => old.id !== a.id,
+        ),
         a,
       ],
     };
@@ -501,6 +575,17 @@ export function Workspace() {
               </h1>
             </div>
           </div>
+          <StorageStatus
+            configured={configured}
+            state={cloud}
+            onAccount={() => setAccount(true)}
+            onRetry={() => {
+              void retry();
+            }}
+            onResolve={(choice) => {
+              void resolveConflict(choice);
+            }}
+          />
           {storageError && (
             <div className="storage-error" role="alert">
               <AlertCircle size={18} />
@@ -802,6 +887,11 @@ export function Workspace() {
               <ReflectionView
                 data={data}
                 week={week}
+                storageLabel={
+                  configured
+                    ? syncLabel(cloud)
+                    : "Sparas automatiskt på enheten"
+                }
                 onWeek={changeWeek}
                 onChange={(r) =>
                   setData({
@@ -817,6 +907,7 @@ export function Workspace() {
               key={`settings-${week}`}
               data={data}
               week={week}
+              cloudEnabled={configured}
               onApply={applySettings}
               onImport={replaceData}
               onRemoveRecurring={(id) =>
@@ -829,19 +920,26 @@ export function Workspace() {
               onReset={() => {
                 if (
                   window.confirm(
-                    "Återställ allt till en ny demoplan? Detta tar bort den lokala planen, alla mål och reflektioner. Exportera först om du vill behålla dem.",
+                    configured
+                      ? "Ersätt kontots plan, mål och reflektioner med en ny plan? Ändringen sparas i molnet. Exportera först om du vill behålla den nuvarande planen."
+                      : "Återställ allt till en ny plan? Detta ersätter den lokala planen, alla mål och reflektioner. Exportera först om du vill behålla dem.",
                   )
                 ) {
                   setBlockedSave(false);
                   setData(newWorkspace());
                   setWeek(monday(today()));
                   navigate("dashboard");
-                  notify("En ny demoplan har skapats.");
+                  notify("En ny plan har skapats.");
                 }
               }}
             />
           )}
           <BackCoverInfo
+            storageText={
+              configured
+                ? "Planer, mål och reflektioner sparas automatiskt i ditt konto."
+                : "Planer, mål och reflektioner sparas på den här enheten. Molnanslutning saknas."
+            }
             onReflection={() => navigateAndReveal("reflection", "main-content")}
             onStorage={() => navigateAndReveal("settings", "storage-settings")}
           />
@@ -852,7 +950,9 @@ export function Workspace() {
                 ? "Lagring behöver ses över"
                 : blockedSave
                   ? "Originalplanen är skyddad"
-                  : "Ändringar sparas på den här enheten"}
+                  : configured
+                    ? syncLabel(cloud)
+                    : "Ändringar sparas på den här enheten"}
               <span className="footer-dot" />
               Europe/Stockholm
             </span>
@@ -966,8 +1066,9 @@ export function Workspace() {
         <Account
           data={data}
           user={user}
-          onUser={setUser}
-          onLoad={replaceData}
+          state={cloud}
+          onSync={retry}
+          onLogout={logout}
           onClose={() => setAccount(false)}
         />
       )}
@@ -996,8 +1097,10 @@ export function Workspace() {
               när veckan är slut.
             </p>
             <p>
-              Planen sparas lokalt i den här webbläsaren. Exportera en
-              säkerhetskopia. Inget konto eller någon extern tjänst behövs.
+              {configured
+                ? "Planen sparas automatiskt i ditt konto. Väntande ändringar har en separat kopia på den här enheten och skickas när anslutningen återkommer."
+                : "Planen sparas på den här enheten tills molnanslutningen har aktiverats."}{" "}
+              Exportera en säkerhetskopia under inställningar.
             </p>
             <button className="button primary" onClick={() => setHelp(false)}>
               Stäng

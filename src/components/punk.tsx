@@ -61,9 +61,11 @@ export function WorkspaceTools({
 }
 
 export function BackCoverInfo({
+  storageText,
   onReflection,
   onStorage,
 }: {
+  storageText: string;
   onReflection: () => void;
   onStorage: () => void;
 }) {
@@ -78,7 +80,7 @@ export function BackCoverInfo({
       <div className="punk-back-copy">
         <span className="section-tag">[ Baksidan / Utgåva 005 ]</span>
         <h2>Veckoarkiv</h2>
-        <p>Planer, mål och reflektioner sparas i webbläsaren.</p>
+        <p>{storageText}</p>
         <div className="backcover-actions">
           <button className="text-button" onClick={onReflection}>
             Visa veckoreflektioner
