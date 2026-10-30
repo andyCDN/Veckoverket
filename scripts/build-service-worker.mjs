@@ -20,6 +20,8 @@ export async function buildServiceWorker(basePath = "/Veckoverket") {
   }
   const paths = [
     join(root, "index.html"),
+    join(root, "inspelning", "index.html"),
+    join(root, "pcm-capture.worklet.js"),
     join(root, "manifest.webmanifest"),
     ...(await files(join(root, "_next", "static"))),
     ...(await files(join(root, "icons"))),
@@ -30,10 +32,17 @@ export async function buildServiceWorker(basePath = "/Veckoverket") {
   for (const path of paths) {
     const name = relative(root, path).replaceAll("\\", "/");
     hash.update(name).update(await readFile(path));
-    assets.push(name === "index.html" ? scope : `${scope}${encodeURI(name)}`);
+    assets.push(
+      name === "index.html"
+        ? scope
+        : name.endsWith("/index.html")
+          ? `${scope}${encodeURI(name.slice(0, -10))}`
+          : `${scope}${encodeURI(name)}`,
+    );
   }
   const config = {
     scope,
+    pages: [scope, `${scope}inspelning/`],
     cachePrefix: `veckoverket-pwa-${encodeURIComponent(scope)}-`,
     version: hash.digest("hex").slice(0, 20),
     assets,

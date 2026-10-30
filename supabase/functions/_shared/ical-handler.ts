@@ -134,10 +134,7 @@ export function icalHandler(options: {
         );
       }
       if (!(await options.store.claim(userId)))
-        return reply(
-          { error: "Vänta 15 sekunder mellan kalenderhämtningarna." },
-          429,
-        );
+        return reply({ code: "calendar_request_throttled" }, 429);
       let result: FeedWeek;
       try {
         result = await (options.read ?? readFeed)(parsed.url, body.week);

@@ -137,6 +137,34 @@ test("appen startar offline med sparad plan utan att cachelagra konto-API:er", a
   await check.uncheck();
   await page.reload();
   await expect(check).not.toBeChecked();
+  await page.goto(
+    new URL("inspelning/?contactId=PRIVATE_CONTEXT_FIXTURE", root).href,
+  );
+  await expect(
+    page.getByRole("heading", { name: "Samtalsinspelning", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(async () => {
+      const worklet = await fetch(
+        new URL(
+          "pcm-capture.worklet.js",
+          document.baseURI.replace(/inspelning\/.*$/, ""),
+        ),
+      );
+      return worklet.ok && (await worklet.text()).includes("veckoverket-pcm");
+    }),
+  ).toBe(true);
+  const recorderCache = await page.evaluate(async () => {
+    const urls: string[] = [];
+    for (const name of await caches.keys()) {
+      const cache = await caches.open(name);
+      urls.push(...(await cache.keys()).map((q) => q.url));
+    }
+    return urls;
+  });
+  expect(
+    recorderCache.some((url) => url.includes("PRIVATE_CONTEXT_FIXTURE")),
+  ).toBe(false);
 });
 
 test("mobil installation använder webbläsarens dialog och visar Safari-instruktioner", async ({

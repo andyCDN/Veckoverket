@@ -45,6 +45,7 @@ import {
   scheduleApplicationInterview,
   saveInterviewNotes,
 } from "@/lib/application-interviews";
+import { recordingHref } from "@/lib/recording-client";
 import { Modal } from "./modal";
 
 const statuses = APPLICATION_STATUSES;
@@ -284,6 +285,14 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
                   )}
                   {a.notes && <p className="career-notes">{a.notes}</p>}
                   <div className="career-actions">
+                    <a
+                      className="button secondary"
+                      href={recordingHref({ applicationId: a.id })}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Spela in samtal
+                    </a>
                     <button
                       className="button secondary"
                       onClick={() => setMaterialsId(a.id)}
@@ -380,6 +389,20 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
                         return (
                           <div className="career-interview stack" key={i.id}>
                             <h4>{i.title}</h4>
+                            <a
+                              className="text-button"
+                              href={recordingHref({
+                                applicationId: a.id,
+                                interviewId: i.id,
+                                ...(i.contactId
+                                  ? { contactId: i.contactId }
+                                  : {}),
+                              })}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              Spela in intervju
+                            </a>
                             <p>
                               {date} · {time(start)}–{time(end)} ·{" "}
                               {meeting
@@ -515,6 +538,14 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
                     >
                       Redigera kontakt och logg
                     </button>
+                    <a
+                      className="button secondary"
+                      href={recordingHref({ contactId: c.id })}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Spela in samtal
+                    </a>
                     <button
                       className="button secondary"
                       onClick={() =>

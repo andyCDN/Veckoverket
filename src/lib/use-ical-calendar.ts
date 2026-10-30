@@ -88,6 +88,10 @@ export function useIcalCalendar({
       if (error) {
         let message = setupError;
         if (error.context instanceof Response) {
+          // A throttled duplicate fetch needs no user-facing error. This also
+          // suppresses the old server message before that function is updated.
+          if (error.context.status === 429)
+            throw new DOMException("Avbrutet", "AbortError");
           const body = await error.context.json().catch(() => null);
           if (typeof body?.error === "string" && body.error.length < 500)
             message = body.error;

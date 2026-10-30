@@ -4,6 +4,7 @@ const CONFIG = JSON.parse("__PWA_CONFIG_JSON__");
 const CACHE = CONFIG.cachePrefix + CONFIG.version;
 const ASSETS = new Set(CONFIG.assets);
 const ROOT = new URL(CONFIG.scope, self.location.origin).href;
+const PAGES = new Set(CONFIG.pages || [CONFIG.scope]);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -42,14 +43,14 @@ async function cached(path) {
   const cache = await caches.open(CACHE);
   return cache.match(new URL(path, self.location.origin).href);
 }
-async function navigation(request) {
+async function navigation(request, path = CONFIG.scope) {
   try {
     const response = await fetch(request);
     if (response.status < 500) return response;
   } catch {
     // Reopen the public shell. Workspace storage restores the user's own plan.
   }
-  return (await cached(CONFIG.scope)) || Response.error();
+  return (await cached(path)) || Response.error();
 }
 self.addEventListener("fetch", (event) => {
   const request = event.request;
@@ -63,8 +64,9 @@ self.addEventListener("fetch", (event) => {
     return;
 
   // Never store navigation URLs, query strings or authentication callback codes.
-  if (url.pathname === new URL(ROOT).pathname) {
-    if (request.mode === "navigate") event.respondWith(navigation(request));
+  if (PAGES.has(url.pathname)) {
+    if (request.mode === "navigate")
+      event.respondWith(navigation(request, url.pathname));
     return;
   }
   if (!ASSETS.has(url.pathname)) return;

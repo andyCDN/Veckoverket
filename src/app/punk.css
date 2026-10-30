@@ -3344,3 +3344,68 @@ body {
 .navigation-bar > .storage-status .storage-status-detail {
   max-width: 420px;
 }
+
+.recording-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: max(16px, env(safe-area-inset-top))
+    max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
+  font: 16px/1.5 var(--body);
+  overflow-wrap: anywhere;
+}
+.recording-page h1 {
+  margin: 18px 0;
+  font-size: clamp(28px, 7vw, 44px);
+}
+.recording-page fieldset {
+  min-width: 0;
+}
+.recording-page label {
+  font-size: 14px;
+}
+.recording-page input,
+.recording-page select,
+.recording-page textarea {
+  min-width: 0;
+  max-width: 100%;
+  font-size: 16px;
+}
+.recording-page button,
+.recording-page select,
+.recording-page input {
+  min-height: 44px;
+}
+.recording-page textarea {
+  font: 16px/1.5 var(--body);
+}
+.recording-controls {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 12px;
+  background: var(--paper-light);
+  border: 2px solid var(--ink);
+}
+.recording-controls strong {
+  font: 700 15px/1.4 var(--mono);
+}
+.recording-error {
+  border: 2px solid var(--red);
+  padding: 12px;
+}
+.recording-session {
+  border-top: 1px solid var(--ink);
+  padding-top: 12px;
+}
+.recording-page blockquote {
+  margin: 8px 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--blue);
+}
+@media (max-width: 500px) {
+  .recording-page .career-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
