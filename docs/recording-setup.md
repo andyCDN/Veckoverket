@@ -15,11 +15,23 @@ Om en genväg till inspelningen redan har skapats med den gamla V-ikonen kan den
 GitHub Pages publicerar gränssnittet. Supabase-tabellerna, ljudlagringen och Edge-funktionen måste installeras separat av projektets administratör. GitHub Pages publicering installerar inte dessa delar.
 
 1. Kör SQL-filen [`supabase/migrations/202610300001_recordings.sql`](../supabase/migrations/202610300001_recordings.sql) i det befintliga Supabase-projektets SQL Editor, eller använd projektets vanliga migrationsflöde. Den skapar separata inspelningstabeller och en privat bucket `interview-recordings`. Befintliga arbetsytor och kalenderdata ändras inte.
-2. Publicera funktionen med Supabase CLI från repots rot:
+2. Lägg upp inspelningens serverkod i Supabase. Du kan göra detta i webbläsaren:
+
+   Öppna [Veckoverket i GitHub Codespaces](https://codespaces.new/andyCDN/Veckoverket), välj **Create codespace** och sedan **Terminal → New Terminal**. Terminalen står normalt redan i projektets huvudmapp `Veckoverket`, där `package.json` finns. Det är den mappen som menas med ”repots rot”.
+
+   Logga in i Supabase genom att köra följande i terminalen och följa inloggningslänken som visas:
 
    ```sh
-   supabase functions deploy recording --project-ref DITT_PROJEKT
+   npx --yes supabase login
    ```
+
+   Publicera därefter serverkoden:
+
+   ```sh
+   npx --yes supabase functions deploy recording --project-ref DITT_PROJEKT --use-api
+   ```
+
+   Ersätt `DITT_PROJEKT` med projektets **Reference ID**, som finns under **Settings → General** i [Supabase](https://supabase.com/dashboard). Det är också delen före `.supabase.co` i projektets adress. `--use-api` gör att datorn inte behöver Docker. När kommandot är klart ska `recording` finnas under **Edge Functions** i samma Supabase-projekt. [Supabases guide till publicering](https://supabase.com/docs/guides/functions/deploy) beskriver terminalverktyget mer utförligt.
 
    Publicera funktionen på nytt om den redan är installerad: den nya versionen tillåter okategoriserad start och sparar kategorisering i efterhand. Tabellerna behöver ingen ny migrering för denna ändring; kategori och koppling ligger i det befintliga JSON-fältet `context`. En äldre serverversion känns igen av gränssnittet och startknappen är då avstängd tills funktionen är uppdaterad.
 
