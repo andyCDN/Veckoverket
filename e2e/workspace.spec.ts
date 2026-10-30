@@ -558,7 +558,7 @@ test("v2.5: aktiv dag, exakta datum, veckobyte och nytt pass på vald dag", asyn
         .locator(".day-heading:not(.is-selected)")
         .first()
         .boundingBox())!;
-      expect(active.width / inactive.width).toBeCloseTo(1.9, 1);
+      expect(active.width / inactive.width).toBeCloseTo(1, 1);
     } else if (width <= 700) {
       await expect(page.locator(".day-shell:visible")).toHaveCount(1);
       const agenda = (await page

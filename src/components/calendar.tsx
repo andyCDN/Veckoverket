@@ -24,6 +24,7 @@ import { canFollowUp } from "@/lib/follow-up";
 import { visibleDays } from "@/lib/planner";
 import { categoryLabel, categoryStyle } from "@/lib/presentation";
 import { GOOGLE_CATEGORY_ID } from "@/lib/external-calendar";
+import { weekTimeline } from "@/lib/week-timeline";
 function CalendarBlock({
   a,
   category,
@@ -33,6 +34,7 @@ function CalendarBlock({
   onEdit,
   onStatusChange,
   onDelete,
+  placement,
 }: {
   a: Activity;
   category: AppData["categories"][number] | undefined;
@@ -42,6 +44,7 @@ function CalendarBlock({
   onEdit: () => void;
   onStatusChange: (status: Activity["status"]) => void;
   onDelete: () => void;
+  placement?: { top: number; height: number; lane: number; count: number };
 }) {
   const {
     attributes,
@@ -61,6 +64,10 @@ function CalendarBlock({
       style={
         {
           ...categoryStyle(category),
+          "--event-top": `${placement?.top ?? 0}px`,
+          "--event-height": `${placement?.height ?? 0}px`,
+          "--event-lane": placement?.lane ?? 0,
+          "--event-lanes": placement?.count ?? 1,
           transform: transform
             ? `translate3d(${transform.x}px,${transform.y}px,0)`
             : undefined,
@@ -273,8 +280,14 @@ export function Calendar({
         <p>Välj vilka dagar du vill planera i inställningarna.</p>
       </div>
     );
+  const timeline = weekTimeline(activities, data.settings);
   return (
-    <div className="calendar-wrap">
+    <div
+      className={`calendar-wrap ${mobile ? "" : "week-timeline"}`}
+      style={
+        { "--timeline-height": `${timeline.height}px` } as React.CSSProperties
+      }
+    >
       <DndContext
         sensors={sensors}
         onDragEnd={dragEnd}
@@ -312,12 +325,7 @@ export function Calendar({
               {
                 "--days": weekDays.length,
                 "--mobile-days": days.length,
-                "--day-columns": days
-                  .map(
-                    (d) =>
-                      `minmax(0,${d === activeDay ? 1.9 : completedDays.has(d) ? 0.65 : 1}fr)`,
-                  )
-                  .join(" "),
+                "--day-columns": `repeat(${days.length}, minmax(0, 1fr))`,
                 "--mobile-columns": mobileOrder
                   .map((d) =>
                     d === activeDay
@@ -330,6 +338,16 @@ export function Calendar({
               } as React.CSSProperties
             }
           >
+            <div className="week-axis-heading" aria-hidden="true">
+              Tid
+            </div>
+            <div className="week-time-axis" aria-hidden="true">
+              {timeline.ticks.map(({ minute, top }) => (
+                <span key={minute} style={{ top }}>
+                  {time(minute)}
+                </span>
+              ))}
+            </div>
             {days.map((d) => {
               const date = addDays(week, d);
               return (
@@ -354,7 +372,7 @@ export function Calendar({
                   >
                     <span className="day-name">
                       <span className="day-name-wide">
-                        {d === activeDay
+                        {mobile && d === activeDay
                           ? DAY_NAMES[d]
                           : DAY_NAMES[d].slice(0, 3)}
                       </span>
@@ -388,9 +406,7 @@ export function Calendar({
                     )}
                     {d === activeDay ? (
                       <span className="day-flag">
-                        {date === currentDate
-                          ? "Idag / aktiv dag"
-                          : "Vald dag / aktiv"}
+                        {date === currentDate ? "Idag" : "Vald dag"}
                       </span>
                     ) : date === currentDate ? (
                       <span className="day-flag">Idag</span>
@@ -417,6 +433,11 @@ export function Calendar({
                   }
                 >
                   <DayColumn date={date} onCreate={() => onCreate(date)}>
+                    <div className="week-time-lines" aria-hidden="true">
+                      {timeline.ticks.map(({ minute, top }) => (
+                        <span key={minute} style={{ top }} />
+                      ))}
+                    </div>
                     {activities
                       .filter((a) => a.date === date)
                       .sort(
@@ -436,6 +457,7 @@ export function Calendar({
                           }
                           key={a.id}
                           a={a}
+                          placement={timeline.entries.get(a.id)}
                           filteredOut={
                             categoryFilter !== "all" &&
                             a.categoryId !== categoryFilter

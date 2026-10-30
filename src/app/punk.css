@@ -3654,3 +3654,302 @@ body {
   font: 700 10px / 1.3 var(--mono);
   color: var(--ink);
 }
+
+/* Week overview: a quiet reading surface beneath the riso masthead. */
+.week-summary {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  border: 1px solid #19191855;
+  background: var(--paper-light);
+}
+.week-summary-totals {
+  display: flex;
+  margin: 0;
+  flex-shrink: 0;
+}
+.week-summary-totals > div {
+  padding: 0 20px;
+  border-right: 1px solid #19191844;
+}
+.week-summary-totals > div:first-child {
+  padding-left: 0;
+}
+.week-summary dt {
+  font: 700 11px/1.4 var(--mono);
+}
+.week-summary dd {
+  margin: 2px 0 0;
+  font: 400 30px/1.1 var(--display);
+}
+.week-summary-balance {
+  flex: 1;
+  min-width: 0;
+  font: 11px/1.4 var(--body);
+}
+.week-balance-bar {
+  height: 10px;
+  background: #40552e;
+  margin: 6px 0;
+  overflow: hidden;
+}
+.week-balance-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--blue);
+}
+.week-balance-bar.is-empty {
+  background: #19191822;
+}
+.week-balance-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-weight: 700;
+}
+.week-summary-balance small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.week-axis-heading,
+.week-time-axis,
+.week-time-lines {
+  display: none;
+}
+@media (min-width: 951px) {
+  .week-timeline .calendar-grid {
+    grid-template-columns: 50px var(--day-columns);
+  }
+  .week-timeline .calendar-viewport .calendar-grid > .day-heading,
+  .week-timeline .calendar-viewport .calendar-grid > .day-shell {
+    grid-column: calc(var(--desktop-column) + 1);
+    filter: none;
+  }
+  .week-timeline .calendar-viewport .calendar-grid > .day-heading {
+    min-height: 100px;
+    padding: 10px;
+    border: 0;
+    border-left: 1px solid #19191833;
+    border-bottom: 2px solid #19191855;
+    background: var(--paper-light);
+    color: var(--ink);
+    box-shadow: none;
+  }
+  .week-timeline .calendar-viewport .calendar-grid > .day-heading.is-selected {
+    border-bottom: 3px solid var(--blue);
+  }
+  .week-timeline .calendar-viewport .calendar-grid > .day-heading.is-today {
+    border-bottom: 3px solid #a72b1b;
+  }
+  .week-timeline .calendar-viewport .day-heading::after {
+    display: none;
+  }
+  .week-timeline .calendar-viewport .day-heading .day-name {
+    font-size: 27px;
+    color: var(--ink);
+    text-shadow: none;
+  }
+  .week-timeline .calendar-viewport .day-heading.is-today .day-name {
+    color: #a72b1b;
+  }
+  .week-timeline .calendar-viewport .day-heading .day-meta {
+    font-size: 10px;
+  }
+  .week-timeline .day-select {
+    min-height: 76px;
+    gap: 6px;
+  }
+  .week-timeline .day-index {
+    display: none;
+  }
+  .week-timeline .day-flag {
+    border: 0;
+    padding: 3px 5px;
+    background: var(--blue-soft);
+    box-shadow: none;
+    transform: none;
+  }
+  .week-timeline .is-today .day-flag {
+    background: #a72b1b;
+    color: var(--paper-light);
+  }
+  .week-timeline .calendar-viewport .calendar-grid > .day-shell {
+    padding: 0;
+    border: 0;
+    border-left: 1px solid #19191833;
+    background: var(--paper-light);
+    box-shadow: none;
+  }
+  .week-timeline .calendar-viewport .calendar-grid > .day-shell.is-today {
+    background: #fff4df;
+  }
+  .week-timeline .day-column {
+    position: relative;
+    height: calc(var(--timeline-height) + 44px);
+    min-height: 0;
+    padding: 0;
+  }
+  .week-timeline .week-axis-heading {
+    display: flex;
+    grid-column: 1;
+    grid-row: 1;
+    align-items: end;
+    padding: 8px 5px;
+    border-bottom: 2px solid #19191855;
+    font: 10px var(--mono);
+  }
+  .week-timeline .week-time-axis {
+    display: block;
+    grid-column: 1;
+    grid-row: 2;
+    position: relative;
+    background: var(--paper-light);
+  }
+  .week-time-axis > span {
+    position: absolute;
+    right: 5px;
+    font: 10px/1 var(--mono);
+    transform: translateY(2px);
+  }
+  .week-timeline .week-time-lines {
+    display: block;
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .week-time-lines > span {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-top: 1px solid #19191815;
+  }
+  .week-timeline .calendar-viewport .calendar-entry {
+    position: absolute;
+    top: var(--event-top);
+    left: calc(100% * var(--event-lane) / var(--event-lanes) + 6px);
+    width: calc(100% / var(--event-lanes) - 12px);
+    height: var(--event-height);
+  }
+  .week-timeline .calendar-viewport .day-shell .calendar-entry .calendar-block {
+    height: 100%;
+    min-height: 0;
+    padding: 10px 8px 34px 12px;
+    border: 1px solid #19191844;
+    border-left: 5px solid var(--category);
+    background: var(--paper-light);
+    box-shadow: none;
+    gap: 4px;
+  }
+  .week-timeline .calendar-viewport .calendar-entry .calendar-block::before,
+  .week-timeline .calendar-viewport .calendar-entry .calendar-block::after {
+    display: none;
+  }
+  .week-timeline .calendar-viewport .day-shell .calendar-entry .block-title {
+    font: 700 17px/1.2 var(--body);
+    text-transform: none;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+  }
+  .week-timeline .calendar-viewport .calendar-entry .block-time {
+    font-size: 10px;
+    flex-wrap: wrap;
+  }
+  .week-timeline .calendar-viewport .calendar-entry .block-category {
+    font-size: 9px;
+  }
+  .week-timeline .calendar-viewport .calendar-entry .block-subtitle {
+    display: none;
+  }
+  .week-timeline .calendar-viewport .calendar-entry .calendar-block.is-done {
+    background: #f2f0e8;
+  }
+  .week-timeline .calendar-viewport .calendar-entry .calendar-block.is-skipped {
+    border-style: dashed;
+    background: var(--red-soft);
+  }
+  .week-timeline .calendar-event-actions {
+    background: transparent;
+    border-top: 0;
+    inset: auto 7px 3px 10px;
+    gap: 2px 5px;
+  }
+  .week-timeline .calendar-event-actions .completion-label {
+    display: inline;
+    font-size: 8px;
+  }
+  .week-timeline .day-bottom-add {
+    position: absolute;
+    top: var(--timeline-height);
+    left: 6px;
+    right: 6px;
+    width: calc(100% - 12px);
+    margin: 0;
+    min-height: 34px;
+  }
+  .week-timeline .day-empty {
+    position: relative;
+    margin: 12px;
+  }
+}
+@media (min-width: 951px) and (max-width: 1150px) {
+  .week-summary {
+    gap: 14px;
+    padding: 12px;
+  }
+  .week-summary-totals > div {
+    padding: 0 12px;
+  }
+  .week-timeline .calendar-viewport .day-shell .calendar-entry .block-title {
+    font-size: 15px;
+  }
+  .week-timeline .calendar-event-actions .completion-label {
+    display: none;
+  }
+}
+@media (max-width: 950px) {
+  .week-summary {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .week-summary-balance {
+    flex-basis: 100%;
+  }
+}
+@media print {
+  .week-summary {
+    break-inside: avoid;
+  }
+  .week-timeline .calendar-viewport .calendar-grid {
+    grid-template-columns: repeat(var(--days), minmax(0, 1fr));
+  }
+  .week-timeline .calendar-viewport .calendar-grid > .day-heading,
+  .week-timeline .calendar-viewport .calendar-grid > .day-shell {
+    grid-column: var(--desktop-column);
+  }
+  .week-axis-heading,
+  .week-time-axis,
+  .week-time-lines {
+    display: none !important;
+  }
+  .week-timeline .day-column {
+    height: auto;
+  }
+  .week-timeline .calendar-viewport .calendar-entry {
+    position: relative;
+    inset: auto;
+    height: auto;
+    width: 100%;
+  }
+  .week-timeline .calendar-viewport .day-shell .calendar-entry .calendar-block {
+    height: auto;
+    min-height: 110px;
+  }
+}

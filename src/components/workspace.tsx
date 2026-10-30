@@ -63,6 +63,7 @@ import { bookDeadlineWork } from "@/lib/deadline-scheduling";
 import { DeadlinePlanning } from "./deadline-planning";
 import { DayFocus } from "./day-focus";
 import { Calendar } from "./calendar";
+import { WeekSummary } from "./week-summary";
 import { ActivityEditor } from "./activity-editor";
 import { GoalsView, GoalForm } from "./goals";
 import { SettingsView } from "./settings";
@@ -1203,6 +1204,7 @@ export function Workspace() {
                       onReschedule={reschedule}
                       onEdit={editInWeek}
                     />
+                    {!mobile && <WeekSummary activities={activities} />}
                     <Calendar
                       mobile={mobile}
                       activeDay={activeDay}
