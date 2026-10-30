@@ -21,16 +21,18 @@ import {
   replanDay,
   type PlanningPreview,
 } from "@/lib/career-planning";
+import {
+  APPLICATION_STATUSES,
+  ACTION_PERIODS,
+  matchesActionPeriod,
+  saveApplication,
+  completeApplicationAction,
+  type ActionPeriod,
+} from "@/lib/applications";
+import { ApplicationHistory } from "./application-history";
 import { Modal } from "./modal";
 
-const statuses = {
-  draft: "Utkast",
-  sent: "Skickad",
-  interview: "Intervju",
-  offer: "Erbjudande",
-  rejected: "Avslag",
-  closed: "Avslutad",
-} as const;
+const statuses = APPLICATION_STATUSES;
 type Props = {
   data: AppData;
   onChange: (next: AppData, base: AppData) => void;
@@ -39,6 +41,8 @@ type Props = {
 };
 
 export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
+  const [historyId, setHistoryId] = useState<string | null>(null);
+  const [period, setPeriod] = useState<ActionPeriod>("all");
   const [tab, setTab] = useState("applications");
   const [application, setApplication] = useState<JobApplication | null>(null);
   const [contact, setContact] = useState<NetworkContact | null>(null);
@@ -55,7 +59,7 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
     label: string;
   } | null>(null);
   const editing = Boolean(
-    application || contact || deadline || booking || preview,
+    application || contact || deadline || booking || preview || historyId,
   );
   useLayoutEffect(() => {
     onEditing(editing);
@@ -92,6 +96,15 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
       ))}
     </ul>
   );
+  const saveTrackedApplication = (a: JobApplication) =>
+    onChange(
+      {
+        ...data,
+        applications: applications.map((old) => (old.id === a.id ? a : old)),
+      },
+      data,
+    );
+  const historyApplication = applications.find((a) => a.id === historyId);
   const nextDate = (date: string) => (date && date >= today() ? date : today());
   return (
     <section className="career-view stack" aria-label="Jobb och nätverk">
@@ -154,6 +167,22 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
               </select>
             </label>
           </div>
+          <label>
+            Filtrera nästa steg
+            <select
+              value={period}
+              onChange={(e) => setPeriod(e.target.value as ActionPeriod)}
+            >
+              {Object.entries(ACTION_PERIODS).map(([id, label]) => (
+                <option value={id} key={id}>
+                  {label}
+                  {id !== "all"
+                    ? ` (${applications.filter((a) => matchesActionPeriod(a, id as ActionPeriod)).length})`
+                    : ""}
+                </option>
+              ))}
+            </select>
+          </label>
           <p>
             {applications.length} ansökningar ·{" "}
             {applications.filter((a) => a.status === "sent").length} skickade ·{" "}
@@ -161,9 +190,19 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
             intervjuer
           </p>
           {!applications.length && <p>Inga ansökningar registrerade.</p>}
+          {!!applications.length &&
+            !applications.some(
+              (a) =>
+                (filter === "all" || a.status === filter) &&
+                matchesActionPeriod(a, period),
+            ) && <p>Inga ansökningar matchar filtren.</p>}
           <div className="career-cards">
             {applications
-              .filter((a) => filter === "all" || a.status === filter)
+              .filter(
+                (a) =>
+                  (filter === "all" || a.status === filter) &&
+                  matchesActionPeriod(a, period),
+              )
               .sort((a, b) =>
                 (a.followUpDate || a.deadline || "9999").localeCompare(
                   b.followUpDate || b.deadline || "9999",
@@ -183,8 +222,43 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
                     </p>
                   )}
                   {a.nextAction && <p>Nästa steg: {a.nextAction}</p>}
+                  {!!a.contactIds?.length && (
+                    <div className="stack" aria-label="Kopplade kontakter">
+                      {a.contactIds.map((id) => {
+                        const c = contacts.find((c) => c.id === id);
+                        return c ? (
+                          <button
+                            className="text-button"
+                            key={id}
+                            onClick={() => setContact(c)}
+                          >
+                            {c.name}
+                            {c.organization && ` · ${c.organization}`}
+                          </button>
+                        ) : (
+                          <span key={id}>Borttagen kontakt</span>
+                        );
+                      })}
+                    </div>
+                  )}
                   {a.notes && <p className="career-notes">{a.notes}</p>}
                   <div className="career-actions">
+                    <button
+                      className="button secondary"
+                      onClick={() => setHistoryId(a.id)}
+                    >
+                      Visa historik
+                    </button>
+                    {a.nextAction.trim() && (
+                      <button
+                        className="button secondary"
+                        onClick={() =>
+                          saveTrackedApplication(completeApplicationAction(a))
+                        }
+                      >
+                        Markera nästa steg klart
+                      </button>
+                    )}
                     <button
                       className="button secondary"
                       onClick={() => setApplication(a)}
@@ -382,15 +456,33 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
           Förhandsvisa dagens omplanering
         </button>
       </section>
+      {historyApplication && (
+        <ApplicationHistory
+          value={historyApplication}
+          contacts={contacts}
+          onClose={() => setHistoryId(null)}
+          onSave={(a) => {
+            saveTrackedApplication(a);
+            setHistoryId(null);
+          }}
+        />
+      )}
       {application && (
         <ApplicationForm
           value={application}
+          contacts={contacts}
           onClose={() => setApplication(null)}
           onSave={(a) => {
             onChange(
               {
                 ...data,
-                applications: [...applications.filter((x) => x.id !== a.id), a],
+                applications: [
+                  ...applications.filter((x) => x.id !== a.id),
+                  saveApplication(
+                    applications.find((x) => x.id === a.id),
+                    a,
+                  ),
+                ],
               },
               data,
             );
@@ -553,11 +645,13 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
 
 function ApplicationForm({
   value,
+  contacts,
   onSave,
   onClose,
   onDelete,
 }: {
   value: JobApplication;
+  contacts: NetworkContact[];
   onSave: (v: JobApplication) => void;
   onClose: () => void;
   onDelete: () => void;
@@ -622,6 +716,28 @@ function ApplicationForm({
         </div>
         {field("nextAction", "Nästa steg")}
         {field("notes", "Anteckningar")}
+        <fieldset className="stack">
+          <legend>Koppla kontakter</legend>
+          {!contacts.length && <p>Skapa först en kontakt under Kontaktlogg.</p>}
+          {contacts.map((c) => (
+            <label key={c.id}>
+              <input
+                type="checkbox"
+                checked={v.contactIds?.includes(c.id) ?? false}
+                onChange={(e) =>
+                  set({
+                    ...v,
+                    contactIds: e.target.checked
+                      ? [...(v.contactIds ?? []), c.id]
+                      : (v.contactIds ?? []).filter((id) => id !== c.id),
+                  })
+                }
+              />
+              {c.name}
+              {c.organization && ` · ${c.organization}`}
+            </label>
+          ))}
+        </fieldset>
         <button className="button primary">Spara ansökan</button>
         <button className="button secondary" type="button" onClick={onDelete}>
           Ta bort ansökan

@@ -258,7 +258,7 @@ export function validateCareerData(d: AppData) {
     }
     return value;
   }
-  for (const a of records(d.applications === undefined ? [] : d.applications))
+  for (const a of records(d.applications === undefined ? [] : d.applications)) {
     if (
       !text(a.organization, 200) ||
       !a.organization.trim() ||
@@ -273,6 +273,47 @@ export function validateCareerData(d: AppData) {
       !text(a.notes)
     )
       throw new Error("En ansökan är ogiltig.");
+    if (
+      a.contactIds !== undefined &&
+      (!Array.isArray(a.contactIds) ||
+        a.contactIds.length > 1000 ||
+        new Set(a.contactIds).size !== a.contactIds.length ||
+        !a.contactIds.every((id: unknown) => text(id, 200) && id.trim()))
+    )
+      throw new Error("Ansökans kontaktkopplingar är ogiltiga.");
+    if (a.history !== undefined)
+      for (const e of records(a.history)) {
+        if (
+          !date(e.date) ||
+          !e.date ||
+          !text(e.recordedAt, 100) ||
+          !Number.isFinite(Date.parse(e.recordedAt)) ||
+          ![
+            "created",
+            "status",
+            "action",
+            "contact",
+            "interview",
+            "feedback",
+            "note",
+          ].includes(e.kind) ||
+          !text(e.notes, 5000) ||
+          !e.notes.trim() ||
+          (e.status !== undefined &&
+            ![
+              "draft",
+              "sent",
+              "interview",
+              "offer",
+              "rejected",
+              "closed",
+            ].includes(e.status)) ||
+          (e.contactId !== undefined &&
+            (!text(e.contactId, 200) || !e.contactId.trim()))
+        )
+          throw new Error("En händelse i ansökningshistoriken är ogiltig.");
+      }
+  }
   for (const c of records(d.contacts === undefined ? [] : d.contacts)) {
     if (
       !text(c.name, 200) ||

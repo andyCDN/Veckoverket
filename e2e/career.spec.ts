@@ -284,11 +284,9 @@ test("separata tidsmål justeras tillsammans och kontaktpass använder nätverka
   const career = page
     .locator(".category-setting")
     .filter({ has: page.locator(".category-label", { hasText: "Jobbsök" }) });
-  const networking = page
-    .locator(".category-setting")
-    .filter({
-      has: page.locator(".category-label", { hasText: "Nätverkande" }),
-    });
+  const networking = page.locator(".category-setting").filter({
+    has: page.locator(".category-label", { hasText: "Nätverkande" }),
+  });
   await expect(career.getByLabel("Timmar / vecka")).toHaveValue("3.75");
   await expect(networking.getByLabel("Timmar / vecka")).toHaveValue("1.25");
   await career.getByLabel("Timmar / vecka").fill("3");
@@ -310,4 +308,97 @@ test("separata tidsmål justeras tillsammans och kontaktpass använder nätverka
   expect(
     (await stored(page)).weeks[week].activities.find((a) => a.id === "done"),
   ).toEqual(fixture().weeks[week].activities[0]);
+});
+
+test("ansökans nästa steg, historik och kontaktkoppling fungerar på mobil och sparas", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await setup(page);
+  const before = await stored(page);
+  await page.getByRole("button", { name: "Kontaktlogg", exact: true }).click();
+  await page.getByRole("button", { name: "Ny kontakt", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Namn", { exact: true }).fill("Kim Rekryterare");
+  await dialog
+    .getByRole("button", { name: "Spara kontakt", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Ansökningar", exact: true }).click();
+  await page.getByRole("button", { name: "Ny ansökan", exact: true }).click();
+  await dialog.getByLabel("Organisation", { exact: true }).fill("Bolaget");
+  await dialog.getByLabel("Tjänst", { exact: true }).fill("Analytiker");
+  await dialog.getByLabel("Nästa steg", { exact: true }).fill("Ring Kim");
+  await dialog.getByLabel("Uppföljningsdatum").fill("2026-10-29");
+  await dialog.getByRole("checkbox", { name: "Kim Rekryterare" }).check();
+  await dialog
+    .getByRole("button", { name: "Spara ansökan", exact: true })
+    .click();
+  await page
+    .getByRole("combobox", { name: "Filtrera nästa steg" })
+    .selectOption("today");
+  await expect(
+    page.getByRole("heading", { name: "Analytiker · Bolaget" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Redigera ansökan", exact: true })
+    .click();
+  await dialog
+    .getByRole("combobox", { name: "Status", exact: true })
+    .selectOption("interview");
+  await dialog
+    .getByRole("button", { name: "Spara ansökan", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Visa historik", exact: true })
+    .click();
+  await expect(
+    dialog.getByText("Utkast → Intervju", { exact: true }),
+  ).toBeVisible();
+  await dialog
+    .getByRole("combobox", { name: "Händelsetyp" })
+    .selectOption("contact");
+  await dialog
+    .getByRole("combobox", { name: "Kontakt för händelsen" })
+    .selectOption((await stored(page)).contacts![0].id);
+  await dialog
+    .getByRole("textbox", { name: "Händelseanteckning" })
+    .fill("Intervjutid diskuterad.");
+  await dialog
+    .getByRole("button", { name: "Spara händelse", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Markera nästa steg klart", exact: true })
+    .click();
+  await expect(
+    page.getByText("Inga ansökningar matchar filtren."),
+  ).toBeVisible();
+  await page
+    .getByRole("combobox", { name: "Filtrera nästa steg" })
+    .selectOption("all");
+  await page
+    .getByRole("button", { name: "Visa historik", exact: true })
+    .click();
+  await expect(
+    dialog.getByText("Genomfört: Ring Kim · Planerat datum 2026-10-29", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    dialog.getByText("Intervjutid diskuterad.", { exact: true }),
+  ).toBeVisible();
+  await dialog.getByRole("button", { name: "Stäng dialog" }).click();
+  await page
+    .getByRole("button", { name: "Kim Rekryterare", exact: true })
+    .click();
+  await expect(dialog.getByLabel("Namn", { exact: true })).toHaveValue(
+    "Kim Rekryterare",
+  );
+  await dialog.getByRole("button", { name: "Stäng dialog" }).click();
+  await expect
+    .poll(async () => (await stored(page)).applications?.[0].history?.length)
+    .toBe(4);
+  const saved = await stored(page);
+  expect(saved.weeks).toEqual(before.weeks);
+  await page.reload();
+  expect((await stored(page)).applications).toEqual(saved.applications);
 });

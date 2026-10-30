@@ -53,6 +53,28 @@ test("ansökningar och kontaktlogg molnsparas, återläses och hålls åtskilda 
   expect(f.documents.get(userA)!.data.contacts?.[0].entries[0].notes).toBe(
     "Samtal om rollen",
   );
+  await page.getByRole("button", { name: "Ansökningar", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Redigera ansökan", exact: true })
+    .click();
+  await dialog
+    .getByRole("combobox", { name: "Status", exact: true })
+    .selectOption("interview");
+  await dialog
+    .getByLabel("Nästa steg", { exact: true })
+    .fill("Förbered intervju");
+  await dialog.getByLabel("Uppföljningsdatum").fill("2026-10-30");
+  await dialog.getByRole("checkbox", { name: "Kim", exact: true }).check();
+  await dialog
+    .getByRole("button", { name: "Spara ansökan", exact: true })
+    .click();
+  await status(page, "Sparat i molnet");
+  expect(
+    f.documents.get(userA)!.data.applications?.[0].history?.map((e) => e.kind),
+  ).toEqual(["created", "status", "action"]);
+  expect(f.documents.get(userA)!.data.applications?.[0].contactIds).toEqual([
+    f.documents.get(userA)!.data.contacts![0].id,
+  ]);
   expect(f.documents.get(userA)!.data.weeks).toEqual(original.weeks);
   await page.reload();
   await status(page, "Sparat i molnet");

@@ -110,9 +110,27 @@ export type WeekPlan = {
 };
 export type ApplicationStatus =
   "draft" | "sent" | "interview" | "offer" | "rejected" | "closed";
+export type ApplicationHistoryEntry = {
+  id: string;
+  date: string;
+  recordedAt: string;
+  kind:
+    | "created"
+    | "status"
+    | "action"
+    | "contact"
+    | "interview"
+    | "feedback"
+    | "note";
+  notes: string;
+  status?: ApplicationStatus;
+  contactId?: string;
+};
 export type JobApplication = {
   id: string;
   organization: string;
+  contactIds?: string[];
+  history?: ApplicationHistoryEntry[];
   role: string;
   status: ApplicationStatus;
   deadline: string;
