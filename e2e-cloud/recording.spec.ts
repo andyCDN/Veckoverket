@@ -50,6 +50,8 @@ async function setup(page: Page) {
     releaseAI = () => {},
     aiCalls = 0,
     wavUploads = 0;
+  let aiFailure = "",
+    aiDiagnostics = true;
   const summary = {
     agreements: [
       {
@@ -91,7 +93,14 @@ async function setup(page: Page) {
         ready: true,
         aiReady: true,
         deferredCategorization: true,
+        aiDiagnostics,
       });
+    if (b.action === "check-ai")
+      return reply(
+        aiFailure
+          ? { error: aiFailure, code: "ai_credit_exhausted" }
+          : { aiReady: true, transcription: true, summary: true },
+      );
     if (b.action === "list") return reply({ sessions: [...sessions.values()] });
     if (b.action === "create") {
       const id = `33333333-3333-4333-8333-${String(++seq).padStart(12, "0")}`;
@@ -120,6 +129,8 @@ async function setup(page: Page) {
     }
     if (b.action === "transcribe") {
       aiCalls++;
+      if (aiFailure)
+        return reply({ error: aiFailure, code: "ai_credit_exhausted" });
       if (blockAI)
         await new Promise<void>((r) => {
           releaseAI = r;
@@ -184,12 +195,71 @@ async function setup(page: Page) {
     set blockAI(v: boolean) {
       blockAI = v;
     },
+    set aiFailure(v: string) {
+      aiFailure = v;
+    },
+    set aiDiagnostics(v: boolean) {
+      aiDiagnostics = v;
+    },
     unblock() {
       blockAI = false;
       releaseAI();
     },
   };
 }
+test("visar AI-felets orsak, behåller ljudet och återupptar analysen efter ett lyckat anslutningstest", async ({
+  page,
+}) => {
+  const f = await setup(page);
+  f.aiFailure =
+    "OpenAI-projektets API-kredit eller budget är slut. Kontrollera API-faktureringen.";
+  await page
+    .getByRole("button", { name: "Starta inspelning", exact: true })
+    .click();
+  await capturePart(page);
+  await expect.poll(() => localAudio(page)).toEqual({ raw: 0, uploaded: 1 });
+  await expect(page.getByText(/API-kredit eller budget är slut/)).toBeVisible();
+  await page.getByText("Felsök AI-analysen", { exact: true }).click();
+  await page
+    .getByRole("button", { name: "Kontrollera AI-anslutningen", exact: true })
+    .click();
+  await expect(
+    page.locator(".recording-diagnostics [role=status]"),
+  ).toContainText("API-kredit");
+  expect(await localAudio(page)).toEqual({ raw: 0, uploaded: 1 });
+  f.aiFailure = "";
+  await page
+    .getByRole("button", { name: "Kontrollera AI-anslutningen", exact: true })
+    .click();
+  await expect(
+    page.locator(".recording-diagnostics [role=status]"),
+  ).toContainText("Både transkribering och sammanfattning");
+  await expect.poll(() => localAudio(page)).toEqual({ raw: 0, uploaded: 0 });
+  await page
+    .getByRole("button", { name: "Stoppa och sammanfatta", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Granska sammanfattningen" }),
+  ).toBeVisible();
+  expect(f.f.documents.get(userA)!.data.weeks).toEqual(f.original.weeks);
+});
+
+test("förklarar när en äldre serverfunktion behöver uppdateras för AI-diagnostik", async ({
+  page,
+}) => {
+  const f = await setup(page);
+  f.aiDiagnostics = false;
+  await page.getByText("Felsök AI-analysen", { exact: true }).click();
+  await page
+    .getByRole("button", { name: "Kontrollera AI-anslutningen", exact: true })
+    .click();
+  await expect(
+    page.locator(".recording-diagnostics [role=status]"),
+  ).toContainText("serverfunktion behöver uppdateras");
+  await expect(
+    page.getByRole("button", { name: "Starta inspelning", exact: true }),
+  ).toBeEnabled();
+});
 async function capturePart(page: Page) {
   await expect(
     page.getByText("● Inspelning pågår", { exact: false }),

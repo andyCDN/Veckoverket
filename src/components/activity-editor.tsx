@@ -23,6 +23,7 @@ import {
 } from "@/lib/calendar-categories";
 import { googleEventKey } from "@/lib/external-calendar";
 import type { Activity, AppData, RecurringActivity } from "@/lib/types";
+import { canSwapActivity } from "@/lib/activity-swap";
 export function ActivityEditor({
   activity,
   data,
@@ -34,6 +35,7 @@ export function ActivityEditor({
   onDelete,
   onClose,
   onCategorize,
+  onSwap,
 }: {
   activity?: Activity;
   data: AppData;
@@ -49,6 +51,7 @@ export function ActivityEditor({
   onDelete: (id: string, series: boolean) => void;
   onClose: () => void;
   onCategorize: (activity: Activity, categoryId: string) => void;
+  onSwap: (firstId: string, secondId: string) => string | undefined;
 }) {
   const initialCategory = activity?.external
     ? (googleCategoryChoices(data)[googleEventKey(activity)] ?? AUTO_CATEGORY)
@@ -87,6 +90,7 @@ export function ActivityEditor({
     activity?.recurrenceId ? "weekly" : "none",
   );
   const [error, setError] = useState("");
+  const [swapTarget, setSwapTarget] = useState("");
   const patch = (v: Partial<Activity>) => setForm((f) => ({ ...f, ...v }));
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -430,6 +434,54 @@ export function ActivityEditor({
             onChange={(e) => patch({ description: e.target.value })}
           />
         </label>
+        {activity && canSwapActivity(activity, data) && (
+          <fieldset className="activity-swap">
+            <legend>Byt plats på två pass</legend>
+            <p>
+              Passen behåller sin längd, kategori och kopplingar. Övriga
+              bokningar flyttas inte.
+            </p>
+            <label>
+              Byt plats med
+              <select
+                value={swapTarget}
+                onChange={(e) => setSwapTarget(e.target.value)}
+              >
+                <option value="">Välj pass</option>
+                {activities
+                  .filter(
+                    (a) => a.id !== activity.id && canSwapActivity(a, data),
+                  )
+                  .sort(
+                    (a, b) => a.date.localeCompare(b.date) || a.start - b.start,
+                  )
+                  .map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.date} {time(a.start)}–{time(a.end)} · {a.title}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="button secondary"
+              disabled={
+                !swapTarget ||
+                JSON.stringify(form) !== JSON.stringify(activity) ||
+                repeat !== (activity.recurrenceId ? "weekly" : "none")
+              }
+              onClick={() => {
+                const issue = onSwap(activity.id, swapTarget);
+                if (issue) setError(issue);
+              }}
+            >
+              Byt plats
+            </button>
+            {JSON.stringify(form) !== JSON.stringify(activity) && (
+              <p>Spara ändringarna innan du byter plats.</p>
+            )}
+          </fieldset>
+        )}
         {error && (
           <p className="inline-error" role="alert">
             {error}

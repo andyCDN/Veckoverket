@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
   DndContext,
   useDraggable,
@@ -8,6 +8,9 @@ import {
   useSensors,
   PointerSensor,
   KeyboardSensor,
+  pointerWithin,
+  rectIntersection,
+  type CollisionDetection,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
@@ -25,6 +28,19 @@ import { visibleDays } from "@/lib/planner";
 import { categoryLabel, categoryStyle } from "@/lib/presentation";
 import { GOOGLE_CATEGORY_ID } from "@/lib/external-calendar";
 import { weekTimeline } from "@/lib/week-timeline";
+import { canSwapActivity } from "@/lib/activity-swap";
+
+const calendarCollision: CollisionDetection = (args) => {
+  const collisions = args.pointerCoordinates
+    ? pointerWithin(args)
+    : rectIntersection(args);
+  const cards = collisions.filter(
+    (collision) =>
+      String(collision.id).startsWith("swap:") &&
+      collision.id !== `swap:${args.active.id}`,
+  );
+  return cards.length ? cards : collisions;
+};
 function CalendarBlock({
   a,
   category,
@@ -54,13 +70,25 @@ function CalendarBlock({
     transform,
     isDragging,
   } = useDraggable({ id: a.id, disabled: !canMove });
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
+    id: `swap:${a.id}`,
+    disabled: filteredOut,
+    data: { activityId: a.id, date: a.date },
+  });
+  const setEntryRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      setNodeRef(node);
+      setDropRef(node);
+    },
+    [setNodeRef, setDropRef],
+  );
   const family = a.categoryId === "family",
     lunch = a.categoryId === "rest" && a.blockType === "locked";
   return (
     <div
-      ref={setNodeRef}
+      ref={setEntryRef}
       data-activity-id={a.id}
-      className={`calendar-entry ${a.status === "skipped" ? "is-missed" : ""} ${filteredOut ? "is-filtered-out" : ""} ${isDragging ? "is-dragging" : ""}`}
+      className={`calendar-entry ${isOver && !isDragging ? "is-swap-target" : ""} ${a.status === "skipped" ? "is-missed" : ""} ${filteredOut ? "is-filtered-out" : ""} ${isDragging ? "is-dragging" : ""}`}
       style={
         {
           ...categoryStyle(category),
@@ -216,6 +244,7 @@ export function Calendar({
   categoryFilter = "all",
   onEdit,
   onMove,
+  onSwap,
   onCreate,
   onStatusChange,
   mobile = false,
@@ -226,6 +255,7 @@ export function Calendar({
   categoryFilter?: string;
   onEdit: (a: Activity) => void;
   onMove: (a: Activity, date: string, start: number) => void;
+  onSwap: (a: Activity, target: Activity) => void;
   onCreate: (date: string, start?: number) => void;
   onStatusChange: (activity: Activity, status: Activity["status"]) => void;
   activeDay: number;
@@ -270,7 +300,15 @@ export function Calendar({
   function dragEnd(e: DragEndEvent) {
     const a = activities.find((a) => a.id === e.active.id);
     if (!a || !e.over) return;
+    const target = activities.find(
+      (a) => a.id === e.over!.data.current?.activityId,
+    );
+    if (target) {
+      if (target.id !== a.id) onSwap(a, target);
+      return;
+    }
     const date = String(e.over.id);
+    if (date === a.date) return;
     onMove(a, date, a.start);
   }
   if (!days.length)
@@ -465,16 +503,7 @@ export function Calendar({
                           category={data.categories.find(
                             (c) => c.id === a.categoryId,
                           )}
-                          canMove={
-                            !mobile &&
-                            a.blockType !== "locked" &&
-                            Boolean(
-                              data.categories.find((c) => c.id === a.categoryId)
-                                ?.movable,
-                            ) &&
-                            (a.categoryId !== "music" ||
-                              data.settings.musicMovable)
-                          }
+                          canMove={!mobile && canSwapActivity(a, data)}
                           onDelete={() => onDelete(a)}
                           onEdit={() => onEdit(a)}
                           onStatusChange={(status) => onStatusChange(a, status)}
@@ -515,7 +544,7 @@ export function Calendar({
           <ShieldCheck size={13} /> Skyddad tid
         </span>
         <span className="calendar-hint">
-          Klicka för att ändra tid · Dra till en annan dag
+          Dra över ett annat pass för att byta plats · Klicka för att redigera
         </span>
       </div>
     </div>

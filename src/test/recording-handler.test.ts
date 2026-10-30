@@ -9,6 +9,7 @@ import type {
   RecordingSegment,
 } from "../../supabase/functions/_shared/recording-schema";
 import { pcmWav } from "../lib/recording-audio";
+import { RecordingAIError } from "../../supabase/functions/_shared/recording-ai";
 const id = "33333333-3333-4333-8333-333333333333";
 function fixture() {
   const records = new Map<
@@ -23,6 +24,7 @@ function fixture() {
   let calls = 0,
     fail = false,
     configured = true;
+  let aiError: Error | undefined;
   const store: RecordingStore = {
     list: async (user) =>
       [...records.values()]
@@ -97,8 +99,12 @@ function fixture() {
       authenticate: async (token) =>
         ["a", "b"].includes(token) ? token : null,
       store,
+      checkAI: async () => {
+        if (aiError) throw aiError;
+      },
       transcribe: async () => {
         calls++;
+        if (aiError) throw aiError;
         if (fail) throw new Error("PRIVATE_API_KEY");
         return "Jag skickar länken på fredag.";
       },
@@ -144,9 +150,48 @@ function fixture() {
     set configured(v: boolean) {
       configured = v;
     },
+    set aiError(v: Error | undefined) {
+      aiError = v;
+    },
   };
 }
 describe("privat inspelningstjänst", () => {
+  it("kräver inloggning för AI-kontroll och visar kreditfel även när en nyckel är konfigurerad", async () => {
+    const f = fixture();
+    expect((await f.request({ action: "check-ai" }, "anonymous")).status).toBe(
+      401,
+    );
+    expect((await f.request({ action: "status" })).data.aiReady).toBe(true);
+    f.aiError = new RecordingAIError(
+      "ai_credit_exhausted",
+      "transcription",
+      "req_quota",
+    );
+    const check = await f.request({ action: "check-ai" });
+    expect(check.status).toBe(503);
+    expect(check.data).toMatchObject({
+      code: "ai_credit_exhausted",
+      requestId: "req_quota",
+    });
+    f.configured = false;
+    expect((await f.request({ action: "check-ai" })).data.code).toBe(
+      "ai_not_configured",
+    );
+  });
+  it("behåller mottaget ljud och visar orsaken när AI-nyckeln avvisas", async () => {
+    const f = fixture();
+    await f.request({ action: "create", title: "Samtal", context: {} });
+    await f.request({ action: "acknowledge", id, index: 0 });
+    f.aiError = new RecordingAIError("ai_key_invalid", "transcription");
+    const result = await f.request({ action: "transcribe", id, index: 0 });
+    expect(result.status).toBe(502);
+    expect(result.data.code).toBe("ai_key_invalid");
+    expect(f.pending.has(0)).toBe(true);
+    f.aiError = undefined;
+    expect(
+      (await f.request({ action: "transcribe", id, index: 0 })).status,
+    ).toBe(200);
+  });
   it("kan spela in okategoriserat och kategorisera i efterhand utan att påverka ljud eller AI-resultat", async () => {
     const f = fixture();
     const created = await f.request({
@@ -230,6 +275,7 @@ describe("privat inspelningstjänst", () => {
     expect((await f.request({ action: "status" })).data).toEqual({
       ready: true,
       aiReady: false,
+      aiDiagnostics: true,
       deferredCategorization: true,
     });
     expect(

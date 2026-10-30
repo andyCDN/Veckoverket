@@ -36,6 +36,7 @@ GitHub Pages publicerar gränssnittet. Supabase-tabellerna, ljudlagringen och Ed
    Publicera funktionen på nytt om den redan är installerad: den nya versionen tillåter okategoriserad start och sparar kategorisering i efterhand. Tabellerna behöver ingen ny migrering för denna ändring; kategori och koppling ligger i det befintliga JSON-fältet `context`. En äldre serverversion känns igen av gränssnittet och startknappen är då avstängd tills funktionen är uppdaterad.
 
    `supabase/config.toml` pekar på projektets befintliga import map. Plattformens `verify_jwt` är avstängd eftersom funktionen själv verifierar token med `Auth.getUser`, inklusive nyare signeringsnycklar. Ta inte bort denna kontroll i funktionen.
+
 3. För automatisk transkribering och sammanfattning: lägg till `RECORDING_AI_KEY` under **Edge Functions → Secrets** i Supabase Dashboard. Använd en servernyckel för OpenAI med tillgång till de valda modellerna. Nyckeln ska aldrig läggas i frontendvariabler, GitHub Pages, källkod eller chatt. Ljudlagring fungerar även innan AI-nyckeln är tillagd; bearbetningen väntar.
 4. `APP_ORIGIN` är som standard `https://andycdn.github.io`. Ange en annan exakt origin om sidan körs på en annan domän. Sökvägen `/Veckoverket` ingår inte i origin. `SUPABASE_URL` och `SUPABASE_SERVICE_ROLE_KEY` tillhandahålls av Supabase, aldrig av webbläsaren.
 5. Standardmodeller är `gpt-4o-mini-transcribe` och `gpt-4.1-mini`. Vid behov kan administratören ange `RECORDING_TRANSCRIPTION_MODEL` och `RECORDING_SUMMARY_MODEL` som serverhemligheter. Ljud skickas till OpenAI för transkribering och text för sammanfattning. Kostnader för API och lagring tillkommer.
@@ -63,3 +64,17 @@ Ljud, transkriptioner och AI-förslag är privata för kontot. Radering av inspe
 Mobilwebben spelar in mikrofonens omgivningsljud. Den hämtar inte automatiskt internt samtalsljud från telefonen eller andra appar. Sidan pausar när den döljs. Låst mobil, stängd sida, operativsystemets mikrofonavbrott eller att webbläsaren avslutas kan stoppa inspelningen. Appen begär att skärmen hålls vaken när webbläsaren stöder det, men bakgrundsinspelning garanteras inte.
 
 Efter installation: spela in ett kort prov med en aktuell Safari/Chrome på den faktiska mobilen, låt det laddas upp och granska sammanfattningen. Prova även tillfälligt nätavbrott och omladdning efter stopp. Automatiska tester använder syntetiskt mikrofonljud och simulerade API-svar; de verifierar inte projektets riktiga OpenAI-nyckel, Supabase-installation eller en fysisk mobil.
+
+## Felsök AI-analysen
+
+Under **Felsök AI-analysen → Kontrollera AI-anslutningen** görs ett kort prov mot både transkriberingsmodellen och sammanfattningsmodellen. Provet använder en sekund tyst ljud och en fast testtext, aldrig något från dina inspelningar. Det gör vanliga, avgiftsbelagda API-anrop. Kontrollen ändrar eller raderar inte inspelningar eller planer. När den lyckas försöker sidan också bearbeta väntande ljud igen.
+
+En konfigurerad nyckel betyder endast att ett nyckelvärde finns. Kontrollen kan skilja på avvisad nyckel, saknad behörighet, otillgänglig modell, slut på API-kredit, anropsbegränsning och tidsgräns. API-kredit hanteras i [OpenAI:s API-fakturering](https://platform.openai.com/settings/organization/billing/overview), separat från ChatGPT-abonnemang. En nätverksstörning ska inte längre beskrivas som att serverfunktionen saknas. AI-tjänstens råa felsvar, nycklar och samtalsinnehåll visas inte.
+
+Serverfunktionen måste publiceras på nytt för denna diagnostik. Kör från den uppdaterade projektmappen (i en befintlig Codespace: hämta först senaste `main` med `git pull --ff-only`):
+
+```sh
+npx --yes supabase functions deploy recording --project-ref cefzxeproambftvhcgme --use-api
+```
+
+Ingen ny SQL-migrering behövs. Inställningarna finns i [projektets Edge Functions](https://supabase.com/dashboard/project/cefzxeproambftvhcgme/functions) och [Secrets](https://supabase.com/dashboard/project/cefzxeproambftvhcgme/functions/secrets). `RECORDING_AI_KEY` är förstahandsval; om den saknas används även det vanliga servernamnet `OPENAI_API_KEY`. Nyckeln ska aldrig klistras in i chatten eller läggas i webbappens kod.

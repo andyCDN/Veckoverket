@@ -37,7 +37,6 @@ Open **Veckoreflektion → Visa uppföljning över flera veckor**. Choose **4 ve
 
 Verification includes unit tests for rule/manual precedence and import updates, history boundaries and snapshot limits, and report calculations, plus browser tests for mobile controls, undo persistence/account separation, and four/twelve-week filtering without creating missing weeks.
 
-
 ## Deadlines i dagsplaneringen
 
 En ansökan i status **Utkast** med en ansökningsdeadline får automatiskt ett arbetspass när den sparas. Tidsbehovet är minst 60 minuter. När egna delsteg anges under **Planera från deadline** används deras tidsbehov i stället. En ny deadline har ett förifyllt delsteg **Arbetspass**, 60 minuter, som kan ändras.
@@ -47,3 +46,9 @@ När en deadline sparas bokas arbetstiden bakåt från sluttiden. Ett framtida, 
 **Deadlines och arbetstid** i kalendern visar deadlines för vald dag, dagens tillhörande arbetspass och obokade deadlines under de kommande sju dagarna. Äldre, obokade deadlines kan bokas direkt där med **Boka arbetstid före deadline**. Kalenderkort får en deadlineetikett. Bokningen kan ångras med den vanliga ångrafunktionen och sparas via befintlig molnlagring.
 
 Om hela följden av delsteg inte ryms ändras ingen kalenderbokning och ett felmeddelande visas. Deadlineuppgifterna sparas ändå. Redan bokade pass flyttas inte automatiskt när datum ändras; översikten varnar om ett pass hamnar efter deadline eller behöver följas upp. Tillagda delsteg bokas utan att befintliga steg görs om. En ansökningsdeadline utan klockslag använder den sparade arbetsdagens sluttid. Funktionerna kräver ingen ny databasinstallation i Supabase.
+
+## Byt plats på två pass
+
+Dra ett flyttbart pass över ett annat pass i veckovyn och släpp för att byta starttider och datum. För en tom dag gäller den vanliga flytten med bibehållen starttid. På mobil, eller med tangentbord: öppna passet, välj **Byt plats med** och sedan **Byt plats**. Spara eventuella andra ändringar först.
+
+Båda passen behåller längd, status, kategori, anteckningar och kopplingar. Ett byte sparas som en enda ändring som kan ångras. Ingen automatisk omplanering görs av andra bokningar. Låsta, importerade, avklarade eller missade pass byter inte plats. Överlappning, buffert och veckans sparade regler kontrolleras för båda passen; deadlinearbetets ordning och sluttid samt intervjuförberedelse skyddas. Om olika längder inte får plats i de nya positionerna lämnas hela planen oförändrad.

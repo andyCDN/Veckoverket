@@ -7,20 +7,31 @@ export function recordingClient(client: SupabaseClient, userId: string) {
       const { data, error } = await client.functions.invoke("recording", {
         body,
         timeout:
-          body.action === "transcribe" || body.action === "summarize"
-            ? 110000
-            : 30000,
+          body.action === "check-ai"
+            ? 55000
+            : body.action === "transcribe" || body.action === "summarize"
+              ? 110000
+              : 30000,
       });
       if (error) {
         let message =
           "Inspelningstjänsten är inte tillgänglig. Serverfunktionen behöver vara installerad i Supabase.";
-        if (error.context instanceof Response)
+        if (error.context instanceof Response) {
+          if (error.context.status === 401)
+            message =
+              "Inloggningen kunde inte verifieras. Logga ut och in igen. Om felet kvarstår behöver inspelningens serverinstallation kontrolleras.";
+          else if (error.context.status !== 404)
+            message =
+              "Serveranropet misslyckades. Det sparade ljudet finns kvar för ett nytt försök.";
           try {
             const info = await error.context.clone().json();
             if (typeof info.error === "string") message = info.error;
           } catch {
             /* Keep safe fallback. */
           }
+        } else if (error.name === "FunctionsFetchError")
+          message =
+            "Anropet kunde inte slutföras. Kontrollera nätanslutningen och försök igen. Sparat ljud behålls.";
         throw new Error(message);
       }
       if (data?.error) throw new Error(String(data.error));

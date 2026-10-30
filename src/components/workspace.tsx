@@ -64,6 +64,7 @@ import { DeadlinePlanning } from "./deadline-planning";
 import { DayFocus } from "./day-focus";
 import { Calendar } from "./calendar";
 import { WeekSummary } from "./week-summary";
+import { swapActivities } from "@/lib/activity-swap";
 import { ActivityEditor } from "./activity-editor";
 import { GoalsView, GoalForm } from "./goals";
 import { SettingsView } from "./settings";
@@ -566,6 +567,27 @@ export function Workspace() {
           }
         : d,
     );
+  function swap(firstId: string, secondId: string) {
+    let error: string | undefined;
+    setData(
+      (current) => {
+        if (!current) {
+          error = "Planen kunde inte läsas.";
+          return current;
+        }
+        const result = swapActivities(current, week, firstId, secondId);
+        error = result.error;
+        return result.data;
+      },
+      { undoLabel: "platsbyte av två pass" },
+    );
+    if (error) notify(error);
+    else {
+      setEditor(null);
+      notify("Passen har bytt plats. Övriga bokningar är bevarade.");
+    }
+    return error;
+  }
   function move(a: Activity, date: string, start: number) {
     const current = data!;
     const moved = {
@@ -1216,6 +1238,9 @@ export function Workspace() {
                       categoryFilter={categoryFilter}
                       onEdit={openActivity}
                       onMove={move}
+                      onSwap={(a, target) => {
+                        swap(a.id, target.id);
+                      }}
                       onStatusChange={(activity, status) =>
                         updatePlan({
                           ...plan,
@@ -1619,6 +1644,7 @@ export function Workspace() {
           activities={activities}
           date={editor.date}
           onSave={saveActivity}
+          onSwap={swap}
           onDelete={deleteActivity}
           onCategorize={(activity, categoryId) => {
             setData((current) => {

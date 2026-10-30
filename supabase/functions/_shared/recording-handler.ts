@@ -8,6 +8,7 @@ import {
   type RecordingSession,
   type RecordingSummary,
 } from "./recording-schema.ts";
+import { recordingAIError } from "./recording-ai.ts";
 export type RecordingStore = {
   list(user: string): Promise<RecordingSession[]>;
   create(
@@ -69,6 +70,7 @@ export function recordingHandler(deps: {
   store: RecordingStore;
   transcribe: (audio: Uint8Array) => Promise<string>;
   summarize: (transcript: string) => Promise<unknown>;
+  checkAI?: () => Promise<void>;
 }) {
   return async (request: Request): Promise<Response> => {
     const origin = request.headers.get("origin"),
@@ -113,7 +115,30 @@ export function recordingHandler(deps: {
           ready: true,
           aiReady: deps.configured,
           deferredCategorization: true,
+          aiDiagnostics: Boolean(deps.checkAI),
         });
+      }
+      if (action === "check-ai") {
+        if (!deps.configured)
+          return reply(
+            {
+              error:
+                "AI-nyckeln saknas. Lägg till RECORDING_AI_KEY i Supabase → Edge Functions → Secrets.",
+              code: "ai_not_configured",
+            },
+            503,
+          );
+        if (!deps.checkAI)
+          return reply(
+            {
+              error:
+                "Uppdatera inspelningens serverfunktion för att kontrollera AI-anslutningen.",
+              code: "ai_diagnostics_unavailable",
+            },
+            503,
+          );
+        await deps.checkAI();
+        return reply({ aiReady: true, transcription: true, summary: true });
       }
       if (action === "list")
         return reply({ sessions: await deps.store.list(user) });
@@ -250,10 +275,10 @@ export function recordingHandler(deps: {
           if (typeof transcript !== "string" || transcript.length > 20000)
             throw new Error("Invalid transcript");
           await deps.store.saveTranscript(user, id, Number(index), transcript);
-        } catch {
+        } catch (error) {
           await deps.store.failSegment(user, id, Number(index));
           return reply(
-            {
+            recordingAIError(error) ?? {
               error:
                 "Ljudsegmentet kunde inte transkriberas. Det sparade ljudet finns kvar för ett nytt försök.",
             },
@@ -334,9 +359,9 @@ export function recordingHandler(deps: {
         return reply({ done: true, summary });
       }
       return reply({ error: "Okänd åtgärd." }, 400);
-    } catch {
+    } catch (error) {
       return reply(
-        {
+        recordingAIError(error) ?? {
           error:
             "Inspelningstjänsten är inte tillgänglig. Kontrollera serverinstallationen eller försök igen.",
         },

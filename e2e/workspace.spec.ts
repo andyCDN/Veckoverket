@@ -280,7 +280,9 @@ test("dra och släpp flyttar flexibelt block och avvisar upptagen tid", async ({
   await page.mouse.down();
   await page.mouse.move(occupied.x + 35, movedBox.y + 25, { steps: 20 });
   await page.mouse.up();
-  await expect(page.locator(".toast")).toContainText("överlappar");
+  await expect(page.locator(".toast")).toContainText(
+    /överlappar|tillåtna att flytta/,
+  );
   expect(
     (await stored(page)).weeks[w].activities.find(
       (a: { id: string }) => a.id === career.id,

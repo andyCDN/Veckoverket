@@ -3953,3 +3953,37 @@ body {
     min-height: 110px;
   }
 }
+
+.calendar-entry.is-swap-target {
+  outline: 3px dashed var(--blue);
+  outline-offset: 3px;
+}
+.activity-swap {
+  display: grid;
+  gap: 10px;
+  margin: 8px 0;
+  padding: 14px;
+  border: 1px solid var(--ink);
+}
+.activity-swap legend {
+  font-weight: 700;
+}
+.activity-swap p {
+  margin: 0;
+  font-size: 12px;
+}
+.activity-swap .button {
+  justify-self: start;
+}
+.recording-diagnostics {
+  margin: 16px 0;
+  border-top: 1px solid #19191855;
+  padding-top: 12px;
+}
+.recording-diagnostics summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.recording-diagnostics p {
+  font-size: 13px;
+}

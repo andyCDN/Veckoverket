@@ -94,6 +94,8 @@ function RecorderWorkspace({ user }: { user: User }) {
   const [document, setDocument] = useState<CloudDocument | null>(null),
     [ready, setReady] = useState(false),
     [aiReady, setAiReady] = useState(false),
+    [aiChecking, setAiChecking] = useState(false),
+    [aiCheckResult, setAiCheckResult] = useState(""),
     [uploadIssue, setUploadIssue] = useState(""),
     [aiIssue, setAiIssue] = useState(""),
     [finishing, setFinishing] = useState<string[]>([]),
@@ -227,12 +229,39 @@ function RecorderWorkspace({ user }: { user: User }) {
       .then(() => {
         if (live.current) setAiIssue("");
       })
-      .catch(() => {
+      .catch((e) => {
         if (live.current)
           setAiIssue(
-            "Transkriberingen är fördröjd. Ljudet är sparat i molnet; inspelning och uppladdning fortsätter.",
+            `${message(e)} Ljudet är sparat i molnet; inspelning och uppladdning fortsätter.`,
           );
       });
+  }
+  async function checkAI() {
+    setAiChecking(true);
+    setAiCheckResult("");
+    try {
+      const status = await api.call<{
+        aiReady: boolean;
+        aiDiagnostics?: boolean;
+      }>({ action: "status" });
+      if (live.current) setAiReady(status.aiReady);
+      if (!status.aiDiagnostics)
+        throw new Error(
+          "Inspelningens serverfunktion behöver uppdateras för att visa orsaken till AI-felet. Följ installationsguiden nedan och publicera funktionen recording på nytt.",
+        );
+      await api.call({ action: "check-ai" });
+      if (live.current) {
+        setAiReady(true);
+        setAiCheckResult(
+          "Anslutningen fungerar. Både transkribering och sammanfattning har svarat på provanropet.",
+        );
+        void retryUploads();
+      }
+    } catch (e) {
+      if (live.current) setAiCheckResult(message(e));
+    } finally {
+      if (live.current) setAiChecking(false);
+    }
   }
   function kickUploads() {
     void pumps
@@ -827,6 +856,38 @@ function RecorderWorkspace({ user }: { user: User }) {
           AI-bearbetningen är inte aktiverad. Inspelning och ljudlagring
           fungerar; sammanfattningar väntar tills servernyckeln är konfigurerad.
         </p>
+      )}
+      {ready && (
+        <details className="recording-diagnostics">
+          <summary>Felsök AI-analysen</summary>
+          <p>
+            Kontrollen provar transkribering och sammanfattning med ett kort
+            test utan ditt inspelade material. Vanlig API-kostnad tillkommer.
+          </p>
+          <button
+            className="button secondary"
+            disabled={aiChecking}
+            onClick={() => void checkAI()}
+          >
+            {aiChecking
+              ? "Kontrollerar AI-anslutningen…"
+              : "Kontrollera AI-anslutningen"}
+          </button>
+          {aiCheckResult && <p role="status">{aiCheckResult}</p>}
+          <p>
+            <a
+              href="https://platform.openai.com/settings/organization/billing/overview"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              OpenAI API-fakturering
+            </a>
+            {" · "}
+            <a href={setupGuide} target="_blank" rel="noopener noreferrer">
+              Installationsguide för inspelning
+            </a>
+          </p>
+        </details>
       )}
       {uploadIssue && <p role="status">{uploadIssue}</p>}
       {aiIssue && <p role="status">{aiIssue}</p>}
