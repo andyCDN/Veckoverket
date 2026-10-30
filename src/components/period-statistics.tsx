@@ -1,4 +1,5 @@
 "use client";
+import { orderedCategories, categoryLabel } from "@/lib/presentation";
 import { useMemo, useState } from "react";
 import type { AppData } from "@/lib/types";
 import { periodStatistics } from "@/lib/statistics";
@@ -61,9 +62,9 @@ export function PeriodStatistics({
             onChange={(event) => setCategory(event.target.value)}
           >
             <option value="all">Alla livsområden</option>
-            {data.categories.map((c) => (
+            {orderedCategories(data.categories).map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name}
+                {categoryLabel(c)}
               </option>
             ))}
           </select>
@@ -150,7 +151,7 @@ export function PeriodStatistics({
             .filter((r) => r.planned || r.done || r.target)
             .map((row) => (
               <tr key={row.category.id}>
-                <th scope="row">{row.category.name}</th>
+                <th scope="row">{categoryLabel(row.category)}</th>
                 <td>{hours(row.target)}</td>
                 <td>{hours(row.planned)}</td>
                 <td>{hours(row.done)}</td>

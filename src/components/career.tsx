@@ -1,4 +1,5 @@
 "use client";
+import { orderedCategories, categoryLabel } from "@/lib/presentation";
 import { useLayoutEffect, useState } from "react";
 import type {
   Activity,
@@ -955,11 +956,11 @@ function DeadlineForm({
             value={v.categoryId}
             onChange={(e) => set({ ...v, categoryId: e.target.value })}
           >
-            {data.categories
+            {orderedCategories(data.categories)
               .filter((c) => c.id !== "google-calendar")
               .map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name}
+                  {categoryLabel(c)}
                 </option>
               ))}
           </select>
@@ -1148,11 +1149,11 @@ function BookingForm({
             value={category}
             onChange={(e) => setCategory(e.target.value)}
           >
-            {data.categories
+            {orderedCategories(data.categories)
               .filter((c) => c.id !== "google-calendar")
               .map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name}
+                  {categoryLabel(c)}
                 </option>
               ))}
           </select>

@@ -2,7 +2,7 @@ import type { Activity, Category } from "./types";
 export const GOOGLE_CATEGORY_ID = "google-calendar";
 export const GOOGLE_CATEGORY: Category = {
   id: GOOGLE_CATEGORY_ID,
-  name: "Google Kalender",
+  name: "Okategoriserat",
   color: "#243d9b",
   targetMinutes: 0,
   priority: 5,

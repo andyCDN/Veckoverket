@@ -1,7 +1,11 @@
 "use client";
 import { BookOpen, ArrowUpRight, Check } from "lucide-react";
 import { categoryMinutes } from "@/lib/planner";
-import { categoryInk } from "@/lib/presentation";
+import {
+  categoryInk,
+  orderedCategories,
+  categoryLabel,
+} from "@/lib/presentation";
 import { hours, weekLabel, weekNumber } from "@/lib/date";
 import type { AppData, Reflection } from "@/lib/types";
 import { PeriodStatistics } from "./period-statistics";
@@ -124,11 +128,11 @@ export function ReflectionView({
             <span>Livsområde</span>
             <span>Plan / gjort</span>
           </div>
-          {data.categories.map((c) => (
+          {orderedCategories(data.categories).map((c) => (
             <div className="comparison-row" key={c.id}>
               <span>
                 <i style={{ background: categoryInk(c) }} />
-                {c.name}
+                {categoryLabel(c)}
               </span>
               <strong>
                 {hours(planned[c.id] ?? 0)} / {hours(done[c.id] ?? 0)}

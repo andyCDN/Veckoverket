@@ -16,7 +16,7 @@ const palette: Record<string, { ink: string; fill: string; label: string }> = {
   "google-calendar": {
     ink: "#243D9B",
     fill: "#E3E9F7",
-    label: "Google Kalender",
+    label: "Okategoriserat",
   },
   rest: { ink: "#191918", fill: "#FFF9E9", label: "Övrigt" },
 };
@@ -26,7 +26,7 @@ export function categoryInk(category?: Category) {
 export function categoryLabel(category?: Category) {
   return category
     ? (palette[category.id]?.label ?? category.name)
-    : "Okategoriserad";
+    : "Okategoriserat";
 }
 export function categoryStyle(category?: Category): CSSProperties {
   return {
@@ -36,4 +36,24 @@ export function categoryStyle(category?: Category): CSSProperties {
         `color-mix(in srgb, ${category.color} 20%, #FFF9E9)`)
       : "#FFF9E9",
   } as CSSProperties;
+}
+
+const CATEGORY_MENU_ORDER = [
+  "career",
+  "learning",
+  "networking",
+  "music",
+  "health",
+  "family",
+  "weekly-planning",
+  "google-calendar",
+  "rest",
+];
+/** Presentation only: never reorder saved categories or change planning priority. */
+export function orderedCategories(categories: Category[]): Category[] {
+  const rank = (id: string) => {
+    const index = CATEGORY_MENU_ORDER.indexOf(id);
+    return index < 0 ? CATEGORY_MENU_ORDER.length : index;
+  };
+  return [...categories].sort((a, b) => rank(a.id) - rank(b.id));
 }

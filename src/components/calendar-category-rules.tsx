@@ -1,4 +1,5 @@
 "use client";
+import { orderedCategories, categoryLabel } from "@/lib/presentation";
 import { useState } from "react";
 import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from "lucide-react";
 import type { AppData, CalendarCategoryRule } from "@/lib/types";
@@ -92,11 +93,11 @@ export function CalendarCategoryRules({
             value={category}
             onChange={(event) => setCategory(event.target.value)}
           >
-            {data.categories
+            {orderedCategories(data.categories)
               .filter((c) => c.id !== GOOGLE_CATEGORY_ID)
               .map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name}
+                  {categoryLabel(c)}
                 </option>
               ))}
           </select>

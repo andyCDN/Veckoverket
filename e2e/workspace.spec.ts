@@ -476,7 +476,7 @@ test("varje kalenderhändelse kan bockas av, återställas och sparas utan att �
   await expect(
     page
       .locator(".comparison-row")
-      .filter({ hasText: "Återhämtning" })
+      .filter({ hasText: "Övrigt" })
       .locator("strong"),
   ).toHaveText("5 h / 1 h");
   await page.setViewportSize({ width: 390, height: 844 });

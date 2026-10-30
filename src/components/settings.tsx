@@ -26,7 +26,12 @@ import {
   targetMinutes,
 } from "@/lib/planner";
 import { decodeData, downloadData } from "@/lib/storage";
-import { categoryInk, categoryStyle } from "@/lib/presentation";
+import {
+  categoryInk,
+  categoryStyle,
+  orderedCategories,
+  categoryLabel,
+} from "@/lib/presentation";
 import { GOOGLE_CATEGORY_ID } from "@/lib/external-calendar";
 import { ROUTINE_CATEGORY } from "@/lib/weekly-routines";
 import { Modal } from "./modal";
@@ -419,7 +424,7 @@ export function SettingsView({
               </div>
             </div>
             <div className="category-settings">
-              {cats
+              {orderedCategories(cats)
                 .filter(
                   (c) =>
                     ![
@@ -434,7 +439,7 @@ export function SettingsView({
                   <div className="category-setting" key={c.id}>
                     <span className="category-label" style={categoryStyle(c)}>
                       <i />
-                      {c.name}
+                      {categoryLabel(c)}
                     </span>
                     {c.id === "career" && (
                       <p className="muted">
@@ -607,7 +612,7 @@ export function SettingsView({
             {hours(capacity(s))}
             <small>för dina valda aktiviteter</small>
           </div>
-          {cats
+          {orderedCategories(cats)
             .filter(
               (c) => !["family", "rest", GOOGLE_CATEGORY_ID].includes(c.id),
             )
@@ -615,7 +620,7 @@ export function SettingsView({
               <div className="preview-row" key={c.id}>
                 <span>
                   <i style={{ background: categoryInk(c) }} />
-                  {c.name}
+                  {categoryLabel(c)}
                 </span>
                 <strong>
                   {hours(totals[c.id] ?? 0)}

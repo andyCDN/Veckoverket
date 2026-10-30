@@ -2,7 +2,12 @@
 import { ArrowRight, ArrowUpRight, Check, Settings2 } from "lucide-react";
 import { hours, time } from "@/lib/date";
 import { categoryMinutes, targetMinutes } from "@/lib/planner";
-import { categoryInk, categoryLabel, categoryStyle } from "@/lib/presentation";
+import {
+  categoryInk,
+  categoryLabel,
+  categoryStyle,
+  orderedCategories,
+} from "@/lib/presentation";
 import type { Activity, AppData, Category, Goal, WeekPlan } from "@/lib/types";
 
 export function CategoryFilter({
@@ -34,7 +39,7 @@ export function CategoryFilter({
         >
           Alla
         </button>
-        {categories.map((c) => (
+        {orderedCategories(categories).map((c) => (
           <button
             key={c.id}
             aria-pressed={selected === c.id}
@@ -134,7 +139,7 @@ export function EditorialSidebar({
       <section className="balance-section" aria-label="Veckans tidsfördelning">
         <h3 className="side-heading">Tidsfördelning</h3>
         <div className="balance-stats">
-          {data.categories.map((c) => (
+          {orderedCategories(data.categories).map((c) => (
             <button
               className="balance-stat"
               key={c.id}
@@ -143,7 +148,7 @@ export function EditorialSidebar({
             >
               <span className="stat-name">
                 <i />
-                {c.name}
+                {categoryLabel(c)}
               </span>
               <strong>
                 {hours(totals[c.id] ?? 0)}

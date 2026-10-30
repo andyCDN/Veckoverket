@@ -1,4 +1,5 @@
 "use client";
+import { orderedCategories, categoryLabel } from "@/lib/presentation";
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import {
   ArrowRight,
@@ -1692,13 +1693,13 @@ export function Workspace() {
               </p>
             )}
             <div className="generation-totals">
-              {data.categories
+              {orderedCategories(data.categories)
                 .filter((c) => c.id !== "rest" && c.id !== "family")
                 .map((c) => (
                   <div key={c.id}>
                     <span>
                       <i style={{ background: c.color }} />
-                      {c.name}
+                      {categoryLabel(c)}
                     </span>
                     <strong>
                       {hours(

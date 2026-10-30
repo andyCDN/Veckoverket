@@ -1,4 +1,5 @@
 "use client";
+import { orderedCategories, categoryLabel } from "@/lib/presentation";
 import { useState } from "react";
 import { Check, Trash2, LockKeyhole, ShieldCheck, Move } from "lucide-react";
 import { Modal } from "./modal";
@@ -171,7 +172,7 @@ export function ActivityEditor({
           <GoogleCategorySelect
             categories={data.categories}
             value={calendarCategory}
-            automaticName={
+            automaticName={categoryLabel(
               data.categories.find(
                 (c) =>
                   c.id ===
@@ -182,8 +183,8 @@ export function ActivityEditor({
                       [googleEventKey(activity)]: AUTO_CATEGORY,
                     }),
                   ).categoryId,
-              )?.name ?? "Ej kategoriserad"
-            }
+              ),
+            )}
             onChange={setCalendarCategory}
           />
           <p>
@@ -269,11 +270,11 @@ export function ActivityEditor({
               value={form.categoryId}
               onChange={(e) => patch({ categoryId: e.target.value })}
             >
-              {data.categories
+              {orderedCategories(data.categories)
                 .filter((c) => c.id !== GOOGLE_CATEGORY_ID)
                 .map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name}
+                    {categoryLabel(c)}
                   </option>
                 ))}
             </select>

@@ -1,4 +1,5 @@
 "use client";
+import { categoryLabel } from "@/lib/presentation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Script from "next/script";
 import { CalendarDays, Download, Link2, Unlink } from "lucide-react";
@@ -340,7 +341,7 @@ export function GoogleCalendarModal({
                   <GoogleCategorySelect
                     categories={data.categories}
                     value={chosenCategories[googleEventKey(a)] ?? AUTO_CATEGORY}
-                    automaticName={
+                    automaticName={categoryLabel(
                       data.categories.find(
                         (c) =>
                           c.id ===
@@ -351,8 +352,8 @@ export function GoogleCalendarModal({
                               [googleEventKey(a)]: AUTO_CATEGORY,
                             }),
                           ).categoryId,
-                      )?.name ?? "Ej kategoriserad"
-                    }
+                      ),
+                    )}
                     name={`Kategori för ${a.title}, ${fullDate(a.date)}`}
                     onChange={(categoryId) =>
                       setCategoryChoices((current) => ({

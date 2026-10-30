@@ -5,7 +5,11 @@ import { Modal } from "./modal";
 import { hours, uid } from "@/lib/date";
 import { categoryMinutes } from "@/lib/planner";
 import { GOOGLE_CATEGORY_ID } from "@/lib/external-calendar";
-import { categoryStyle } from "@/lib/presentation";
+import {
+  categoryStyle,
+  orderedCategories,
+  categoryLabel,
+} from "@/lib/presentation";
 import type { AppData, Goal, Task } from "@/lib/types";
 export function GoalForm({
   data,
@@ -73,11 +77,11 @@ export function GoalForm({
               value={category}
               onChange={(e) => setCategory(e.target.value)}
             >
-              {data.categories
+              {orderedCategories(data.categories)
                 .filter((c) => c.id !== GOOGLE_CATEGORY_ID)
                 .map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name}
+                    {categoryLabel(c)}
                   </option>
                 ))}
             </select>

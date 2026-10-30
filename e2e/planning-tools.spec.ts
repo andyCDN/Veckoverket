@@ -271,7 +271,7 @@ test("visar fyra och tolv veckors statistik på mobil utan att skapa veckor som 
   await expect(panel.locator(".statistics-totals")).toContainText("3,5 h");
   await expect(panel.locator(".statistics-totals")).toContainText("1,5 h");
   await expect(
-    panel.getByRole("row").filter({ hasText: "Kompetensutveckling" }),
+    panel.getByRole("row").filter({ hasText: "Lärande" }),
   ).toContainText("4,5 h");
   await panel.getByRole("button", { name: "12 veckor", exact: true }).click();
   await expect(panel).toContainText("3 av 12 veckor har sparad plan");

@@ -1,5 +1,6 @@
 import type { Category } from "@/lib/types";
-import { GOOGLE_CATEGORY_ID } from "@/lib/external-calendar";
+import { orderedCategories, categoryLabel } from "@/lib/presentation";
+import { GOOGLE_CATEGORY, GOOGLE_CATEGORY_ID } from "@/lib/external-calendar";
 import { AUTO_CATEGORY } from "@/lib/calendar-categories";
 
 export function GoogleCategorySelect({
@@ -26,16 +27,14 @@ export function GoogleCategorySelect({
         <option value={AUTO_CATEGORY}>
           Automatisk{automaticName ? `: ${automaticName}` : " (kategoriregler)"}
         </option>
-        <option value={GOOGLE_CATEGORY_ID}>
-          Ej kategoriserad (Google Kalender)
-        </option>
-        {categories
-          .filter((category) => category.id !== GOOGLE_CATEGORY_ID)
-          .map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
+        {orderedCategories([
+          ...categories.filter((c) => c.id !== GOOGLE_CATEGORY_ID),
+          GOOGLE_CATEGORY,
+        ]).map((category) => (
+          <option key={category.id} value={category.id}>
+            {categoryLabel(category)}
+          </option>
+        ))}
       </select>
     </label>
   );
