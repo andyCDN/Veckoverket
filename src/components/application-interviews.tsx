@@ -5,10 +5,13 @@ import type {
   ApplicationInterview,
   JobApplication,
 } from "@/lib/types";
-import { addDays, parseTime, time, today } from "@/lib/date";
+import { addDays, parseTime, time, today, uid } from "@/lib/date";
+import { documentUrl } from "@/lib/application-materials";
+import { recordingHref } from "@/lib/recording-client";
 import {
   interviewActivity,
   type InterviewBooking,
+  type InterviewNotesInput,
 } from "@/lib/application-interviews";
 import { Modal } from "./modal";
 export function InterviewBookingForm({
@@ -167,15 +170,7 @@ export function InterviewNotesForm({
   application: JobApplication;
   interview: ApplicationInterview;
   data: AppData;
-  onSave: (
-    input: {
-      preparationNotes: string;
-      outcomeNotes: string;
-      nextAction: string;
-      followUpDate: string;
-    },
-    complete: boolean,
-  ) => void;
+  onSave: (input: InterviewNotesInput, complete: boolean) => void;
   onClose: () => void;
 }) {
   const [preparationNotes, setPreparationNotes] = useState(
@@ -185,6 +180,40 @@ export function InterviewNotesForm({
     [nextAction, setNextAction] = useState(application.nextAction),
     [followUpDate, setFollowUpDate] = useState(application.followUpDate),
     [error, setError] = useState("");
+  const [feedbackNotes, setFeedbackNotes] = useState(
+      interview.feedbackNotes ?? "",
+    ),
+    [nextActionOwner, setNextActionOwner] = useState(
+      application.nextActionOwner ?? "Jag",
+    ),
+    [nextActionReason, setNextActionReason] = useState(
+      application.nextActionReason ?? "",
+    ),
+    [checklist, setChecklist] = useState(
+      interview.preparationChecklist ?? [
+        {
+          id: "advertisement",
+          title: "Läs annonsen och tjänstens krav",
+          done: false,
+        },
+        {
+          id: "materials",
+          title: "Gå igenom inskickat CV och arbetsprov",
+          done: false,
+        },
+        {
+          id: "examples",
+          title: "Välj exempel på relevant erfarenhet",
+          done: false,
+        },
+        {
+          id: "questions",
+          title: "Förbered frågor till intervjuaren",
+          done: false,
+        },
+      ],
+    ),
+    [newPoint, setNewPoint] = useState("");
   const meeting = interviewActivity(
     data,
     interview.meetingActivityId,
@@ -192,7 +221,16 @@ export function InterviewNotesForm({
   const save = (complete: boolean) => {
     try {
       onSave(
-        { preparationNotes, outcomeNotes, nextAction, followUpDate },
+        {
+          preparationNotes,
+          outcomeNotes,
+          nextAction,
+          followUpDate,
+          feedbackNotes,
+          preparationChecklist: checklist,
+          nextActionOwner,
+          nextActionReason,
+        },
         complete,
       );
     } catch (err) {
@@ -219,6 +257,164 @@ export function InterviewNotesForm({
           {time(meeting?.start ?? interview.start)}–
           {time(meeting?.end ?? interview.end)}
         </p>
+        <section className="stack" aria-label="Samlat intervjuunderlag">
+          <h2>Underlag inför intervjun</h2>
+          <p>
+            {application.role} · {application.organization}
+            {interview.location ? ` · ${interview.location}` : ""}
+          </p>
+          <details open>
+            <summary>Annons och dokumentversioner</summary>
+            {application.advertisement?.url &&
+              documentUrl(application.advertisement.url) && (
+                <p>
+                  <a
+                    href={documentUrl(application.advertisement.url)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Öppna annons
+                  </a>
+                </p>
+              )}
+            {application.advertisement?.text ? (
+              <p className="career-notes">{application.advertisement.text}</p>
+            ) : (
+              <p>
+                Ingen annonstext sparad. Lägg till den under Dokumentunderlag.
+              </p>
+            )}
+            {!application.materials?.length && (
+              <p>Inga dokumentversioner sparade.</p>
+            )}
+            <ul>
+              {application.materials?.map((m) => (
+                <li key={m.id}>
+                  {documentUrl(m.url) ? (
+                    <a
+                      href={documentUrl(m.url)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {m.title}
+                    </a>
+                  ) : (
+                    m.title
+                  )}
+                  {m.version ? ` · ${m.version}` : ""}
+                  {m.sentOn
+                    ? ` · Skickat ${m.sentOn}`
+                    : " · Inte markerat som inskickat"}
+                </li>
+              ))}
+            </ul>
+          </details>
+          <details>
+            <summary>Kontaktpersoner och tidigare anteckningar</summary>
+            {data.contacts
+              ?.filter(
+                (c) =>
+                  c.id === interview.contactId ||
+                  application.contactIds?.includes(c.id),
+              )
+              .map((c) => (
+                <section className="stack" key={c.id}>
+                  <h3>
+                    {c.name}
+                    {c.id === interview.contactId ? " · Intervjukontakt" : ""}
+                  </h3>
+                  <p>{c.organization}</p>
+                  {[...c.entries]
+                    .sort((a, b) => b.date.localeCompare(a.date))
+                    .map((e) => (
+                      <div key={e.id}>
+                        <strong>
+                          {e.date} · {e.channel}
+                        </strong>
+                        <p className="career-notes">{e.notes}</p>
+                        {e.id.startsWith("recording-") && (
+                          <a
+                            href={recordingHref({
+                              recordingId: e.id.slice(10),
+                            })}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Öppna inspelningen
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                </section>
+              ))}
+            {application.notes && (
+              <p className="career-notes">{application.notes}</p>
+            )}
+            <ol>
+              {[...(application.history ?? [])]
+                .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt))
+                .map((e) => (
+                  <li key={e.id}>
+                    <strong>{e.date}</strong>
+                    <p className="career-notes">{e.notes}</p>
+                    {e.id.startsWith("recording-") && (
+                      <a
+                        href={recordingHref({ recordingId: e.id.slice(10) })}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Öppna inspelningen
+                      </a>
+                    )}
+                  </li>
+                ))}
+            </ol>
+          </details>
+          <fieldset className="stack">
+            <legend>
+              Förberedelsepunkter · {checklist.filter((i) => i.done).length}/
+              {checklist.length}
+            </legend>
+            {checklist.map((item) => (
+              <label key={item.id}>
+                <input
+                  type="checkbox"
+                  checked={item.done}
+                  onChange={(e) =>
+                    setChecklist((items) =>
+                      items.map((i) =>
+                        i.id === item.id ? { ...i, done: e.target.checked } : i,
+                      ),
+                    )
+                  }
+                />
+                {item.title}
+              </label>
+            ))}
+            <label>
+              Ny förberedelsepunkt
+              <input
+                maxLength={200}
+                value={newPoint}
+                onChange={(e) => setNewPoint(e.target.value)}
+              />
+            </label>
+            <button
+              type="button"
+              className="button secondary"
+              disabled={!newPoint.trim() || checklist.length >= 30}
+              onClick={() => {
+                setChecklist((items) => [
+                  ...items,
+                  { id: uid(), title: newPoint.trim(), done: false },
+                ]);
+                setNewPoint("");
+              }}
+            >
+              Lägg till förberedelsepunkt
+            </button>
+          </fieldset>
+        </section>
         <label>
           Förberedelseanteckningar
           <textarea
@@ -241,6 +437,30 @@ export function InterviewNotesForm({
             maxLength={4000}
             value={nextAction}
             onChange={(e) => setNextAction(e.target.value)}
+          />
+        </label>
+        <label>
+          Återkoppling från arbetsgivaren
+          <textarea
+            maxLength={4000}
+            value={feedbackNotes}
+            onChange={(e) => setFeedbackNotes(e.target.value)}
+          />
+        </label>
+        <label>
+          Ansvarig för nästa steg
+          <input
+            maxLength={200}
+            value={nextActionOwner}
+            onChange={(e) => setNextActionOwner(e.target.value)}
+          />
+        </label>
+        <label>
+          Varför behövs nästa steg?
+          <textarea
+            maxLength={4000}
+            value={nextActionReason}
+            onChange={(e) => setNextActionReason(e.target.value)}
           />
         </label>
         <label>

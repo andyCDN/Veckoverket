@@ -41,6 +41,7 @@ export type Activity = {
   goalId?: string;
   applicationId?: string;
   contactId?: string;
+  careerActionId?: string;
   deadlineId?: string;
   deadlineStepId?: string;
   recurrenceId?: string;
@@ -146,6 +147,8 @@ export type ApplicationInterview = {
   preparationActivityId?: string;
   preparationNotes: string;
   outcomeNotes: string;
+  feedbackNotes?: string;
+  preparationChecklist?: { id: string; title: string; done: boolean }[];
   completedAt?: string;
 };
 export type JobApplication = {
@@ -160,6 +163,9 @@ export type JobApplication = {
   status: ApplicationStatus;
   deadline: string;
   nextAction: string;
+  nextActionReason?: string;
+  nextActionOwner?: string;
+  nextActionId?: string;
   followUpDate: string;
   notes: string;
 };
@@ -168,8 +174,27 @@ export type NetworkContact = {
   name: string;
   organization: string;
   nextAction: string;
+  nextActionReason?: string;
+  nextActionOwner?: string;
+  nextActionId?: string;
   followUpDate: string;
   entries: { id: string; date: string; channel: string; notes: string }[];
+};
+export type CareerAction = {
+  id: string;
+  title: string;
+  date: string;
+  owner: string;
+  reason: string;
+  status: "open" | "done";
+  applicationId?: string;
+  contactId?: string;
+  interviewId?: string;
+  source?: {
+    recordingId: string;
+    segmentIndexes: number[];
+    evidence: string;
+  };
 };
 export type Deadline = {
   id: string;
@@ -184,6 +209,7 @@ export type AppData = {
   version: 1;
   applications?: JobApplication[];
   contacts?: NetworkContact[];
+  careerActions?: CareerAction[];
   deadlines?: Deadline[];
   profile: { name: string };
   categories: Category[];

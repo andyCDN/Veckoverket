@@ -93,6 +93,7 @@ import {
   type GoogleSnapshot,
 } from "@/lib/google-calendar";
 import { CareerView } from "./career";
+import { saveInterviewNotes } from "@/lib/application-interviews";
 import { FollowUpPanel } from "./follow-up";
 import { followUps, type FollowUp } from "@/lib/follow-up";
 type View =
@@ -1748,6 +1749,22 @@ export function Workspace() {
           date={editor.date}
           onSave={saveActivity}
           onSwap={swap}
+          onSaveInterview={(applicationId, interviewId, input, complete) => {
+            setData(
+              (current) =>
+                current
+                  ? saveInterviewNotes(
+                      current,
+                      applicationId,
+                      interviewId,
+                      input,
+                      complete,
+                    )
+                  : current,
+              { undoLabel: "intervjuanteckningar" },
+            );
+            setEditor(null);
+          }}
           onDelete={deleteActivity}
           onCategorize={(activity, categoryId) => {
             setData((current) => {

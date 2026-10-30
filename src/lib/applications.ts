@@ -74,19 +74,32 @@ export function saveApplication(
       });
     if (
       previous.nextAction !== draft.nextAction ||
-      previous.followUpDate !== draft.followUpDate
+      previous.followUpDate !== draft.followUpDate ||
+      (previous.nextActionReason ?? "") !== (draft.nextActionReason ?? "") ||
+      (previous.nextActionOwner ?? "Jag") !== (draft.nextActionOwner ?? "Jag")
     )
       history.push(
         entry(
           "action",
           draft.nextAction.trim()
-            ? `Nästa steg: ${draft.nextAction}${draft.followUpDate ? ` · ${draft.followUpDate}` : " · Utan datum"}`
+            ? `Nästa steg: ${draft.nextAction}${draft.followUpDate ? ` · ${draft.followUpDate}` : " · Utan datum"}${draft.nextActionOwner ? ` · Ansvarig: ${draft.nextActionOwner}` : ""}${draft.nextActionReason ? `\n${draft.nextActionReason}` : ""}`.slice(
+                0,
+                5000,
+              )
             : "Nästa steg borttaget.",
           now,
         ),
       );
   }
-  return { ...draft, history };
+  return {
+    ...draft,
+    history,
+    nextActionId: draft.nextAction.trim()
+      ? previous?.nextAction.trim()
+        ? previous.nextActionId
+        : (draft.nextActionId ?? uid())
+      : undefined,
+  };
 }
 export function completeApplicationAction(
   a: JobApplication,
@@ -96,6 +109,7 @@ export function completeApplicationAction(
   return {
     ...a,
     nextAction: "",
+    nextActionId: undefined,
     followUpDate: "",
     history: [
       ...(a.history ?? []),

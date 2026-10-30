@@ -217,8 +217,8 @@ test("dagens förslag kräver tillämpning, bevarar avklarat och kan ångras", a
     .click();
   const dialog = page.getByRole("dialog");
   await expect(
-    dialog.getByText(/Senare pass · 2026-10-29 10:00/),
-  ).toBeVisible();
+    dialog.getByRole("listitem").filter({ hasText: "Senare pass" }),
+  ).toContainText("2026-10-29 13:30–14:00 → 2026-10-29 10:00–10:30");
   expect((await stored(page)).weeks).toEqual(before.weeks);
   await dialog
     .getByRole("button", { name: "Använd förslaget", exact: true })

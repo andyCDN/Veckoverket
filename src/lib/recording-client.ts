@@ -1,8 +1,44 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { appPath } from "./app-path";
 import { RECORDING_BUCKET } from "../../supabase/functions/_shared/recording-schema";
+import type { RecordingSegment } from "../../supabase/functions/_shared/recording-schema";
 export function recordingClient(client: SupabaseClient, userId: string) {
   return {
+    async segments(sessionId: string): Promise<RecordingSegment[]> {
+      const output: RecordingSegment[] = [];
+      for (let offset = 0; offset < 100000; offset += 500) {
+        const { data, error } = await client
+          .from("recording_segments")
+          .select("segment_index,transcript,duration_ms")
+          .eq("user_id", userId)
+          .eq("session_id", sessionId)
+          .eq("state", "ready")
+          .order("segment_index")
+          .range(offset, offset + 499)
+          .abortSignal(AbortSignal.timeout(15000));
+        if (error)
+          throw new Error("Citatens ljuddelar kunde inte hämtas. Försök igen.");
+        output.push(
+          ...(data ?? []).map((r) => ({
+            index: r.segment_index,
+            transcript: r.transcript,
+            durationMs: r.duration_ms,
+          })),
+        );
+        if (!data || data.length < 500) return output;
+      }
+      return output;
+    },
+    async audio(sessionId: string, index: number) {
+      const { data, error } = await client.storage
+        .from(RECORDING_BUCKET)
+        .download(`${userId}/${sessionId}/${index}.wav`);
+      if (error || !data)
+        throw new Error(
+          "Ljuddelen kunde inte hämtas. Kontrollera att inspelningen finns kvar.",
+        );
+      return data;
+    },
     async call<T>(body: Record<string, unknown>): Promise<T> {
       const { data, error } = await client.functions.invoke("recording", {
         body,
@@ -95,12 +131,14 @@ export function recordingHref(
     applicationId?: string;
     contactId?: string;
     interviewId?: string;
+    recordingId?: string;
+    segment?: number;
   } = {},
 ) {
   const params = new URLSearchParams(
-    Object.entries(context).filter(
-      (entry): entry is [string, string] => !!entry[1],
-    ),
+    Object.entries(context)
+      .filter(([, value]) => value !== undefined && value !== "")
+      .map(([key, value]) => [key, String(value)]),
   );
   return appPath("/inspelning/") + (params.size ? `?${params.toString()}` : "");
 }

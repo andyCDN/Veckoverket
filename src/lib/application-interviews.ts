@@ -17,6 +17,16 @@ export type InterviewBooking = {
   preparationNotes: string;
   contactId?: string;
 };
+export type InterviewNotesInput = {
+  preparationNotes: string;
+  outcomeNotes: string;
+  nextAction: string;
+  followUpDate: string;
+  feedbackNotes?: string;
+  preparationChecklist?: ApplicationInterview["preparationChecklist"];
+  nextActionOwner?: string;
+  nextActionReason?: string;
+};
 export function interviewActivity(data: AppData, id?: string) {
   if (!id) return;
   for (const [week, plan] of Object.entries(data.weeks)) {
@@ -185,12 +195,7 @@ export function saveInterviewNotes(
   data: AppData,
   applicationId: string,
   interviewId: string,
-  input: {
-    preparationNotes: string;
-    outcomeNotes: string;
-    nextAction: string;
-    followUpDate: string;
-  },
+  input: InterviewNotesInput,
   complete = false,
   now = new Date(),
 ): AppData {
@@ -201,6 +206,23 @@ export function saveInterviewNotes(
     [input.preparationNotes, input.outcomeNotes, input.nextAction].some(
       (s) => s.length > 4000,
     ) ||
+    (input.feedbackNotes !== undefined && input.feedbackNotes.length > 4000) ||
+    (input.nextActionReason !== undefined &&
+      input.nextActionReason.length > 4000) ||
+    (input.nextActionOwner !== undefined &&
+      input.nextActionOwner.length > 200) ||
+    (input.preparationChecklist !== undefined &&
+      (input.preparationChecklist.length > 30 ||
+        new Set(input.preparationChecklist.map((i) => i.id)).size !==
+          input.preparationChecklist.length ||
+        input.preparationChecklist.some(
+          (i) =>
+            !i.id.trim() ||
+            i.id.length > 200 ||
+            !i.title.trim() ||
+            i.title.length > 200 ||
+            typeof i.done !== "boolean",
+        ))) ||
     (input.followUpDate !== "" && !isLocalDate(input.followUpDate))
   )
     throw new Error("Kontrollera anteckningar och uppföljningsdatum.");
@@ -216,12 +238,22 @@ export function saveInterviewNotes(
     ...interview,
     preparationNotes: input.preparationNotes,
     outcomeNotes: input.outcomeNotes,
+    ...(input.feedbackNotes !== undefined
+      ? { feedbackNotes: input.feedbackNotes }
+      : {}),
+    ...(input.preparationChecklist !== undefined
+      ? { preparationChecklist: input.preparationChecklist }
+      : {}),
     ...(completedAt ? { completedAt } : {}),
   };
   if (
     JSON.stringify(updatedInterview) === JSON.stringify(interview) &&
     app.nextAction === input.nextAction &&
     app.followUpDate === input.followUpDate &&
+    (input.nextActionOwner === undefined ||
+      app.nextActionOwner === input.nextActionOwner) &&
+    (input.nextActionReason === undefined ||
+      app.nextActionReason === input.nextActionReason) &&
     (!complete || meeting?.activity.status === "done")
   )
     return data;
@@ -236,6 +268,12 @@ export function saveInterviewNotes(
         ...app,
         nextAction: input.nextAction,
         followUpDate: input.followUpDate,
+        ...(input.nextActionOwner !== undefined
+          ? { nextActionOwner: input.nextActionOwner }
+          : {}),
+        ...(input.nextActionReason !== undefined
+          ? { nextActionReason: input.nextActionReason }
+          : {}),
         interviews: app.interviews!.map((i) =>
           i.id === interviewId ? updatedInterview : i,
         ),
@@ -246,6 +284,12 @@ export function saveInterviewNotes(
     `${notes}${input.outcomeNotes ? `\n${input.outcomeNotes}` : ""}`,
     now,
   );
+  const withFeedback =
+    input.feedbackNotes !== undefined &&
+    input.feedbackNotes !== (interview.feedbackNotes ?? "") &&
+    input.feedbackNotes.trim()
+      ? recordApplicationEvent(updated, "feedback", input.feedbackNotes, now)
+      : updated;
   const weeks =
     complete && meeting && meeting.activity.status !== "done"
       ? {
@@ -264,7 +308,7 @@ export function saveInterviewNotes(
     ...data,
     weeks,
     applications: data.applications!.map((a) =>
-      a.id === applicationId ? updated : a,
+      a.id === applicationId ? withFeedback : a,
     ),
   };
 }

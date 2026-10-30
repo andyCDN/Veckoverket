@@ -137,7 +137,13 @@ export function decodeData(raw: string): AppData {
         Number(a.end) <= Number(a.start) ||
         !["locked", "protected", "flexible"].includes(String(a.blockType)) ||
         !["planned", "done", "skipped"].includes(String(a.status)) ||
-        ["applicationId", "contactId", "deadlineId", "deadlineStepId"].some(
+        [
+          "applicationId",
+          "contactId",
+          "careerActionId",
+          "deadlineId",
+          "deadlineStepId",
+        ].some(
           (k) =>
             a[k] !== undefined &&
             (typeof a[k] !== "string" ||

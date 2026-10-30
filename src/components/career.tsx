@@ -27,7 +27,6 @@ import {
   ACTION_PERIODS,
   matchesActionPeriod,
   saveApplication,
-  completeApplicationAction,
   type ActionPeriod,
 } from "@/lib/applications";
 import { bookDeadlineWork, deadlineWork } from "@/lib/deadline-scheduling";
@@ -47,7 +46,11 @@ import {
   saveInterviewNotes,
 } from "@/lib/application-interviews";
 import { recordingHref } from "@/lib/recording-client";
+import { CareerActions } from "./career-actions";
+import { bookCareerAction, completeCareerAction } from "@/lib/career-actions";
 import { Modal } from "./modal";
+import { PlanningConsequences } from "./planning-consequences";
+import { trackedActionId } from "@/lib/planning-insights";
 
 const statuses = APPLICATION_STATUSES;
 type Props = {
@@ -59,6 +62,7 @@ type Props = {
 
 export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
   const [materialsId, setMaterialsId] = useState<string | null>(null);
+  const [actionEditing, setActionEditing] = useState(false);
   const [interviewBookingId, setInterviewBookingId] = useState<string | null>(
     null,
   );
@@ -77,6 +81,7 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
     date: string;
     applicationId?: string;
     contactId?: string;
+    careerActionId?: string;
   } | null>(null);
   const [preview, setPreview] = useState<{
     result: PlanningPreview;
@@ -84,6 +89,7 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
     label: string;
   } | null>(null);
   const editing = Boolean(
+    actionEditing ||
     application ||
     contact ||
     deadline ||
@@ -159,6 +165,7 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
         {[
           ["applications", "Ansökningar"],
           ["contacts", "Kontaktlogg"],
+          ["actions", "Nästa steg"],
           ["deadlines", "Deadlines"],
         ].map(([id, label]) => (
           <button
@@ -175,6 +182,22 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
         ))}
       </div>
       {message && <p role="status">{message}</p>}
+      {tab === "actions" && (
+        <CareerActions
+          data={data}
+          onChange={onChange}
+          onEditing={setActionEditing}
+          onBook={(a) =>
+            setBooking({
+              title: a.title,
+              date: nextDate(a.date),
+              applicationId: a.applicationId,
+              contactId: a.contactId,
+              careerActionId: a.id,
+            })
+          }
+        />
+      )}
       {tab === "applications" && (
         <>
           <div className="career-actions">
@@ -265,6 +288,29 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
                     </p>
                   )}
                   {a.nextAction && <p>Nästa steg: {a.nextAction}</p>}
+                  {a.nextAction && (
+                    <p>
+                      Ansvarig: {a.nextActionOwner || "Jag"}
+                      {a.nextActionReason ? ` · ${a.nextActionReason}` : ""}
+                    </p>
+                  )}
+                  {!!data.careerActions?.filter(
+                    (v) => v.applicationId === a.id && v.status === "open",
+                  ).length && (
+                    <button
+                      className="text-button"
+                      onClick={() => setTab("actions")}
+                    >
+                      Visa kopplade nästa steg (
+                      {
+                        data.careerActions.filter(
+                          (v) =>
+                            v.applicationId === a.id && v.status === "open",
+                        ).length
+                      }
+                      )
+                    </button>
+                  )}
                   {!!a.contactIds?.length && (
                     <div className="stack" aria-label="Kopplade kontakter">
                       {a.contactIds.map((id) => {
@@ -316,7 +362,13 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
                       <button
                         className="button secondary"
                         onClick={() =>
-                          saveTrackedApplication(completeApplicationAction(a))
+                          onChange(
+                            completeCareerAction(
+                              data,
+                              trackedActionId("application", a),
+                            ),
+                            data,
+                          )
                         }
                       >
                         Markera nästa steg klart
@@ -466,6 +518,17 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
                               >
                                 Intervjuanteckningar
                               </button>
+                              <button
+                                className="button secondary"
+                                onClick={() =>
+                                  setInterviewNotes({
+                                    applicationId: a.id,
+                                    interviewId: i.id,
+                                  })
+                                }
+                              >
+                                Öppna intervjuunderlag
+                              </button>
                               {meeting && (
                                 <button
                                   className="button secondary"
@@ -526,6 +589,28 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
                     {c.organization && ` · ${c.organization}`}
                   </h2>
                   {c.nextAction && <p>Nästa steg: {c.nextAction}</p>}
+                  {c.nextAction && (
+                    <p>
+                      Ansvarig: {c.nextActionOwner || "Jag"}
+                      {c.nextActionReason ? ` · ${c.nextActionReason}` : ""}
+                    </p>
+                  )}
+                  {!!data.careerActions?.filter(
+                    (v) => v.contactId === c.id && v.status === "open",
+                  ).length && (
+                    <button
+                      className="text-button"
+                      onClick={() => setTab("actions")}
+                    >
+                      Visa kopplade nästa steg (
+                      {
+                        data.careerActions.filter(
+                          (v) => v.contactId === c.id && v.status === "open",
+                        ).length
+                      }
+                      )
+                    </button>
+                  )}
                   {c.followUpDate && (
                     <p>
                       Uppföljning: {c.followUpDate}
@@ -533,6 +618,22 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
                     </p>
                   )}
                   <div className="career-actions">
+                    {c.nextAction && (
+                      <button
+                        className="button secondary"
+                        onClick={() =>
+                          onChange(
+                            completeCareerAction(
+                              data,
+                              trackedActionId("contact", c),
+                            ),
+                            data,
+                          )
+                        }
+                      >
+                        Markera nästa steg klart
+                      </button>
+                    )}
                     <button
                       className="button secondary"
                       onClick={() => setContact(c)}
@@ -670,10 +771,10 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
       <section className="career-card stack">
         <h2>Omplanera resten av dagen</h2>
         <p>
-          Flyttbara, flexibla pass som inte har börjat ordnas efter prioritet
-          från aktuell tid i Stockholm. Genomförda, påbörjade, skyddade och
-          låsta pass samt andra dagar bevaras. Förslaget sparas först när du
-          använder det.
+          Flyttbara, flexibla pass som inte har börjat ordnas efter deadline och
+          prioritet från aktuell tid i Stockholm. Genomförda, påbörjade,
+          skyddade och låsta pass samt andra dagar bevaras. Förslaget sparas
+          först när du använder det.
         </p>
         <button
           className="button secondary"
@@ -802,10 +903,21 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
           value={contact}
           onClose={() => setContact(null)}
           onSave={(c) => {
+            const previous = contacts.find((v) => v.id === c.id);
             onChange(
               {
                 ...data,
-                contacts: [...contacts.filter((x) => x.id !== c.id), c],
+                contacts: [
+                  ...contacts.filter((x) => x.id !== c.id),
+                  {
+                    ...c,
+                    nextActionId: c.nextAction.trim()
+                      ? previous?.nextAction.trim()
+                        ? previous.nextActionId
+                        : uid()
+                      : undefined,
+                  },
+                ],
               },
               data,
             );
@@ -889,11 +1001,18 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
               !preview.result.activities.length && (
                 <p>Inga ändringar behövs.</p>
               )}
-            {preview.result.activities.map((a) => (
-              <p key={a.id}>
-                {a.title} · {a.date} {time(a.start)}–{time(a.end)}
-              </p>
-            ))}
+            {preview.label === "Resten av dagen" ? (
+              <PlanningConsequences
+                base={preview.base}
+                result={preview.result}
+              />
+            ) : (
+              preview.result.activities.map((a) => (
+                <p key={a.id}>
+                  {a.title} · {a.date} {time(a.start)}–{time(a.end)}
+                </p>
+              ))
+            )}
             <button
               className="button primary"
               disabled={
@@ -1012,6 +1131,22 @@ function ApplicationForm({
           Planera från deadline.
         </p>
         {field("nextAction", "Nästa steg")}
+        <label>
+          Ansvarig för nästa steg
+          <input
+            maxLength={200}
+            value={v.nextActionOwner ?? "Jag"}
+            onChange={(e) => set({ ...v, nextActionOwner: e.target.value })}
+          />
+        </label>
+        <label>
+          Varför behövs nästa steg?
+          <textarea
+            maxLength={4000}
+            value={v.nextActionReason ?? ""}
+            onChange={(e) => set({ ...v, nextActionReason: e.target.value })}
+          />
+        </label>
         {field("notes", "Anteckningar")}
         <fieldset className="stack">
           <legend>Koppla kontakter</legend>
@@ -1099,6 +1234,22 @@ function ContactForm({
           />
         </label>
         <h3>Kontaktlogg</h3>
+        <label>
+          Ansvarig för nästa steg
+          <input
+            maxLength={200}
+            value={v.nextActionOwner ?? "Jag"}
+            onChange={(e) => set({ ...v, nextActionOwner: e.target.value })}
+          />
+        </label>
+        <label>
+          Varför behövs nästa steg?
+          <textarea
+            maxLength={4000}
+            value={v.nextActionReason ?? ""}
+            onChange={(e) => set({ ...v, nextActionReason: e.target.value })}
+          />
+        </label>
         {v.entries.map((entry, i) => (
           <fieldset className="stack" key={entry.id}>
             <legend>Kontakt {i + 1}</legend>
@@ -1348,6 +1499,7 @@ function BookingForm({
     date: string;
     applicationId?: string;
     contactId?: string;
+    careerActionId?: string;
   };
   onSave: (v: AppData) => void;
   onClose: () => void;
@@ -1358,7 +1510,7 @@ function BookingForm({
     [title, setTitle] = useState(value.title),
     [category, setCategory] = useState(
       data.categories.find(
-        (c) => c.id === (value.contactId ? "networking" : "career"),
+        (c) => c.id === (value.applicationId ? "career" : "networking"),
       )?.id ?? data.categories[0].id,
     ),
     [error, setError] = useState("");
@@ -1377,22 +1529,30 @@ function BookingForm({
             setError("Välj en tid som inte har passerat.");
             return;
           }
-          const result = bookCareerActivity(data, {
-            id: uid(),
-            title: title.trim(),
-            description: "",
-            date,
-            start: minute,
-            end: minute + minutes,
-            estimatedMinutes: minutes,
-            categoryId: category,
-            status: "planned",
-            source: "manual",
-            blockType: "flexible",
-            priority: 4,
-            applicationId: value.applicationId,
-            contactId: value.contactId,
-          });
+          const result = value.careerActionId
+            ? bookCareerAction(
+                data,
+                value.careerActionId,
+                date,
+                minute,
+                minutes,
+              )
+            : bookCareerActivity(data, {
+                id: uid(),
+                title: title.trim(),
+                description: "",
+                date,
+                start: minute,
+                end: minute + minutes,
+                estimatedMinutes: minutes,
+                categoryId: category,
+                status: "planned",
+                source: "manual",
+                blockType: "flexible",
+                priority: 4,
+                applicationId: value.applicationId,
+                contactId: value.contactId,
+              });
           if (result.errors.length) setError(result.errors[0]);
           else onSave(result.data);
         }}
@@ -1403,6 +1563,7 @@ function BookingForm({
             required
             maxLength={200}
             value={title}
+            readOnly={Boolean(value.careerActionId)}
             onChange={(e) => setTitle(e.target.value)}
           />
         </label>
@@ -1443,6 +1604,7 @@ function BookingForm({
           Livsområde
           <select
             value={category}
+            disabled={Boolean(value.careerActionId)}
             onChange={(e) => setCategory(e.target.value)}
           >
             {orderedCategories(data.categories)

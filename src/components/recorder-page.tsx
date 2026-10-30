@@ -17,11 +17,15 @@ import {
 import { recordingPumps } from "@/lib/recording-pumps";
 import { recordingClient } from "@/lib/recording-client";
 import { saveReviewedRecording } from "@/lib/recording-workspace";
+import { importRecordingActions } from "@/lib/recording-actions";
+import { RecordingActionReview, RecordingEvidence } from "./recording-actions";
+import type { CareerAction } from "@/lib/types";
 import {
   summaryText,
   type RecordingSession,
   type RecordingSummary,
   type RecordingContext,
+  type RecordingSegment,
 } from "../../supabase/functions/_shared/recording-schema";
 const setupGuide =
   "https://github.com/andyCDN/Veckoverket/blob/main/docs/recording-setup.md";
@@ -117,6 +121,7 @@ function RecorderWorkspace({ user }: { user: User }) {
     [summary, setSummary] = useState<RecordingSummary | null>(null),
     [review, setReview] = useState("");
   const classification = useRef<HTMLElement | null>(null);
+  const [evidenceIndex, setEvidenceIndex] = useState<number | null>(null);
   const suggestedContext = useRef<RecordingContext>({});
   const capture = useRef<PcmCapture | null>(null),
     live = useRef(true),
@@ -338,6 +343,9 @@ function RecorderWorkspace({ user }: { user: User }) {
         if (live.current) setError(message(e));
       });
     void refreshSessions().catch(() => undefined);
+    const recordingId = params.get("recordingId");
+    if (recordingId && /^[a-f0-9-]{36}$/i.test(recordingId))
+      void openSession({ id: recordingId });
     void refreshQueue()
       .then(() => kickUploads())
       .catch((e) => {
@@ -617,7 +625,7 @@ function RecorderWorkspace({ user }: { user: User }) {
       setBusy(false);
     }
   }
-  async function openSession(item: RecordingSession) {
+  async function openSession(item: Pick<RecordingSession, "id">) {
     setBusy(true);
     setError("");
     try {
@@ -627,6 +635,15 @@ function RecorderWorkspace({ user }: { user: User }) {
         pendingIndices: number[];
       }>({ action: "get", id: item.id });
       setSession(result.session);
+      const params = new URLSearchParams(location.search),
+        segment = params.get("segment");
+      setEvidenceIndex(
+        params.get("recordingId") === item.id &&
+          segment !== null &&
+          /^\d{1,5}$/.test(segment)
+          ? Number(segment)
+          : null,
+      );
       setTitle(result.session.title);
       setCategoryId(result.session.context.categoryId ?? "");
       setApplicationId(result.session.context.applicationId ?? "");
@@ -734,6 +751,29 @@ function RecorderWorkspace({ user }: { user: User }) {
       setError(message(e));
     } finally {
       setBusy(false);
+    }
+  }
+  async function saveActions(
+    items: CareerAction[],
+    segments: RecordingSegment[],
+  ) {
+    const session = await persistDetails(),
+      transport = cloudTransport(user.id),
+      latest = await transport.load();
+    if (!latest)
+      throw new Error(
+        "Molnarbetsytan saknas. Spara arbetsytan i Veckoverket först.",
+      );
+    const data = importRecordingActions(latest.data, session, segments, items);
+    const saved =
+      data === latest.data
+        ? latest
+        : await transport.save(data, latest.revision);
+    if (live.current) {
+      setDocument(saved);
+      setNotice(
+        "Valda nästa steg är sparade. Öppna Nästa steg under Jobb & nätverk för att boka tid.",
+      );
     }
   }
   async function removeSession(item: RecordingSession) {
@@ -1056,6 +1096,24 @@ function RecorderWorkspace({ user }: { user: User }) {
             ))}
           </div>
         </details>
+      )}
+      {current && evidenceIndex !== null && !active && (
+        <RecordingEvidence
+          key={`${current.id}-${evidenceIndex}`}
+          api={api}
+          sessionId={current.id}
+          index={evidenceIndex}
+        />
+      )}
+      {summary && current && document && !active && (
+        <RecordingActionReview
+          key={current.id}
+          session={{ ...current, context: context() }}
+          data={document.data}
+          api={api}
+          onSave={saveActions}
+          onEvidence={setEvidenceIndex}
+        />
       )}
       {summary && !active && (
         <section className="stack" aria-label="Granska sammanfattning">

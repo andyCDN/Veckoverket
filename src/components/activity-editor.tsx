@@ -24,6 +24,8 @@ import {
 import { googleEventKey } from "@/lib/external-calendar";
 import type { Activity, AppData, RecurringActivity } from "@/lib/types";
 import { canSwapActivity } from "@/lib/activity-swap";
+import { InterviewNotesForm } from "./application-interviews";
+import type { InterviewNotesInput } from "@/lib/application-interviews";
 export function ActivityEditor({
   activity,
   data,
@@ -36,6 +38,7 @@ export function ActivityEditor({
   onClose,
   onCategorize,
   onSwap,
+  onSaveInterview,
 }: {
   activity?: Activity;
   data: AppData;
@@ -52,6 +55,12 @@ export function ActivityEditor({
   onClose: () => void;
   onCategorize: (activity: Activity, categoryId: string) => void;
   onSwap: (firstId: string, secondId: string) => string | undefined;
+  onSaveInterview?: (
+    applicationId: string,
+    interviewId: string,
+    input: InterviewNotesInput,
+    complete: boolean,
+  ) => void;
 }) {
   const initialCategory = activity?.external
     ? (googleCategoryChoices(data)[googleEventKey(activity)] ?? AUTO_CATEGORY)
@@ -91,6 +100,21 @@ export function ActivityEditor({
   );
   const [error, setError] = useState("");
   const [swapTarget, setSwapTarget] = useState("");
+  const [showInterview, setShowInterview] = useState(false);
+  const interviewApplication =
+    activity &&
+    data.applications?.find((a) =>
+      a.interviews?.some(
+        (i) =>
+          i.meetingActivityId === activity.id ||
+          i.preparationActivityId === activity.id,
+      ),
+    );
+  const interview = interviewApplication?.interviews?.find(
+    (i) =>
+      i.meetingActivityId === activity?.id ||
+      i.preparationActivityId === activity?.id,
+  );
   const patch = (v: Partial<Activity>) => setForm((f) => ({ ...f, ...v }));
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -154,6 +178,23 @@ export function ActivityEditor({
     } else delete updated.recurrenceId;
     onSave(updated, recurring, Boolean(form.recurrenceId && repeat === "none"));
   }
+  if (showInterview && interviewApplication && interview && onSaveInterview)
+    return (
+      <InterviewNotesForm
+        application={interviewApplication}
+        interview={interview}
+        data={data}
+        onClose={() => setShowInterview(false)}
+        onSave={(input, complete) =>
+          onSaveInterview(
+            interviewApplication.id,
+            interview.id,
+            input,
+            complete,
+          )
+        }
+      />
+    );
   if (activity?.external) {
     const source = activity.external;
     const format = (value: string) =>
@@ -250,6 +291,16 @@ export function ActivityEditor({
       onClose={onClose}
     >
       <form onSubmit={submit} className="stack">
+        {interview && onSaveInterview && (
+          <button
+            type="button"
+            className="button secondary"
+            disabled={JSON.stringify(form) !== JSON.stringify(activity)}
+            onClick={() => setShowInterview(true)}
+          >
+            Öppna intervjuunderlag
+          </button>
+        )}
         {followUp && (
           <p className="followup-context">
             {followUp.source.title} / {followUp.source.date}. Ersättningspasset

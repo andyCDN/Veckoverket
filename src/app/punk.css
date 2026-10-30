@@ -3115,7 +3115,9 @@ body {
   align-items: end;
   gap: 12px;
 }
-.career-tabs [aria-pressed="true"] {
+.career-tabs .button[aria-pressed="true"],
+.career-tabs .button[aria-pressed="true"]:hover,
+.career-tabs .button[aria-pressed="true"]:focus-visible {
   background: var(--ink);
   color: var(--paper-light);
 }

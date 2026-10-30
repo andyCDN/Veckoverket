@@ -69,6 +69,15 @@ async function setup(page: Page) {
     async (route) => {
       if (route.request().method() === "OPTIONS") return route.fallback();
       if (offline) return route.abort("failed");
+      if (route.request().method() === "GET")
+        return route.fulfill({
+          body: Buffer.from(
+            "UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=",
+            "base64",
+          ),
+          contentType: "audio/wav",
+          headers: { "access-control-allow-origin": "*" },
+        });
       expect(
         route.request().postDataBuffer()?.includes(Buffer.from("RIFF")),
       ).toBe(true);
@@ -166,6 +175,34 @@ async function setup(page: Page) {
     }
     return reply({ error: "Okänd åtgärd" });
   });
+  await page.route("**/rest/v1/recording_segments?**", async (route) => {
+    if (route.request().method() === "OPTIONS") return route.fallback();
+    const params = new URL(route.request().url()).searchParams;
+    expect(params.get("user_id")).toBe(`eq.${userA}`);
+    const id = params.get("session_id")?.replace(/^eq\./, "") ?? "";
+    return route.fulfill({
+      json: [...(transcribed.get(id) ?? [])].map((index) => ({
+        segment_index: index,
+        transcript: "Kim: Jag skickar länken på fredag.",
+        duration_ms: 20000,
+      })),
+      headers: { "access-control-allow-origin": "*" },
+    });
+  });
+  await page.route(
+    "**/storage/v1/object/authenticated/interview-recordings/**",
+    async (route) => {
+      if (route.request().method() === "OPTIONS") return route.fallback();
+      return route.fulfill({
+        body: Buffer.from(
+          "UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=",
+          "base64",
+        ),
+        contentType: "audio/wav",
+        headers: { "access-control-allow-origin": "*" },
+      });
+    },
+  );
   await page.goto("./");
   await login(page);
   await status(page, "Sparat i molnet");
@@ -207,6 +244,92 @@ async function setup(page: Page) {
     },
   };
 }
+test("granskar åtgärder med ljudhänvisning, importerar en gång och bevarar befintliga nästa steg", async ({
+  page,
+}) => {
+  const f = await setup(page);
+  await page
+    .getByRole("button", { name: "Starta inspelning", exact: true })
+    .click();
+  await capturePart(page);
+  await page
+    .getByRole("button", { name: "Stoppa och sammanfatta", exact: true })
+    .click();
+  const review = page.getByRole("region", { name: "Åtgärder från samtalet" });
+  await expect(
+    review.getByRole("button", {
+      name: "Öppna citatets ljuddel 1",
+      exact: true,
+    }),
+  ).toBeVisible();
+  expect(f.f.documents.get(userA)!.data.careerActions).toBeUndefined();
+  await review
+    .getByRole("button", { name: "Öppna citatets ljuddel 1", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Lyssna på ljuddelen", exact: true })
+    .click();
+  await expect(
+    page
+      .getByRole("region", { name: "Ljuddel 1", exact: true })
+      .locator("audio"),
+  ).toHaveAttribute("src", /^blob:/);
+  await review
+    .getByRole("checkbox", { name: "Spara förslag 1 som nästa steg" })
+    .check();
+  await review
+    .getByLabel("Åtgärd 1", { exact: true })
+    .fill("Kontrollera att länken kommit");
+  await review
+    .getByLabel("Ansvarig för förslag 1", { exact: true })
+    .fill("Jag");
+  await review
+    .getByLabel("Datum för förslag 1", { exact: true })
+    .fill("2026-10-30");
+  await review
+    .getByRole("button", { name: "Spara valda nästa steg", exact: true })
+    .click();
+  await expect
+    .poll(() => f.f.documents.get(userA)!.data.careerActions?.length)
+    .toBe(1);
+  const saved = f.f.documents.get(userA)!.data,
+    sessionId = [...f.sessions.keys()][0];
+  expect(saved.applications![0].nextAction).toBe("Behåll nästa steg");
+  expect(saved.contacts![0].entries).toEqual([]);
+  expect(saved.weeks).toEqual(f.original.weeks);
+  expect(saved.careerActions![0]).toMatchObject({
+    title: "Kontrollera att länken kommit",
+    owner: "Jag",
+    source: { recordingId: sessionId, segmentIndexes: [0] },
+  });
+  await page.goto(`./inspelning/?recordingId=${sessionId}&segment=0`);
+  await expect(
+    page.getByRole("region", { name: "Ljuddel 1", exact: true }),
+  ).toBeVisible();
+  await expect(
+    review.getByRole("checkbox", { name: "Spara förslag 1 som nästa steg" }),
+  ).toBeDisabled();
+  await expect(
+    review.getByRole("button", { name: "Spara valda nästa steg", exact: true }),
+  ).toBeDisabled();
+  await page.goto("./");
+  await status(page, "Sparat i molnet");
+  await page
+    .getByRole("navigation", { name: "Huvudnavigation" })
+    .getByRole("button", { name: "Jobb & nätverk", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Nästa steg", exact: true }).click();
+  await expect(
+    page.getByRole("heading", {
+      name: "Kontrollera att länken kommit",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Öppna citatets ljuddel 1", exact: true }),
+  ).toHaveAttribute("href", new RegExp(`recordingId=${sessionId}&segment=0`));
+  expect(f.f.errors).toEqual([]);
+});
 test("visar AI-felets orsak, behåller ljudet och återupptar analysen efter ett lyckat anslutningstest", async ({
   page,
 }) => {

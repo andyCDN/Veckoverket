@@ -1,4 +1,10 @@
 import { validateApplicationMaterials } from "./application-materials";
+import { validateCareerAction } from "./career-actions";
+import {
+  activityDeadline,
+  jobShare,
+  planningLimitError,
+} from "./planning-insights";
 import type { Activity, AppData, Deadline, Settings, WeekPlan } from "./types";
 import { addDays, monday, planningBoundary, weekday, time } from "./date";
 import { generateWeek, plannedDays, validateMove } from "./planner";
@@ -9,6 +15,7 @@ export type PlanningPreview = {
   data: AppData;
   activities: Activity[];
   errors: string[];
+  unplaced?: Activity[];
 };
 
 // Lunch/family reservations also apply to imported or explicitly empty weeks.
@@ -44,29 +51,95 @@ export function replanDay(
       errors: ["Det finns ingen sparad plan för dagen."],
     };
   const s = plan.rules ?? data.settings;
-  const movable = plan.activities
-    .filter(
-      (a) =>
-        a.date === boundary.date &&
-        a.start >= boundary.minute &&
-        a.status === "planned" &&
-        a.blockType === "flexible" &&
-        !a.external &&
-        !a.recurrenceId &&
-        !a.routine &&
-        !a.deadlineId &&
-        data.categories.find((c) => c.id === a.categoryId)?.movable,
-    )
-    .sort(
-      (a, b) =>
-        b.priority - a.priority ||
-        a.start - b.start ||
-        a.id.localeCompare(b.id),
-    );
+  const movable = plan.activities.filter(
+    (a) =>
+      a.date === boundary.date &&
+      a.start >= boundary.minute &&
+      a.status === "planned" &&
+      a.blockType === "flexible" &&
+      !a.external &&
+      !a.recurrenceId &&
+      !a.routine &&
+      (!a.deadlineId || Boolean(activityDeadline(data, a))) &&
+      (a.categoryId !== "music" || s.musicMovable) &&
+      data.categories.find((c) => c.id === a.categoryId)?.movable,
+  );
   const moving = new Set(movable.map((a) => a.id));
   const held = plan.activities.filter((a) => !moving.has(a.id));
   const placed: Activity[] = [];
-  for (const a of movable) {
+  const unplaced: Activity[] = [],
+    remaining = [...movable];
+  const allHeld = Object.entries(data.weeks).flatMap(([key, p]) =>
+    key === week ? held : p.activities,
+  );
+  const dueKey = (a: Activity) => {
+    const due = activityDeadline(data, a);
+    return due ? `${due.date}-${String(due.minute).padStart(4, "0")}` : "9999";
+  };
+  const step = (a: Activity) =>
+    data.deadlines
+      ?.find((d) => d.id === a.deadlineId)
+      ?.steps.findIndex((v) => v.id === a.deadlineStepId) ?? -1;
+  const compare = (a: Activity, b: Activity) =>
+    dueKey(a).localeCompare(dueKey(b)) ||
+    b.priority - a.priority ||
+    a.start - b.start ||
+    a.id.localeCompare(b.id);
+  while (remaining.length) {
+    const eligible = remaining
+      .filter(
+        (a) =>
+          !remaining.some(
+            (b) =>
+              a.deadlineId &&
+              b.deadlineId === a.deadlineId &&
+              step(b) >= 0 &&
+              step(b) < step(a),
+          ),
+      )
+      .sort(compare);
+    const first = eligible[0];
+    const totals = jobShare(held);
+    const score = (a: Activity) => {
+      const career =
+          totals.career + (a.categoryId === "career" ? a.end - a.start : 0),
+        network =
+          totals.networking +
+          (a.categoryId === "networking" ? a.end - a.start : 0);
+      return career + network
+        ? Math.abs(career / (career + network) - 0.75)
+        : 1;
+    };
+    const tied = eligible.filter(
+      (a) =>
+        dueKey(a) === dueKey(first) &&
+        a.priority === first.priority &&
+        ["career", "networking"].includes(a.categoryId) &&
+        !remaining.some(
+          (b) =>
+            a.deadlineId &&
+            b.deadlineId === a.deadlineId &&
+            step(b) >= 0 &&
+            step(b) < step(a),
+        ),
+    );
+    const a =
+      ["career", "networking"].includes(first.categoryId) && tied.length > 1
+        ? tied.sort((a, b) => score(a) - score(b) || compare(a, b))[0]
+        : first;
+    remaining.splice(remaining.indexOf(a), 1);
+    if (
+      unplaced.some(
+        (b) =>
+          a.deadlineId &&
+          a.deadlineId === b.deadlineId &&
+          step(b) >= 0 &&
+          step(b) < step(a),
+      )
+    ) {
+      unplaced.push(a);
+      continue;
+    }
     let moved: Activity | undefined;
     for (
       let start = Math.ceil(Math.max(s.start, boundary.minute) / 5) * 5;
@@ -81,23 +154,29 @@ export function replanDay(
       };
       if (
         fits(candidate, held, s) &&
-        !validateMove(a, candidate, held, s, data.categories)
+        !validateMove(a, candidate, held, s, data.categories) &&
+        !planningLimitError(data, candidate, [...allHeld, ...placed])
       ) {
         moved = start === a.start ? a : candidate;
         break;
       }
     }
-    if (!moved)
-      return {
-        data,
-        activities: [],
-        errors: [
-          `”${a.title}” ryms inte i resten av dagen. Planen har inte ändrats.`,
-        ],
-      };
+    if (!moved) {
+      unplaced.push(a);
+      continue;
+    }
     placed.push(moved);
     held.push(moved);
   }
+  if (unplaced.length)
+    return {
+      data,
+      activities: [],
+      unplaced,
+      errors: [
+        "Alla pass ryms inte i resten av dagen med sina deadlines och planeringsregler. Planen har inte ändrats.",
+      ],
+    };
   const byId = new Map(placed.map((a) => [a.id, a]));
   const activities = placed.filter((a) => {
     const old = movable.find((b) => b.id === a.id)!;
@@ -333,6 +412,8 @@ export function validateCareerData(d: AppData) {
     }
     return value;
   }
+  for (const a of records(d.careerActions === undefined ? [] : d.careerActions))
+    validateCareerAction(a as import("./types").CareerAction);
   for (const a of records(d.applications === undefined ? [] : d.applications)) {
     if (
       !text(a.organization, 200) ||
@@ -345,6 +426,10 @@ export function validateCareerData(d: AppData) {
       !date(a.deadline) ||
       !date(a.followUpDate) ||
       !text(a.nextAction) ||
+      (a.nextActionReason !== undefined && !text(a.nextActionReason)) ||
+      (a.nextActionOwner !== undefined && !text(a.nextActionOwner, 200)) ||
+      (a.nextActionId !== undefined &&
+        (!text(a.nextActionId, 200) || !a.nextActionId.trim())) ||
       !text(a.notes)
     )
       throw new Error("En ansökan är ogiltig.");
@@ -371,11 +456,26 @@ export function validateCareerData(d: AppData) {
             (!text(i.contactId, 200) || !i.contactId.trim())) ||
           !text(i.preparationNotes) ||
           !text(i.outcomeNotes) ||
+          (i.feedbackNotes !== undefined && !text(i.feedbackNotes)) ||
           (i.completedAt !== undefined &&
             (!text(i.completedAt, 100) ||
               !Number.isFinite(Date.parse(i.completedAt))))
         )
           throw new Error("En intervju är ogiltig.");
+        if (i.preparationChecklist !== undefined) {
+          if (
+            !Array.isArray(i.preparationChecklist) ||
+            i.preparationChecklist.length > 30
+          )
+            throw new Error("Intervjuns förberedelsepunkter är ogiltiga.");
+          for (const item of records(i.preparationChecklist))
+            if (
+              !text(item.title, 200) ||
+              !item.title.trim() ||
+              typeof item.done !== "boolean"
+            )
+              throw new Error("En förberedelsepunkt är ogiltig.");
+        }
       }
     if (
       a.contactIds !== undefined &&
@@ -424,6 +524,10 @@ export function validateCareerData(d: AppData) {
       !c.name.trim() ||
       !text(c.organization, 200) ||
       !text(c.nextAction) ||
+      (c.nextActionReason !== undefined && !text(c.nextActionReason)) ||
+      (c.nextActionOwner !== undefined && !text(c.nextActionOwner, 200)) ||
+      (c.nextActionId !== undefined &&
+        (!text(c.nextActionId, 200) || !c.nextActionId.trim())) ||
       !date(c.followUpDate)
     )
       throw new Error("En kontakt är ogiltig.");
