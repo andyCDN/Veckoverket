@@ -69,6 +69,7 @@ import { ResetPlanningModal } from "./reset-planning";
 import { resetPlanning } from "@/lib/reset-planning";
 import { upgradeWeeklyRoutines } from "@/lib/weekly-routines";
 import { WeeklyRoutineModal } from "./weekly-routine";
+import { LoadingScreen } from "./loading-screen";
 import { bookingConstraints, replanAfterBookings } from "@/lib/auto-planning";
 import { EditorialSidebar, CategoryFilter } from "./riso";
 import { PlannerMasthead, WorkspaceTools, BackCoverInfo } from "./punk";
@@ -326,11 +327,16 @@ export function Workspace() {
     );
   if (!data || (configured && (cloud.phase === "loading" || !authReady)))
     return (
-      <main className="loading">
-        <h1>Veckoverket</h1>
-        <p role="status">
-          {configured ? "Hämtar molnplanen…" : "Laddar veckoplanen…"}
-        </p>
+      <LoadingScreen
+        failed={Boolean(configured && cloud.error)}
+        message={
+          configured && cloud.error
+            ? "Planen kunde inte hämtas."
+            : configured
+              ? "Hämtar molnplanen…"
+              : "Laddar veckoplanen…"
+        }
+      >
         {configured && cloud.error && (
           <div className="stack">
             <p role="alert">{cloud.error}</p>
@@ -347,7 +353,7 @@ export function Workspace() {
             </button>
           </div>
         )}
-      </main>
+      </LoadingScreen>
     );
   const plan =
       data.weeks[week] ??

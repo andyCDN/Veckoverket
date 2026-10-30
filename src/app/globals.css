@@ -1911,20 +1911,6 @@ legend {
   font: 400 21px var(--display);
   text-transform: uppercase;
 }
-.loading {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 18px;
-}
-.loading h1 {
-  font-size: 37px;
-}
-.loading p {
-  font: 12px var(--mono);
-}
 .brand-mark {
   background: var(--blue);
   color: white;

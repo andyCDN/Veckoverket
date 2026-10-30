@@ -4,6 +4,8 @@ Utformningen bygger på det uppladdade kittet `Veckoverket-PUNK-RISO-v2.5-komple
 
 ## Formspråk och struktur
 
+Laddningsvyn använder ett separat RISO-omslag med grovt tvåfärgsraster, papperskorn, röda/blå/gula tryckplåtar, passmärken och ett stort förskjutet V med gul bock. `src/components/loading-screen.tsx` och dess CSS-modul används både i den första exporterade HTML-vyn och medan kontots plan hämtas. Laddningsremsan är obestämd och visar ingen påhittad procentsats. Reducerad rörelse ger en statisk remsa; felmeddelande, Försök igen och Logga ut behålls. Ingen extra väntetid läggs till.
+
 - En kompakt röd masthead med `VECKOVERKET` och `VECKANS SCHEMA` ersätter det tidigare omslaget och mittuppslaget. Huvudnavigation, veckoval, utskrift, planering och nytt pass ligger direkt ovanför kalendern.
 - Paletten är papper `#F1EAD6`, ljust papper `#FFF9E9`, svart `#191918`, blått `#243D9B`, rött `#F04B31` och gult `#F9C845`.
 - Displaystacken följer kittets Impact/Arial Narrow med Arial/Helvetica som fallback. Metadata använder Courier New. Typsnitt hämtas inte från externa tjänster.
