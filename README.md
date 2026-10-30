@@ -64,6 +64,16 @@ Utan ett konfigurerat molnprojekt sparas planen på den här enheten. Med Supaba
 - Uppföljning över fyra eller tolv veckor under Veckoreflektion: filtrera livsområde och jämför tidsmål, planerad tid och genomförd tid. Saknade veckor skapas inte. [Guide för regler, ångra och statistik](docs/planning-tools.md).
 - Supabase-inloggning med automatisk hämtning och sparning av hela kontots arbetsyta, en separat enhetscache, återhämtning efter avbrott och revisionskontroll vid samtidiga ändringar. Befintlig lokal plan flyttas efter ett uttryckligt val vid första inloggningen.
 
+## Jobb, nätverk och deadlines
+
+Under **Jobb & nätverk** finns en ansökningsöversikt med statusfilter, organisation, tjänst, deadline, nästa steg och uppföljningsdatum. Kontaktloggen sparar daterade anteckningar, kontaktkanal och nästa uppföljning. **Boka uppföljning** och **Boka kontakt** skapar kopplade pass i den befintliga kalendern. Passen kan öppnas, redigeras och markeras som genomförda där.
+
+**Deadlines** tar delsteg i utförandeordning och placerar dem bakåt från sista datum och klockslag, högst ett år framåt. Förslaget respekterar sparade veckoregler, kalenderimport, lunch, familjetid och buffert. Befintliga planer ändras inte. Nya veckor förbereds med låsta reservationer, skyddade och återkommande pass samt veckorutiner. Om alla delsteg inte ryms sparas ingenting; frigör tid eller justera delstegen. Sparade kalenderpass uppdateras inte automatiskt när en deadline redigeras. Öppna dem i kalendern för att ändra eller ta bort dem innan en ny bakåtplanering.
+
+**Omplanera resten av dagen** visar ett förslag för dagens framtida flexibla, flyttbara pass i prioritetsordning. Påbörjade, genomförda, överhoppade, låsta, skyddade, återkommande och importerade pass samt deadlinepass ligger kvar. Övriga dagar och passens längd bevaras. Förslaget används uttryckligen och kan ångras. Vid kapacitetsbrist bevaras hela originalplanen.
+
+Ansökningar, kontaktloggar, deadlines och kalenderkopplingar ingår i samma arbetsyta, säkerhetskopior, kontoavgränsade cache och revisionskontrollerade Supabase-synk som övriga planer. Äldre säkerhetskopior fungerar utan migrering. Borttagning av ansökan, kontakt eller deadline lämnar kalenderpassen kvar. Kalenderintegrationen läser Google/iCal; de nya passen sparas i Veckoverket och skrivs inte tillbaka till Google.
+
 ## Planeringsregler och antaganden
 
 `src/lib/planner.ts` är en fristående, deterministisk modul. Den tar in regler och data och returnerar ett veckoförslag samt konflikter. Den använder inte AI eller externa API:er.

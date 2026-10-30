@@ -1,3 +1,4 @@
+import { validateCareerData } from "./career-planning";
 import type { AppData } from "./types";
 import { googleEventUrl, isGoogleEventKey } from "./external-calendar";
 import { isLocalDate } from "./google-time";
@@ -135,6 +136,13 @@ export function decodeData(raw: string): AppData {
         Number(a.end) <= Number(a.start) ||
         !["locked", "protected", "flexible"].includes(String(a.blockType)) ||
         !["planned", "done", "skipped"].includes(String(a.status)) ||
+        ["applicationId", "contactId", "deadlineId", "deadlineStepId"].some(
+          (k) =>
+            a[k] !== undefined &&
+            (typeof a[k] !== "string" ||
+              !(a[k] as string).trim() ||
+              (a[k] as string).length > 200),
+        ) ||
         (a.routine !== undefined &&
           !["week-start", "week-review"].includes(String(a.routine))) ||
         (a.followUpOf !== undefined &&
@@ -278,6 +286,7 @@ export function decodeData(raw: string): AppData {
     )
       throw new Error("Google-kalenderns importinställningar är ogiltiga.");
   }
+  validateCareerData(d as AppData);
   return refreshDemoCopy(d as AppData);
 }
 export function loadLocal(

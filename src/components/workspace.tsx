@@ -85,13 +85,16 @@ import {
   type GoogleCategoryChoices,
   type GoogleSnapshot,
 } from "@/lib/google-calendar";
+import { CareerView } from "./career";
 import { FollowUpPanel } from "./follow-up";
 import { followUps, type FollowUp } from "@/lib/follow-up";
-type View = "dashboard" | "planner" | "goals" | "reflection" | "settings";
+type View =
+  "dashboard" | "planner" | "goals" | "reflection" | "settings" | "career";
 const NAV = [
   { id: "dashboard", label: "Min vecka", icon: LayoutDashboard },
   { id: "planner", label: "Veckoplanerare", icon: CalendarDays },
   { id: "goals", label: "Mål & aktiviteter", icon: Target },
+  { id: "career", label: "Jobb & nätverk", icon: BookOpen },
   { id: "reflection", label: "Veckoreflektion", icon: BookOpen },
   { id: "settings", label: "Inställningar", icon: Settings2 },
 ] as const;
@@ -101,6 +104,7 @@ const APP_NAV_LABELS: Record<View, string> = {
   goals: "Mål",
   reflection: "Reflektion",
   settings: "Inställningar",
+  career: "Jobb",
 };
 function linkedPlan(plan: WeekPlan, goals: Goal[], preserved: Activity[] = []) {
   return {
@@ -144,6 +148,7 @@ export function Workspace() {
     blockedSave,
     setBlockedSave,
   } = useWorkspaceStorage(newWorkspace);
+  const [careerEditing, setCareerEditing] = useState(false);
   const [week, setWeek] = useState(monday(today())),
     [view, setView] = useState<View>("dashboard");
   const [daySelection, setDaySelection] = useState<{
@@ -204,7 +209,8 @@ export function Workspace() {
         resetOpen ||
         routineId ||
         account ||
-        view === "settings",
+        view === "settings" ||
+        careerEditing,
       ),
     onSnapshot: autoImportIcal,
   });
@@ -295,7 +301,8 @@ export function Workspace() {
         googleOpen ||
         resetOpen ||
         routineId ||
-        view === "settings",
+        view === "settings" ||
+        careerEditing,
       ),
     );
     return () => setEditing(false);
@@ -307,6 +314,7 @@ export function Workspace() {
     resetOpen,
     routineId,
     view,
+    careerEditing,
     setEditing,
   ]);
   const navigate = (v: View) => {
@@ -1291,6 +1299,34 @@ export function Workspace() {
                 </section>
               )}
             </>
+          )}
+          {view === "career" && (
+            <CareerView
+              key={`career-${user?.id ?? "local"}-${undoVersion}`}
+              data={data}
+              onEditing={setCareerEditing}
+              onChange={(next, base) => {
+                setData(
+                  (current) => {
+                    if (
+                      !current ||
+                      JSON.stringify(current) !== JSON.stringify(base)
+                    ) {
+                      notify(
+                        "Arbetsytan har ändrats. Öppna formuläret eller förhandsvisningen igen.",
+                      );
+                      return current;
+                    }
+                    return next;
+                  },
+                  { undoLabel: "jobb och nätverk" },
+                );
+              }}
+              onOpen={(activity) => {
+                changeWeek(monday(activity.date));
+                setEditor({ activity, date: activity.date });
+              }}
+            />
           )}
           {view === "goals" && (
             <GoalsView

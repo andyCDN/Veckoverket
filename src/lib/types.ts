@@ -39,6 +39,10 @@ export type Activity = {
   priority: number;
   status: "planned" | "done" | "skipped";
   goalId?: string;
+  applicationId?: string;
+  contactId?: string;
+  deadlineId?: string;
+  deadlineStepId?: string;
   recurrenceId?: string;
   followUpOf?: { week: string; activityId: string };
   source: "generated" | "manual" | "recurring" | "external";
@@ -104,8 +108,40 @@ export type WeekPlan = {
   generatedAt: string;
   weeklyRoutinesFrom?: string;
 };
+export type ApplicationStatus =
+  "draft" | "sent" | "interview" | "offer" | "rejected" | "closed";
+export type JobApplication = {
+  id: string;
+  organization: string;
+  role: string;
+  status: ApplicationStatus;
+  deadline: string;
+  nextAction: string;
+  followUpDate: string;
+  notes: string;
+};
+export type NetworkContact = {
+  id: string;
+  name: string;
+  organization: string;
+  nextAction: string;
+  followUpDate: string;
+  entries: { id: string; date: string; channel: string; notes: string }[];
+};
+export type Deadline = {
+  id: string;
+  title: string;
+  date: string;
+  minute: number;
+  categoryId: string;
+  applicationId?: string;
+  steps: { id: string; title: string; minutes: number }[];
+};
 export type AppData = {
   version: 1;
+  applications?: JobApplication[];
+  contacts?: NetworkContact[];
+  deadlines?: Deadline[];
   profile: { name: string };
   categories: Category[];
   settings: Settings;

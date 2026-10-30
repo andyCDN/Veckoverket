@@ -373,3 +373,65 @@ describe("automatisk molnlagring", () => {
     expect(f.store.snapshot().data?.profile.name).toBe("Ny molnversion");
   });
 });
+
+it("synkar ansökningar, kontaktlogg och deadlines med kalender och bevarade utfall", async () => {
+  const f = fixture();
+  await f.store.start();
+  const original = f.store.snapshot().data!;
+  const next = structuredClone(original);
+  next.applications = [
+    {
+      id: "a",
+      organization: "Bolag",
+      role: "Roll",
+      status: "sent",
+      deadline: "2026-11-02",
+      followUpDate: "2026-10-30",
+      nextAction: "Följ upp",
+      notes: "",
+    },
+  ];
+  next.contacts = [
+    {
+      id: "c",
+      name: "Kim",
+      organization: "Bolag",
+      followUpDate: "2026-10-30",
+      nextAction: "Ring",
+      entries: [
+        {
+          id: "log",
+          date: "2026-10-29",
+          channel: "E-post",
+          notes: "Kontaktad",
+        },
+      ],
+    },
+  ];
+  next.deadlines = [
+    {
+      id: "d",
+      title: "Ansökan",
+      date: "2026-11-02",
+      minute: 900,
+      categoryId: "career",
+      applicationId: "a",
+      steps: [{ id: "s", title: "CV", minutes: 60 }],
+    },
+  ];
+  f.store.update(next);
+  await f.store.flush();
+  expect(f.remote?.data).toEqual(next);
+  const second = new WorkspaceSync(
+    "user-a",
+    f.transport,
+    storage(),
+    vi.fn(),
+    () => plan("Ny"),
+  );
+  await second.start();
+  expect(second.snapshot().data).toEqual(next);
+  expect(second.snapshot().data?.weeks).toEqual(original.weeks);
+  second.dispose();
+  f.store.dispose();
+});
