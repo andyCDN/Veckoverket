@@ -889,7 +889,7 @@ export function Workspace() {
         <ChevronLeft size={18} />
       </button>
       <div className="week-title">
-        <h2>Vecka {weekNumber(week)}</h2>
+        <span className="app-week-number">Vecka {weekNumber(week)}</span>
         <span>{weekLabel(week)}</span>
       </div>
       <button
@@ -958,6 +958,7 @@ export function Workspace() {
         Hoppa till innehållet
       </a>
       <PlannerMasthead
+        week={week}
         settings={weekData.settings}
         minutes={Object.values(categoryMinutes(activities)).reduce(
           (sum, n) => sum + n,
@@ -1125,10 +1126,11 @@ export function Workspace() {
                       <div className="mobile-active-filter">
                         <span>
                           Visar{" "}
-                          {
-                            data.categories.find((c) => c.id === categoryFilter)
-                              ?.name
-                          }
+                          {categoryLabel(
+                            data.categories.find(
+                              (c) => c.id === categoryFilter,
+                            ),
+                          )}
                         </span>
                         <button
                           className="text-button"

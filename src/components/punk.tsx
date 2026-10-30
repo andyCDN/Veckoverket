@@ -1,6 +1,6 @@
 "use client";
 import { ArrowUpRight, CircleHelp } from "lucide-react";
-import { DAY_NAMES, hours } from "@/lib/date";
+import { DAY_NAMES, hours, weekNumber } from "@/lib/date";
 import { plannedDays } from "@/lib/planner";
 import { appPath } from "@/lib/app-path";
 import type { Settings } from "@/lib/types";
@@ -8,8 +8,10 @@ import type { Settings } from "@/lib/types";
 export function PlannerMasthead({
   settings,
   minutes,
+  week,
 }: {
   settings: Settings;
+  week: string;
   minutes: number;
 }) {
   const days = plannedDays(settings);
@@ -22,7 +24,10 @@ export function PlannerMasthead({
       aria-label="Veckoverket – veckans schema"
     >
       <div className="planner-header-text">
-        <span className="masthead-kicker">Nr 005 / {range}</span>
+        <div className="masthead-kicker">
+          <strong className="masthead-week">Vecka {weekNumber(week)}</strong>
+          <span className="masthead-range">{range}</span>
+        </div>
         <div className="title-line">
           <img
             className="standalone-brand-icon"

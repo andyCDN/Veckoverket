@@ -377,7 +377,7 @@ test("kategorifilter ändrar bara visningen och utskrift visar hela veckan", asy
     .locator(".calendar-viewport")
     .evaluate((el) => (el.scrollLeft = 200));
   await page.emulateMedia({ media: "print" });
-  await expect(page.locator(".week-title:visible")).toContainText("Vecka");
+  await expect(page.locator(".masthead-week:visible")).toContainText("Vecka");
   await expect(page.locator(".day-shell:visible")).toHaveCount(5);
   await expect(page.locator(".calendar-block:visible")).toHaveCount(total);
   for (const [index, count] of (

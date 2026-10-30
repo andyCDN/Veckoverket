@@ -3152,3 +3152,86 @@ body {
     flex-direction: column;
   }
 }
+
+/* Selected week belongs to the masthead; the toolbar contains dates and actions. */
+.masthead-kicker {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.masthead-week {
+  font: 700 18px/1.1 var(--mono);
+  white-space: nowrap;
+}
+.masthead-range {
+  font: 700 9px/1.2 var(--mono);
+}
+@media screen and (min-width: 701px) {
+  :root:not([data-layout="daily"]) .week-toolbar {
+    min-height: 44px;
+    gap: 8px;
+    padding-block: 4px;
+  }
+  :root:not([data-layout="daily"]) .week-controls {
+    gap: 6px;
+  }
+  :root:not([data-layout="daily"]) .week-actions {
+    margin-left: auto;
+    width: auto;
+    justify-content: flex-end;
+    gap: 4px 6px;
+  }
+  :root:not([data-layout="daily"]) .week-actions .text-button {
+    min-height: 32px;
+    gap: 4px;
+    padding: 4px 2px;
+    white-space: nowrap;
+  }
+  :root:not([data-layout="daily"]) .week-actions .new-session {
+    min-height: 32px;
+    padding: 7px 8px;
+  }
+}
+@media screen {
+  :root[data-layout="daily"] .masthead-kicker {
+    display: flex;
+    margin-bottom: 3px;
+  }
+  :root[data-layout="daily"] .masthead-week {
+    font-size: 12px;
+  }
+  :root[data-layout="daily"] .masthead-range {
+    display: none;
+  }
+  :root[data-layout="daily"] .week-title > span {
+    display: block;
+    font-size: 10px;
+  }
+}
+
+.app-week-number {
+  display: none;
+}
+@media screen {
+  :root[data-layout="daily"] .week-title > .app-week-number {
+    display: none;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"]
+    .week-title
+    > .app-week-number {
+    display: block;
+    font-size: 14px;
+  }
+}
+@media print {
+  .app-shell {
+    min-height: 0;
+  }
+  .masthead-week {
+    font-size: 12px;
+  }
+  .masthead-kicker {
+    margin-bottom: 3px;
+  }
+}
