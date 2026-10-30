@@ -1,4 +1,5 @@
 "use client";
+import { changeJobBudget } from "@/lib/job-categories";
 import { useRef, useState } from "react";
 import {
   ArrowRight,
@@ -435,6 +436,13 @@ export function SettingsView({
                       <i />
                       {c.name}
                     </span>
+                    {c.id === "career" && (
+                      <p className="muted">
+                        Jobbsök får 75 % och nätverkande 25 % av deras
+                        gemensamma tidsbudget. Ändring av ett tidsmål justerar
+                        båda. Befintliga pass och utfall bevaras.
+                      </p>
+                    )}
                     <div className="category-fields">
                       <label>
                         Timmar / vecka
@@ -442,18 +450,18 @@ export function SettingsView({
                           type="number"
                           min={0}
                           max={100}
-                          step={0.5}
+                          step={
+                            ["career", "networking"].includes(c.id)
+                              ? "any"
+                              : 0.25
+                          }
                           value={c.targetMinutes / 60}
                           onChange={(e) =>
                             setCats((cs) =>
-                              cs.map((x) =>
-                                x.id === c.id
-                                  ? {
-                                      ...x,
-                                      targetMinutes:
-                                        Number(e.target.value) * 60,
-                                    }
-                                  : x,
+                              changeJobBudget(
+                                cs,
+                                c.id,
+                                Number(e.target.value) * 60,
                               ),
                             )
                           }

@@ -1,3 +1,4 @@
+import { separateJobCategories } from "./job-categories";
 import { validateCareerData } from "./career-planning";
 import type { AppData } from "./types";
 import { googleEventUrl, isGoogleEventKey } from "./external-calendar";
@@ -287,7 +288,7 @@ export function decodeData(raw: string): AppData {
       throw new Error("Google-kalenderns importinställningar är ogiltiga.");
   }
   validateCareerData(d as AppData);
-  return refreshDemoCopy(d as AppData);
+  return separateJobCategories(refreshDemoCopy(d as AppData));
 }
 export function loadLocal(
   storage: StorageLike,

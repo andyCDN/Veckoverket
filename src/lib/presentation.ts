@@ -8,6 +8,7 @@ const palette: Record<string, { ink: string; fill: string; label: string }> = {
     label: "Veckoplanering",
   },
   career: { ink: "#243D9B", fill: "#E3E9F7", label: "Jobbsök" },
+  networking: { ink: "#40552E", fill: "#E6EAD9", label: "Nätverkande" },
   learning: { ink: "#F9C845", fill: "#FFF1BD", label: "Lärande" },
   music: { ink: "#F04B31", fill: "#FBD9CE", label: "Musik" },
   health: { ink: "#243D9B", fill: "#F1F4F8", label: "Träning" },

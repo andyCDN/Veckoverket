@@ -110,7 +110,10 @@ function linkedPlan(plan: WeekPlan, goals: Goal[], preserved: Activity[] = []) {
   return {
     ...plan,
     activities: plan.activities.map((a) =>
-      a.goalId || preserved.includes(a)
+      a.goalId ||
+      a.status !== "planned" ||
+      a.source !== "generated" ||
+      preserved.includes(a)
         ? a
         : {
             ...a,

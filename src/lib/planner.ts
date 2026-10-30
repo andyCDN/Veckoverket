@@ -394,7 +394,8 @@ export function generateWeek(
     );
     activities.splice(0, activities.length, ...routinePlan.activities);
   }
-  const focus = (c: Category) => ["career", "learning"].includes(c.id);
+  const focus = (c: Category) =>
+    ["career", "networking", "learning"].includes(c.id);
   const automaticRank = (c: Category) =>
     c.id === "health" ? 0 : focus(c) ? 1 : 2;
   const flex = categories
@@ -410,7 +411,7 @@ export function generateWeek(
     c.id === "learning"
       ? "Kompetensutveckling"
       : c.id === "career"
-        ? "Jobbsökande & nätverk"
+        ? "Jobbsök"
         : c.name;
   if (focusFirst) {
     // Give both focus areas a morning foothold on each available day, then use
@@ -537,12 +538,52 @@ export function generateWeek(
     if (remaining > 0) missing(c.id, c.name, remaining);
   }
   const career = categories.find((c) => c.id === "career");
-  if (career)
+  const networking = categories.find((c) => c.id === "networking");
+  if (career && networking) {
+    // Distribute spare capacity using the same ratio as the shared time budget.
+    const totalTarget = career.targetMinutes + networking.targetMinutes;
+    if (totalTarget > 0)
+      for (const day of schedulingDays) {
+        while (true) {
+          const totals = categoryMinutes(activities);
+          const job = totals.career ?? 0,
+            network = totals.networking ?? 0;
+          const preferred =
+            job < ((job + network + 30) * career.targetMinutes) / totalTarget
+              ? career
+              : networking;
+          const choices = [
+            preferred,
+            preferred === career ? networking : career,
+          ].filter((c) => c.targetMinutes > 0);
+          const choice = choices
+            .map((c) => ({
+              c,
+              gap: gaps(day).find((g) => g.end - g.start >= c.minBlock),
+            }))
+            .find((x) => x.gap);
+          if (!choice?.gap) break;
+          const { c, gap: g } = choice;
+          const duration = Math.min(
+            g.end - g.start,
+            Math.max(c.minBlock, c.id === "career" ? 90 : 30),
+          );
+          add({
+            title: titleFor(c),
+            categoryId: c.id,
+            date: g.date,
+            start: g.start,
+            end: g.start + duration,
+            priority: c.priority,
+          });
+        }
+      }
+  } else if (career)
     for (const day of schedulingDays)
       for (const g of gaps(day))
         if (g.end - g.start >= career.minBlock)
           add({
-            title: "Jobbsökande & nätverk",
+            title: "Jobbsök",
             categoryId: career.id,
             date: g.date,
             start: g.start,
@@ -561,7 +602,7 @@ export function generateWeek(
       categories.map((c) => [c.id, targetMinutes(c, s)]),
     ),
   };
-  const plan = categories.some((c) => c.id === ROUTINE_CATEGORY.id)
+  let plan = categories.some((c) => c.id === ROUTINE_CATEGORY.id)
     ? addWeeklyRoutines(
         basePlan,
         s,
@@ -570,7 +611,67 @@ export function generateWeek(
         boundary,
       )
     : basePlan;
+  if (
+    career &&
+    networking &&
+    career.targetMinutes + networking.targetMinutes > 0
+  ) {
+    // Capacity shortages and routine reservations can skew the ratio. Reclassify
+    // only newly generated whole passes; saved activities and outcomes stay intact.
+    const share =
+      career.targetMinutes / (career.targetMinutes + networking.targetMinutes);
+    while (true) {
+      const totals = categoryMinutes(plan.activities);
+      const total = (totals.career ?? 0) + (totals.networking ?? 0);
+      const delta = (totals.career ?? 0) - total * share;
+      const from = delta > 0 ? "career" : "networking";
+      const to = delta > 0 ? networking : career;
+      const best = plan.activities
+        .filter(
+          (a) =>
+            a.categoryId === from &&
+            a.source === "generated" &&
+            a.status === "planned" &&
+            a.blockType === "flexible" &&
+            !a.external &&
+            !a.recurrenceId &&
+            !a.routine &&
+            !a.followUpOf &&
+            !existing?.activities.includes(a) &&
+            a.end - a.start >= to.minBlock,
+        )
+        .map((a) => ({
+          a,
+          error: Math.abs(Math.abs(delta) - (a.end - a.start)),
+        }))
+        .filter((x) => x.error + 0.01 < Math.abs(delta))
+        .sort(
+          (a, b) =>
+            a.error - b.error ||
+            b.a.date.localeCompare(a.a.date) ||
+            b.a.start - a.a.start,
+        )[0];
+      if (!best) break;
+      plan = {
+        ...plan,
+        activities: plan.activities.map((a) =>
+          a === best.a
+            ? {
+                ...a,
+                categoryId: to.id,
+                title: titleFor(to),
+                priority: to.priority,
+              }
+            : a,
+        ),
+      };
+    }
+  }
   const totals = categoryMinutes(plan.activities);
+  // Spare-capacity allocation and weekly routines may have changed the shortfall.
+  for (let i = conflicts.length - 1; i >= 0; i--)
+    if (["budget-career", "budget-networking"].includes(conflicts[i].id))
+      conflicts.splice(i, 1);
   for (const c of categories.filter(
     (c) => !["family", "rest", ROUTINE_CATEGORY.id].includes(c.id),
   )) {

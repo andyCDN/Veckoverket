@@ -1,3 +1,4 @@
+import { NETWORKING_CATEGORY } from "./job-categories";
 import type { AppData, Settings, Category } from "./types";
 import { monday, today } from "./date";
 import { ROUTINE_CATEGORY } from "./weekly-routines";
@@ -20,14 +21,15 @@ export const DEFAULT_SETTINGS: Settings = {
 export const DEFAULT_CATEGORIES: Category[] = [
   {
     id: "career",
-    name: "Jobb & nätverk",
+    name: "Jobbsök",
     color: "#496a8c",
-    targetMinutes: 300,
+    targetMinutes: 225,
     priority: 4,
-    minBlock: 30,
+    minBlock: 15,
     allowSplit: true,
     movable: true,
   },
+  NETWORKING_CATEGORY,
   {
     id: "learning",
     name: "Kompetensutveckling",

@@ -944,8 +944,9 @@ function BookingForm({
     [minutes, setMinutes] = useState(30),
     [title, setTitle] = useState(value.title),
     [category, setCategory] = useState(
-      data.categories.find((c) => c.id === "career")?.id ??
-        data.categories[0].id,
+      data.categories.find(
+        (c) => c.id === (value.contactId ? "networking" : "career"),
+      )?.id ?? data.categories[0].id,
     ),
     [error, setError] = useState("");
   return (

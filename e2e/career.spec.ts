@@ -189,6 +189,9 @@ test("kontaktlogg går att redigera på mobil utan att kalender eller planer rad
     .click();
   await expect.poll(async () => (await stored(page)).contacts?.length).toBe(1);
   const before = await stored(page);
+  expect(
+    before.weeks[week].activities.find((a) => a.contactId)?.categoryId,
+  ).toBe("networking");
   await page
     .getByRole("button", { name: "Redigera kontakt och logg", exact: true })
     .click();
@@ -268,4 +271,43 @@ test("ett förslag vars starttid har passerat skriver inte över planen", async 
     }),
   ).toBeVisible();
   expect((await stored(page)).weeks).toEqual(before.weeks);
+});
+
+test("separata tidsmål justeras tillsammans och kontaktpass använder nätverkande", async ({
+  page,
+}) => {
+  await setup(page);
+  await page
+    .getByRole("navigation", { name: "Huvudnavigation" })
+    .getByRole("button", { name: "Inställningar", exact: true })
+    .click();
+  const career = page
+    .locator(".category-setting")
+    .filter({ has: page.locator(".category-label", { hasText: "Jobbsök" }) });
+  const networking = page
+    .locator(".category-setting")
+    .filter({
+      has: page.locator(".category-label", { hasText: "Nätverkande" }),
+    });
+  await expect(career.getByLabel("Timmar / vecka")).toHaveValue("3.75");
+  await expect(networking.getByLabel("Timmar / vecka")).toHaveValue("1.25");
+  await career.getByLabel("Timmar / vecka").fill("3");
+  await expect(networking.getByLabel("Timmar / vecka")).toHaveValue("1");
+  await page
+    .getByRole("button", { name: "Spara och planera veckan", exact: true })
+    .click();
+  await expect
+    .poll(
+      async () =>
+        (await stored(page)).categories.find((c) => c.id === "career")
+          ?.targetMinutes,
+    )
+    .toBe(180);
+  expect(
+    (await stored(page)).categories.find((c) => c.id === "networking")
+      ?.targetMinutes,
+  ).toBe(60);
+  expect(
+    (await stored(page)).weeks[week].activities.find((a) => a.id === "done"),
+  ).toEqual(fixture().weeks[week].activities[0]);
 });

@@ -1,3 +1,4 @@
+import { separateJobCategories } from "../lib/job-categories";
 import { describe, expect, it } from "vitest";
 import { createData as createDefaultData } from "../lib/defaults";
 import {
@@ -16,7 +17,13 @@ const week = "2026-10-26";
 // default routines and their capacity costs are covered in weekly-routines.test.
 function createData() {
   const data = createDefaultData();
-  data.categories = data.categories.filter((c) => c.id !== "weekly-planning");
+  data.categories = data.categories.filter(
+    (c) => !["weekly-planning", "networking"].includes(c.id),
+  );
+  Object.assign(
+    data.categories.find((c) => c.id === "career")!,
+    { targetMinutes: 300, minBlock: 30 },
+  );
   return data;
 }
 const manual = (overrides: Partial<Activity> = {}): Activity => ({
@@ -277,7 +284,7 @@ describe("persistent lokal lagring", () => {
       updatedAt: new Date().toISOString(),
     };
     saveLocal(storage, d);
-    expect(loadLocal(storage)).toEqual(d);
+    expect(loadLocal(storage)).toEqual(separateJobCategories(d));
     expect(values.has(STORAGE_KEY)).toBe(true);
   });
   it("vägrar korrupt eller inkompatibel data utan att skriva över originalet", () => {

@@ -3,7 +3,7 @@ import type { Activity, AppData } from "./types";
 export function canFollowUp(activity: Activity) {
   return (
     !activity.external &&
-    (activity.categoryId === "career" ||
+    (["career", "networking"].includes(activity.categoryId) ||
       /nätverk/i.test(`${activity.title} ${activity.description}`))
   );
 }

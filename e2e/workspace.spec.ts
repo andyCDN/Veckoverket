@@ -29,15 +29,15 @@ test("svensk vecka, musikalternativ, överbelastning och beständig lagring", as
   await nav(page, "Inställningar");
   await page.getByRole("button", { name: "1 förmiddag", exact: true }).click();
   await expect(
-    page.locator(".preview-row").filter({ hasText: "Jobb & nätverk" }),
-  ).toContainText("8,3 h");
+    page.locator(".preview-row").filter({ hasText: "Jobbsök" }),
+  ).toContainText("6,3 h");
   await page.getByRole("button", { name: "Spara och planera veckan" }).click();
   await expect(page.getByRole("heading", { name: "Min vecka" })).toBeVisible();
   await page.reload();
   await page.locator(".info-drawer > summary").click();
   await expect(
-    page.locator(".balance-stat").filter({ hasText: "Jobb & nätverk" }),
-  ).toContainText("8,3 h");
+    page.locator(".balance-stat").filter({ hasText: "Jobbsök" }),
+  ).toContainText("6,3 h");
   await nav(page, "Inställningar");
   await page
     .getByRole("button", { name: "2 förmiddagar", exact: true })
@@ -55,7 +55,7 @@ test("redigering, status, egna aktiviteter, kategorier, mål, uppgifter och refl
   await expect(page.locator(".calendar-grid")).toBeVisible();
   await page
     .locator(".calendar-block")
-    .filter({ hasText: "Jobbsökande" })
+    .filter({ hasText: "Jobbsök" })
     .first()
     .click();
   await page.getByLabel("Namn", { exact: true }).fill("Förbereda intervju");
@@ -249,7 +249,7 @@ test("dra och släpp flyttar flexibelt block och avvisar upptagen tid", async ({
     .locator(".day-shell")
     .nth(0)
     .locator(".calendar-block")
-    .filter({ hasText: "Jobbsökande" });
+    .filter({ hasText: "Jobbsök" });
   const from = (await block.boundingBox())!;
   const target = (await page.locator(".day-column").nth(2).boundingBox())!;
   await page.mouse.move(from.x + 35, from.y + 25);
@@ -272,7 +272,7 @@ test("dra och släpp flyttar flexibelt block och avvisar upptagen tid", async ({
     .locator(".day-shell")
     .nth(2)
     .locator(".calendar-block")
-    .filter({ hasText: "Jobbsökande" })
+    .filter({ hasText: "Jobbsök" })
     .first()
     .boundingBox())!;
   const occupied = (await page.locator(".day-column").nth(1).boundingBox())!;
