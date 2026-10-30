@@ -42,6 +42,7 @@ export type GoogleSnapshot = {
   calendarIds: string[];
   activities: Activity[];
   importedAt: string;
+  transport?: "ical";
   deleted?: { calendarId: string; eventId: string }[];
 };
 export class GoogleAuthorizationError extends Error {
@@ -354,9 +355,14 @@ export function previewGoogleImport(
     const activities = plan.activities.filter((a) => {
       if (!a.external) return true;
       const sourceKey = eventKey(a);
+      const replaceWeekSource =
+        snapshot.transport === "ical"
+          ? snapshot.calendarIds.includes(a.external.calendarId)
+          : a.external.calendarId !== data.icalCalendar?.calendarId ||
+            snapshot.calendarIds.includes(a.external.calendarId);
       const replace =
         deleted.has(sourceKey) ||
-        (a.date >= week && a.date < addDays(week, 7)) ||
+        (replaceWeekSource && a.date >= week && a.date < addDays(week, 7)) ||
         (key !== week && received.has(sourceKey));
       if (replace) {
         removed++;
@@ -465,7 +471,7 @@ export function previewGoogleImport(
   };
 }
 export function removeGoogleImports(data: AppData): AppData {
-  const { googleCalendar: _link, ...rest } = data;
+  const { googleCalendar: _link, icalCalendar: _feed, ...rest } = data;
   return {
     ...rest,
     weeks: Object.fromEntries(

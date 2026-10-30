@@ -1,0 +1,5 @@
+# Authentication is verified with Auth.getUser inside the function. This also
+# supports Supabase's newer asymmetric signing keys and publishable API keys.
+[functions.calendar-ical]
+verify_jwt = false
+import_map = "./functions/deno.json"

@@ -67,6 +67,13 @@ export function ResetPlanningModal({
             Google påverkas inte.
           </p>
         )}
+        {data.icalCalendar && (
+          <p>
+            Automatisk iCal-import stoppas. Den sparade länken finns kvar på
+            servern tills du väljer Koppla från iCal-länken under Google
+            Kalender.
+          </p>
+        )}
         {cloudEnabled && (
           <p>
             Återställningen sparas i ditt konto och hämtas på dina andra enheter

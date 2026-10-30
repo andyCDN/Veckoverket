@@ -1,5 +1,7 @@
 # Connect Google Calendar to Veckoverket
 
+For the simpler private iCal URL connection with automatic refresh while the app is open, use the [iCal setup guide](ical-calendar-setup.md). The guide below covers the alternative Google OAuth import.
+
 Veckoverket can import events from Google Calendar for your Gmail or Google Workspace account. The connection uses Google's browser sign-in and read-only calendar permissions. It works on GitHub Pages without a backend or a client secret.
 
 ## 1. Enable the Google Calendar API

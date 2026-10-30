@@ -96,6 +96,7 @@ async function open(page: Page) {
     .getByRole("button", { name: "Öppna Google Kalender", exact: true })
     .click();
   await expect(page.getByRole("dialog")).toBeVisible();
+  await page.locator(".google-oauth-alternative > summary").click();
 }
 async function connect(page: Page) {
   await open(page);
@@ -355,9 +356,9 @@ test("ett Google-fel bevarar importen och en utgången anslutning behöver förn
   await page
     .getByRole("button", { name: "Förhandsgranska import", exact: true })
     .click();
-  await expect(page.locator(".inline-error")).toContainText(
-    "kunde inte hämtas",
-  );
+  await expect(
+    page.locator(".google-oauth-alternative .inline-error"),
+  ).toContainText("kunde inte hämtas");
   await expect(
     page.getByRole("button", {
       name: "Importera kalenderhändelser",
@@ -369,7 +370,9 @@ test("ett Google-fel bevarar importen och en utgången anslutning behöver förn
   await page
     .getByRole("button", { name: "Förhandsgranska import", exact: true })
     .click();
-  await expect(page.locator(".inline-error")).toContainText("gått ut");
+  await expect(
+    page.locator(".google-oauth-alternative .inline-error"),
+  ).toContainText("gått ut");
   await expect(
     page.getByRole("button", { name: "Anslut Google-konto", exact: true }),
   ).toBeVisible();
@@ -494,7 +497,9 @@ test("avbruten Google-inloggning och frånkoppling hanteras utan sidfel", async 
   await page
     .getByRole("button", { name: "Anslut Google-konto", exact: true })
     .click();
-  await expect(page.locator(".inline-error")).toContainText("stängdes");
+  await expect(
+    page.locator(".google-oauth-alternative .inline-error"),
+  ).toContainText("stängdes");
   await page.evaluate(() => {
     (window as unknown as { __closeGooglePopup: boolean }).__closeGooglePopup =
       false;

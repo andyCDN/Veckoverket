@@ -107,6 +107,8 @@ export type AppData = {
   tasks: Task[];
   recurring: RecurringActivity[];
   reflections: Record<string, Reflection>;
+  // No private URL is stored in the workspace, browser cache, or backups.
+  icalCalendar?: { calendarId: string; autoRefresh: boolean };
   googleCalendar?: {
     calendarIds: string[];
     lastImportedWeek: string;

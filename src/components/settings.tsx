@@ -633,8 +633,8 @@ export function SettingsView({
         <div>
           <h3>Google Kalender</h3>
           <p>
-            Hämta bokade tider från ditt Google-konto och reservera dem i
-            veckoplanen.
+            Anslut en privat iCal-länk för att läsa in bokningar automatiskt. Du
+            kan också använda Google-inloggning för manuell import.
           </p>
         </div>
         <button className="button secondary" onClick={onGoogle}>

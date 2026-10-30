@@ -1871,6 +1871,35 @@ body {
   flex-wrap: wrap;
   gap: 12px;
 }
+.ical-calendar-panel {
+  min-width: 0;
+}
+.ical-calendar-panel input[type="password"] {
+  min-width: 0;
+  width: 100%;
+}
+.ical-calendar-panel summary,
+.google-oauth-alternative > summary {
+  cursor: pointer;
+  padding: 10px 0;
+  font-weight: 700;
+}
+.ical-calendar-panel ol {
+  padding-left: 22px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.ical-calendar-panel a,
+.ical-calendar-panel p {
+  overflow-wrap: anywhere;
+}
+.ical-sync-error {
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  border-left: 4px solid var(--red);
+  background: var(--red-soft);
+  font-size: 12px;
+}
 .google-calendar-choices {
   display: flex;
   flex-direction: column;

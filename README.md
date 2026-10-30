@@ -56,6 +56,7 @@ Utan ett konfigurerat molnprojekt sparas planen på den här enheten. Med Supaba
 - Automatisk lokal lagring, JSON-export och validerad import. Korrupt lagring skrivs inte över. Vid lagringsfel visas ett meddelande; exportera då en säkerhetskopia.
 - Nollställ planering och statistik från inställningarna, med bekräftelse och valfri säkerhetskopia. Profil, kategorier och sparade planeringsregler behålls. [Beskrivning på engelska](docs/reset-planning.md).
 - Google Kalender för Gmail- och Google-konton: välj kalendrar, förhandsgranska, kategorisera och importera bokningar. Kategori kan också väljas på sparade bokningar och följer med vid uppdatering. Upptagen tid ingår i planeringen och vald kategoris tidsuppföljning; importerade händelser kan bockas av. [Installationsguide på engelska](docs/google-calendar-setup.md).
+- Privat iCal-länk som enklare Google-anslutning: klistra in länken en gång, förhandsgranska och importera. Den visade veckan uppdateras automatiskt medan appen är öppen. Kategorier och genomförd status bevaras. Länken lagras krypterad via en Supabase Edge Function och ingår inte i säkerhetskopior. [Installation och användning på engelska](docs/ical-calendar-setup.md).
 - Supabase-inloggning med automatisk hämtning och sparning av hela kontots arbetsyta, en separat enhetscache, återhämtning efter avbrott och revisionskontroll vid samtidiga ändringar. Befintlig lokal plan flyttas efter ett uttryckligt val vid första inloggningen.
 
 ## Planeringsregler och antaganden
@@ -122,7 +123,7 @@ Automatisk sparning sker efter kort debounce. Uppdateringar hämtas vid inloggni
 
 ## Begränsningar och nästa steg
 
-Appen fungerar lokalt och har en förberedd automatisk Supabase-anslutning. Google Kalender har läsande veckoimport med uttrycklig uppdatering; automatisk bakgrundssynk och skrivning till Google ingår inte. Appen har ingen AI-tolkning, automatisk historikbaserad optimering, notifieringar eller samarbete mellan flera användare. Integrationsgränssnitt finns i `types.ts`; externa förslag ska alltid gå genom samma regelvalidering.
+Appen fungerar lokalt och har en förberedd automatisk Supabase-anslutning. Google Kalender kan läsas via manuell Google-inloggning eller en sparad privat iCal-länk. iCal uppdaterar den visade veckan medan appen är öppen och kräver en installerad Supabase Edge Function. Synk när appen är stängd och skrivning till Google ingår inte. Appen har ingen AI-tolkning, automatisk historikbaserad optimering, notifieringar eller samarbete mellan flera användare. Integrationsgränssnitt finns i `types.ts`; externa förslag ska alltid gå genom samma regelvalidering.
 
 De tre viktigaste nästa stegen är:
 

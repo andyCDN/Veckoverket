@@ -199,6 +199,22 @@ export function decodeData(raw: string): AppData {
       )
     )
       throw new Error("En reflektion är ogiltig.");
+  if (d.icalCalendar !== undefined) {
+    const feed = d.icalCalendar;
+    if (
+      !feed ||
+      typeof feed !== "object" ||
+      Array.isArray(feed) ||
+      typeof feed.calendarId !== "string" ||
+      !feed.calendarId ||
+      feed.calendarId.length > 500 ||
+      typeof feed.autoRefresh !== "boolean" ||
+      Object.keys(feed).some(
+        (key) => !["calendarId", "autoRefresh"].includes(key),
+      )
+    )
+      throw new Error("iCal-kalenderns inställningar är ogiltiga.");
+  }
   if (d.googleCalendar !== undefined) {
     const g = d.googleCalendar;
     if (

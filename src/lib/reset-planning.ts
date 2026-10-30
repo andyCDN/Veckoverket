@@ -3,7 +3,7 @@ import { monday, today } from "./date";
 import { targetMinutes } from "./planner";
 
 export function resetPlanning(data: AppData, week = monday(today())): AppData {
-  const { googleCalendar: _import, ...preserved } = data;
+  const { googleCalendar: _import, icalCalendar: _feed, ...preserved } = data;
   return {
     ...preserved,
     goals: [],

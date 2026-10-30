@@ -13,11 +13,16 @@ import {
 import type { GoogleConnection } from "@/lib/use-google-calendar";
 import { googleEventKey, GOOGLE_CATEGORY_ID } from "@/lib/external-calendar";
 import { GoogleCategorySelect } from "./google-category-select";
+import { IcalCalendarPanel } from "./ical-calendar";
+import type { IcalConnection } from "@/lib/use-ical-calendar";
 import { fullDate, time, weekLabel } from "@/lib/date";
 export function GoogleCalendarModal({
   data,
   week,
   connection,
+  ical,
+  onIcalAutomatic,
+  onIcalDisconnected,
   onImport,
   onRemove,
   onClose,
@@ -25,6 +30,9 @@ export function GoogleCalendarModal({
   data: AppData;
   week: string;
   connection: GoogleConnection;
+  ical: IcalConnection;
+  onIcalAutomatic: (enabled: boolean) => void;
+  onIcalDisconnected: () => void;
   onImport: (
     snapshot: GoogleSnapshot,
     replan: boolean,
@@ -37,6 +45,7 @@ export function GoogleCalendarModal({
     [snapshot, setSnapshot] = useState<GoogleSnapshot | null>(null),
     [replan, setReplan] = useState(true),
     [categoryChoices, setCategoryChoices] = useState<GoogleCategoryChoices>({}),
+    [oauthOpen, setOauthOpen] = useState(false),
     [loading, setLoading] = useState(false),
     [error, setError] = useState("");
   const request = useRef(0);
@@ -105,7 +114,7 @@ export function GoogleCalendarModal({
       onClose={onClose}
       wide
     >
-      {connection.configured && (
+      {connection.configured && oauthOpen && (
         <Script
           id="google-calendar-identity"
           src="https://accounts.google.com/gsi/client"
@@ -120,108 +129,158 @@ export function GoogleCalendarModal({
           reserveras i planeringen. Ändra händelsernas datum och tider i Google
           Kalender.
         </p>
-        {!connection.configured ? (
-          <div className="integration-setup">
-            <h3>Google-anslutning saknas</h3>
-            <p>
-              Installationen behöver kopplas till Google innan du kan välja ett
-              konto.
-            </p>
-            <a
-              href="https://github.com/andyCDN/Veckoverket/blob/main/docs/google-calendar-setup.md"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Installationsguide för Google Kalender
-            </a>
-          </div>
-        ) : (
-          <>
-            <div className="google-connection-actions">
-              <button
-                className="button primary"
-                disabled={!connection.ready || connection.connecting || loading}
-                onClick={connection.connect}
-              >
-                <Link2 size={16} />
-                {connection.connecting
-                  ? "Ansluter…"
-                  : connection.connected
-                    ? "Byt Google-konto"
-                    : "Anslut Google-konto"}
-              </button>
-              {connection.connected && (
-                <button
-                  className="text-button"
-                  onClick={() => {
-                    request.current++;
-                    setSnapshot(null);
-                    setLoading(false);
-                    connection.disconnect();
-                  }}
+        <IcalCalendarPanel
+          connection={ical}
+          week={week}
+          active={Boolean(
+            ical.feed && data.icalCalendar?.calendarId === ical.feed.calendarId,
+          )}
+          automatic={Boolean(data.icalCalendar?.autoRefresh)}
+          onAutomatic={onIcalAutomatic}
+          onDisconnected={onIcalDisconnected}
+          loading={loading}
+          onSnapshot={(result) => {
+            request.current++;
+            setSnapshot(result);
+            setCategoryChoices({});
+            setError("");
+            if (
+              result &&
+              data.icalCalendar &&
+              data.icalCalendar.calendarId !== result.calendarIds[0]
+            )
+              onIcalAutomatic(false);
+          }}
+        />
+        <details
+          className="google-oauth-alternative"
+          onToggle={(event) => setOauthOpen(event.currentTarget.open)}
+        >
+          <summary>Google-inloggning (alternativ)</summary>
+          <div className="stack">
+            {!connection.configured ? (
+              <div className="integration-setup">
+                <h3>Google-anslutning saknas</h3>
+                <p>
+                  Installationen behöver kopplas till Google innan du kan välja
+                  ett konto.
+                </p>
+                <a
+                  href="https://github.com/andyCDN/Veckoverket/blob/main/docs/google-calendar-setup.md"
+                  target="_blank"
+                  rel="noreferrer"
                 >
-                  <Unlink size={14} />
-                  Koppla från Google
-                </button>
-              )}
-            </div>
-            {!connection.ready && !connection.error && (
-              <p role="status">Laddar Google-inloggningen…</p>
-            )}
-            {connection.connected && (
+                  Installationsguide för Google Kalender
+                </a>
+              </div>
+            ) : (
               <>
-                <fieldset className="google-calendar-choices">
-                  <legend>Välj kalendrar</legend>
-                  {connection.calendars.map((calendar) => (
-                    <label key={calendar.id} className="google-calendar-choice">
-                      <input
-                        type="checkbox"
-                        checked={selected.includes(calendar.id)}
-                        disabled={loading}
-                        onChange={(event) => {
-                          setSnapshot(null);
-                          setSelected((ids) =>
-                            event.target.checked
-                              ? [...ids, calendar.id]
-                              : ids.filter((id) => id !== calendar.id),
-                          );
-                        }}
-                      />
-                      <span>
-                        {calendar.summary}
-                        {calendar.primary ? " · huvudkalender" : ""}
-                      </span>
-                    </label>
-                  ))}
-                  {!connection.calendars.length && (
-                    <p>Inga läsbara kalendrar hittades på kontot.</p>
+                <div className="google-connection-actions">
+                  <button
+                    className="button primary"
+                    disabled={
+                      !connection.ready ||
+                      connection.connecting ||
+                      loading ||
+                      ical.busy
+                    }
+                    onClick={connection.connect}
+                  >
+                    <Link2 size={16} />
+                    {connection.connecting
+                      ? "Ansluter…"
+                      : connection.connected
+                        ? "Byt Google-konto"
+                        : "Anslut Google-konto"}
+                  </button>
+                  {connection.connected && (
+                    <button
+                      className="text-button"
+                      onClick={() => {
+                        request.current++;
+                        setSnapshot(null);
+                        setLoading(false);
+                        connection.disconnect();
+                      }}
+                    >
+                      <Unlink size={14} />
+                      Koppla från Google
+                    </button>
                   )}
-                </fieldset>
-                <button
-                  className="button secondary"
-                  onClick={() => {
-                    void fetchWeek();
-                  }}
-                  disabled={loading || !selected.length}
-                >
-                  <CalendarDays size={16} />
-                  {loading ? "Hämtar kalendern…" : "Förhandsgranska import"}
-                </button>
+                </div>
+                {!connection.ready && !connection.error && (
+                  <p role="status">Laddar Google-inloggningen…</p>
+                )}
+                {connection.connected && (
+                  <>
+                    <fieldset className="google-calendar-choices">
+                      <legend>Välj kalendrar</legend>
+                      {connection.calendars.map((calendar) => (
+                        <label
+                          key={calendar.id}
+                          className="google-calendar-choice"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selected.includes(calendar.id)}
+                            disabled={loading}
+                            onChange={(event) => {
+                              setSnapshot(null);
+                              setSelected((ids) =>
+                                event.target.checked
+                                  ? [...ids, calendar.id]
+                                  : ids.filter((id) => id !== calendar.id),
+                              );
+                            }}
+                          />
+                          <span>
+                            {calendar.summary}
+                            {calendar.primary ? " · huvudkalender" : ""}
+                          </span>
+                        </label>
+                      ))}
+                      {!connection.calendars.length && (
+                        <p>Inga läsbara kalendrar hittades på kontot.</p>
+                      )}
+                    </fieldset>
+                    <button
+                      className="button secondary"
+                      onClick={() => {
+                        void fetchWeek();
+                      }}
+                      disabled={loading || ical.busy || !selected.length}
+                    >
+                      <CalendarDays size={16} />
+                      {loading ? "Hämtar kalendern…" : "Förhandsgranska import"}
+                    </button>
+                  </>
+                )}
               </>
             )}
-          </>
-        )}
-        {(connection.error || error) && (
-          <p className="inline-error" role="alert">
-            {error || connection.error}
-          </p>
-        )}
+            {(connection.error || error) && (
+              <p className="inline-error" role="alert">
+                {error || connection.error}
+              </p>
+            )}
+            <p className="help">
+              Google-inloggningen gäller den här öppna sidan. Anslut igen efter
+              omladdning och förhandsgranska på nytt för att hämta senare
+              ändringar. Importerade kalenderposter finns kvar i planen.
+            </p>
+          </div>
+        </details>
         {preview && snapshot && (
           <section
             className="google-import-preview"
             aria-label="Förhandsgranskning av Google-import"
           >
             <h3>{preview.count} kalenderposter</h3>
+            {snapshot.transport === "ical" && (
+              <p>
+                Import från den privata iCal-länken. Automatisk uppdatering
+                aktiveras när du importerar.
+              </p>
+            )}
             <p>
               Importen uppdaterar valda kalendrar för den här veckan. Borttagna
               händelser försvinner ur veckans import. Flyttade eller avbokade
@@ -313,11 +372,6 @@ export function GoogleCalendarModal({
             {weekLabel(data.googleCalendar.lastImportedWeek)}.
           </p>
         )}
-        <p className="help">
-          Google-anslutningen gäller den här öppna sidan. Anslut igen efter
-          omladdning och förhandsgranska på nytt för att hämta senare ändringar.
-          Importerade kalenderposter finns kvar i planen.
-        </p>
         {imported > 0 && (
           <button
             className="text-button danger"

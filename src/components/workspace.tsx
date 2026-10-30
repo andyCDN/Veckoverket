@@ -75,6 +75,7 @@ import { EditorialSidebar, CategoryFilter } from "./riso";
 import { PlannerMasthead, WorkspaceTools, BackCoverInfo } from "./punk";
 import { GoogleCalendarModal } from "./google-calendar";
 import { useGoogleCalendar } from "@/lib/use-google-calendar";
+import { useIcalCalendar } from "@/lib/use-ical-calendar";
 import {
   previewGoogleImport,
   removeGoogleImports,
@@ -166,6 +167,40 @@ export function Workspace() {
   const google = useGoogleCalendar(
     configured ? (user?.id ?? "signed-out") : "local",
   );
+  const autoImportIcal = useCallback(
+    (snapshot: GoogleSnapshot) => {
+      setData((current) =>
+        current?.icalCalendar?.autoRefresh &&
+        current.icalCalendar.calendarId === snapshot.calendarIds[0]
+          ? previewGoogleImport(
+              current,
+              snapshot,
+              Boolean(current.settings.autoPlanning),
+            ).data
+          : current,
+      );
+    },
+    [setData],
+  );
+  const ical = useIcalCalendar({
+    userId: user?.id,
+    week,
+    calendarId: data?.icalCalendar?.calendarId,
+    automatic: Boolean(data?.icalCalendar?.autoRefresh),
+    paused:
+      cloud.phase !== "synced" ||
+      Boolean(
+        editor ||
+        newGoal ||
+        generator ||
+        googleOpen ||
+        resetOpen ||
+        routineId ||
+        account ||
+        view === "settings",
+      ),
+    onSnapshot: autoImportIcal,
+  });
   const notify = useCallback((message: string) => setNotice(message), []);
   useEffect(() => {
     if (!data || (configured && cloud.phase !== "synced")) return;
@@ -735,7 +770,17 @@ export function Workspace() {
   ) {
     setData((current) =>
       current
-        ? previewGoogleImport(current, snapshot, replan, categories).data
+        ? {
+            ...previewGoogleImport(current, snapshot, replan, categories).data,
+            ...(snapshot.transport === "ical"
+              ? {
+                  icalCalendar: {
+                    calendarId: snapshot.calendarIds[0],
+                    autoRefresh: true,
+                  },
+                }
+              : {}),
+          }
         : current,
     );
     setGoogleOpen(false);
@@ -891,6 +936,17 @@ export function Workspace() {
               void resolveConflict(choice);
             }}
           />
+          {ical.error && data.icalCalendar?.autoRefresh && !googleOpen && (
+            <div className="ical-sync-error" role="status">
+              <p>{ical.error}</p>
+              <button
+                className="text-button"
+                onClick={() => setGoogleOpen(true)}
+              >
+                Hantera kalenderanslutning
+              </button>
+            </div>
+          )}
           {storageError && (
             <div className="storage-error" role="alert">
               <AlertCircle size={18} />
@@ -1313,6 +1369,27 @@ export function Workspace() {
           data={data}
           week={week}
           connection={google}
+          ical={ical}
+          onIcalAutomatic={(enabled) =>
+            setData((current) =>
+              current?.icalCalendar
+                ? {
+                    ...current,
+                    icalCalendar: {
+                      ...current.icalCalendar,
+                      autoRefresh: enabled,
+                    },
+                  }
+                : current,
+            )
+          }
+          onIcalDisconnected={() =>
+            setData((current) => {
+              if (!current) return current;
+              const { icalCalendar: _feed, ...rest } = current;
+              return rest;
+            })
+          }
           onImport={importGoogle}
           onRemove={() => {
             setData((current) => {
