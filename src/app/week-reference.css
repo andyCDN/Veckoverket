@@ -211,11 +211,11 @@
     max-width: 1600px;
   }
   .mockup-workspace[data-view] .planner-header {
-    min-height: 88px;
-    padding: 10px 22px;
+    min-height: clamp(88px, 6.9vw, 110px);
+    padding: 8px 20px;
     border: 0;
-    border-radius: 2px;
-    background: #e94a30;
+    border-radius: 0;
+    background: #e7472c;
     gap: 20px;
     color: var(--paper-light);
   }
@@ -223,18 +223,23 @@
     inset: 0;
     width: auto;
     height: auto;
-    opacity: 0.45;
+    opacity: 0.14;
     transform: none;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)' opacity='.45'/%3E%3C/svg%3E");
-    mix-blend-mode: screen;
+    background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22180%22%20height%3D%22110%22%20viewBox%3D%220%200%20180%20110%22%3E%3Cfilter%20id%3D%22grain%22%20color-interpolation-filters%3D%22sRGB%22%3E%3CfeTurbulence%20type%3D%22fractalNoise%22%20baseFrequency%3D%22.86%22%20numOctaves%3D%223%22%20seed%3D%2219%22%20stitchTiles%3D%22stitch%22%2F%3E%3CfeColorMatrix%20type%3D%22matrix%22%20values%3D%220%200%200%200%201%200%200%200%200%201%200%200%200%200%201%200%201%200%200%200%22%2F%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type%3D%22linear%22%20slope%3D%226%22%20intercept%3D%22-2.6%22%2F%3E%3C%2FfeComponentTransfer%3E%3C%2Ffilter%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20filter%3D%22url%28%23grain%29%22%2F%3E%3C%2Fsvg%3E");
+    background-size: 180px 110px;
+    background-repeat: repeat;
+    mix-blend-mode: normal;
+    pointer-events: none;
   }
   .mockup-workspace[data-view] .brand-title {
-    font: 400 clamp(52px, 5.4vw, 84px)/0.92 var(--display);
+    font:
+      900 clamp(62px, 7.2vw, 114px)/0.78 var(--font-masthead),
+      sans-serif;
     display: inline-block;
-    transform: scaleX(1.8);
+    transform: none;
     transform-origin: left center;
-    letter-spacing: -0.025em;
-    color: var(--paper-light);
+    letter-spacing: 0.035em;
+    color: #fff7e2;
     text-shadow: none;
   }
   .mockup-workspace[data-view] .brand-title > span {
@@ -251,15 +256,19 @@
     display: flex;
     flex-direction: column;
     margin-left: auto;
-    gap: 7px;
+    gap: 6px;
     white-space: nowrap;
+    transform: translateY(2px);
   }
   .mockup-workspace[data-view] .masthead-period .masthead-week {
-    font: 400 32px/1 var(--display);
+    font: 400 36px/1 var(--display);
+    letter-spacing: 0.04em;
   }
   .mockup-workspace[data-view] .masthead-period > span {
-    font: 700 19px/1.1 var(--display);
-    letter-spacing: 0.04em;
+    font:
+      700 20px/1 var(--font-masthead),
+      sans-serif;
+    letter-spacing: 0.05em;
   }
   .mockup-workspace[data-view] .week-toolbar {
     justify-content: start;
@@ -1087,5 +1096,16 @@
     .calendar-event-actions
     :is(.calendar-missed, .session-remove) {
     opacity: 1;
+  }
+}
+
+@media (min-width: 951px) {
+  .mockup-workspace[data-view] .brand-title {
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22140%22%20height%3D%2290%22%3E%3Cfilter%20id%3D%22wear%22%3E%3CfeTurbulence%20type%3D%22fractalNoise%22%20baseFrequency%3D%22.92%22%20numOctaves%3D%222%22%20seed%3D%227%22%20stitchTiles%3D%22stitch%22%2F%3E%3CfeColorMatrix%20type%3D%22matrix%22%20values%3D%220%200%200%200%201%200%200%200%200%201%200%200%200%200%201%200%201%200%200%200%22%2F%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type%3D%22discrete%22%20tableValues%3D%221%201%201%201%20.96%20.8%20.45%200%22%2F%3E%3C%2FfeComponentTransfer%3E%3C%2Ffilter%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20filter%3D%22url%28%23wear%29%22%2F%3E%3C%2Fsvg%3E");
+    mask-size: 140px 90px;
+    mask-repeat: repeat;
+  }
+  .mockup-workspace[data-view] .masthead-period {
+    color: #fff7e2;
   }
 }

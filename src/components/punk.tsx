@@ -51,14 +51,18 @@ export function PlannerMasthead({
             day: "numeric",
             month: "short",
             timeZone: "UTC",
-          }).format(new Date(`${week}T12:00:00Z`))}{" "}
+          })
+            .format(new Date(`${week}T12:00:00Z`))
+            .replaceAll(".", "")}{" "}
           –{" "}
           {new Intl.DateTimeFormat("sv-SE", {
             day: "numeric",
             month: "short",
             year: "numeric",
             timeZone: "UTC",
-          }).format(new Date(`${addDays(week, 6)}T12:00:00Z`))}
+          })
+            .format(new Date(`${addDays(week, 6)}T12:00:00Z`))
+            .replaceAll(".", "")}
         </span>
       </div>
       {dayFocus && <div className="masthead-day-focus">{dayFocus}</div>}

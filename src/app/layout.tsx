@@ -1,10 +1,17 @@
 import type { Metadata, Viewport } from "next";
+import localFont from "next/font/local";
 import { AppInstallProvider } from "@/components/app-install";
 import { appPath } from "@/lib/app-path";
 import "./globals.css";
 import "./punk.css";
 import "@fontsource/anton/latin-400.css";
 import "./week-reference.css";
+const masthead = localFont({
+  src: "./fonts/RobotoCondensed-Masthead.woff",
+  variable: "--font-masthead",
+  weight: "700 900",
+  display: "swap",
+});
 export const metadata: Metadata = {
   title: "Veckoverket – Veckoplanering",
   description: "Veckoplanering med aktiviteter, tidsmål och uppföljning.",
@@ -48,7 +55,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="sv">
-      <body>
+      <body className={masthead.variable}>
         <AppInstallProvider>{children}</AppInstallProvider>
       </body>
     </html>
