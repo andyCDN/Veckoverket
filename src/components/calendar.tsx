@@ -16,8 +16,6 @@ import {
   Check,
   Plus,
   GripVertical,
-  ChevronLeft,
-  ChevronRight,
   X,
 } from "lucide-react";
 import type { Activity, AppData } from "@/lib/types";
@@ -233,7 +231,6 @@ export function Calendar({
   );
   const viewport = useRef<HTMLDivElement>(null);
   const activeDate = addDays(week, activeDay);
-  const activeActivities = activities.filter((a) => a.date === activeDate);
   const currentDate = today();
   const dayTone = (date: string) =>
     date < currentDate
@@ -241,8 +238,6 @@ export function Calendar({
       : date === currentDate
         ? "is-today"
         : "is-future";
-  const isToday = activeDate === currentDate;
-  const activeIndex = days.indexOf(activeDay);
   const mobileOrder = [activeDay, ...days.filter((day) => day !== activeDay)];
   useEffect(() => {
     const container = viewport.current;
@@ -275,46 +270,6 @@ export function Calendar({
     );
   return (
     <div className="calendar-wrap">
-      <div
-        className={`day-focus ${dayTone(activeDate)}`}
-        role="group"
-        aria-label="Vald dag"
-      >
-        <div className="day-focus-status">
-          <span className={`focus-marker ${isToday ? "" : "is-past"}`}>
-            {isToday ? "Idag" : "Vald dag"}
-          </span>
-          <span className="focus-index">
-            {String(activeIndex + 1).padStart(2, "0")} /{" "}
-            {String(days.length).padStart(2, "0")}
-          </span>
-        </div>
-        <div className="day-focus-name" aria-live="polite" aria-atomic="true">
-          <strong>{DAY_NAMES[activeDay]}</strong>
-          <span>{fullDate(activeDate)}</span>
-          <span className="mobile-day-summary">
-            {activeActivities.length} pass ·{" "}
-            {activeActivities.filter((a) => a.status === "done").length}{" "}
-            genomförda
-          </span>
-        </div>
-        <div className="day-focus-nav">
-          <button
-            aria-label="Välj föregående dag"
-            disabled={activeIndex <= 0}
-            onClick={() => onSelectDay(days[activeIndex - 1])}
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <button
-            aria-label="Välj nästa dag"
-            disabled={activeIndex >= days.length - 1}
-            onClick={() => onSelectDay(days[activeIndex + 1])}
-          >
-            <ChevronRight size={18} />
-          </button>
-        </div>
-      </div>
       <DndContext
         sensors={sensors}
         onDragEnd={dragEnd}

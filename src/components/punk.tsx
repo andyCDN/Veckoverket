@@ -9,9 +9,11 @@ export function PlannerMasthead({
   settings,
   minutes,
   week,
+  dayFocus,
 }: {
   settings: Settings;
   week: string;
+  dayFocus?: React.ReactNode;
   minutes: number;
 }) {
   const days = plannedDays(settings);
@@ -43,6 +45,7 @@ export function PlannerMasthead({
           <span className="schema-label">Veckans schema</span>
         </div>
       </div>
+      {dayFocus && <div className="masthead-day-focus">{dayFocus}</div>}
       <div className="week-total" aria-label={`${hours(minutes)} planerad tid`}>
         <strong>{hours(minutes).replace(" h", "")}</strong>
         <small>Tim / planerat</small>

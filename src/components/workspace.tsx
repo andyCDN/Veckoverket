@@ -59,6 +59,7 @@ import { downloadData } from "@/lib/storage";
 import { useWorkspaceStorage } from "@/lib/use-workspace-storage";
 import { StorageStatus, syncLabel } from "./storage-status";
 import { supabase } from "@/lib/supabase";
+import { DayFocus } from "./day-focus";
 import { Calendar } from "./calendar";
 import { ActivityEditor } from "./activity-editor";
 import { GoalsView, GoalForm } from "./goals";
@@ -958,6 +959,17 @@ export function Workspace() {
         Hoppa till innehållet
       </a>
       <PlannerMasthead
+        dayFocus={
+          (view === "dashboard" || view === "planner") && (
+            <DayFocus
+              week={week}
+              days={days}
+              activeDay={activeDay}
+              activities={activities}
+              onSelectDay={selectDay}
+            />
+          )
+        }
         week={week}
         settings={weekData.settings}
         minutes={Object.values(categoryMinutes(activities)).reduce(
