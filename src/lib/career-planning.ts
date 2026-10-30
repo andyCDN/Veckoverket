@@ -1,6 +1,6 @@
 import { validateApplicationMaterials } from "./application-materials";
 import type { Activity, AppData, Deadline, Settings, WeekPlan } from "./types";
-import { addDays, monday, planningBoundary, weekday } from "./date";
+import { addDays, monday, planningBoundary, weekday, time } from "./date";
 import { generateWeek, plannedDays, validateMove } from "./planner";
 import { blocksTime } from "./external-calendar";
 import { isLocalDate } from "./google-time";
@@ -126,6 +126,11 @@ export function planDeadline(
   data: AppData,
   deadline: Deadline,
   boundary = planningBoundary(),
+  options: {
+    reuseGenerated?: boolean;
+    onlyMissing?: boolean;
+    fallbackDeadlineId?: string;
+  } = {},
 ): PlanningPreview {
   const fail = (message: string): PlanningPreview => ({
     data,
@@ -156,7 +161,7 @@ export function planDeadline(
   const existing = Object.values(data.weeks)
     .flatMap((p) => p.activities)
     .filter((a) => a.deadlineId === deadline.id);
-  if (existing.length)
+  if (existing.length && !options.onlyMissing)
     return fail(
       "Deadlinen har redan kalenderpass. Redigera eller ta bort passen i kalendern innan du planerar igen.",
     );
@@ -165,6 +170,26 @@ export function planDeadline(
   let latestDate = deadline.date,
     latestMinute = deadline.minute;
   for (const step of [...deadline.steps].reverse()) {
+    const heldSteps = existing
+      .filter((a) => a.deadlineStepId === step.id)
+      .sort((a, b) => a.date.localeCompare(b.date) || a.start - b.start);
+    if (options.onlyMissing && heldSteps.length) {
+      if (
+        heldSteps.some(
+          (a) =>
+            a.date > latestDate ||
+            (a.date === latestDate && a.end > latestMinute),
+        )
+      )
+        return fail(
+          "Befintliga deadlinepass stämmer inte med delstegens ordning eller sluttiden. Kontrollera bokningarna i kalendern.",
+        );
+      const first = heldSteps[0];
+      latestDate = first.date;
+      latestMinute =
+        first.start - (weeks[monday(first.date)].rules ?? data.settings).buffer;
+      continue;
+    }
     let result: Activity | undefined;
     for (
       let date = latestDate;
@@ -191,6 +216,53 @@ export function planDeadline(
         s.end,
         date === latestDate ? latestMinute : 1440,
       );
+      if (options.reuseGenerated) {
+        const slot = plan.activities
+          .filter(
+            (a) =>
+              a.date === date &&
+              a.categoryId === deadline.categoryId &&
+              ((a.source === "generated" &&
+                !a.deadlineId &&
+                !a.applicationId) ||
+                (options.fallbackDeadlineId !== undefined &&
+                  a.deadlineId === options.fallbackDeadlineId &&
+                  a.deadlineStepId === "work" &&
+                  a.applicationId === deadline.applicationId)) &&
+              a.status === "planned" &&
+              a.blockType === "flexible" &&
+              !a.external &&
+              !a.recurrenceId &&
+              !a.routine &&
+              !a.followUpOf &&
+              !a.contactId &&
+              a.end <= endLimit &&
+              a.end - a.start >= step.minutes &&
+              a.start >=
+                Math.max(
+                  s.start,
+                  date === boundary.date ? boundary.minute : 0,
+                ) &&
+              fits(
+                a,
+                plan.activities.filter((held) => held.id !== a.id),
+                s,
+              ),
+          )
+          .sort((a, b) => b.end - a.end || a.id.localeCompare(b.id))[0];
+        if (slot)
+          result = {
+            ...slot,
+            title: `${deadline.title}: ${step.title}`,
+            description: `${slot.description}${slot.description ? "\n" : ""}Tidigare pass: ${slot.title}\nDeadline ${deadline.date} kl. ${time(deadline.minute)}`,
+            source: "manual",
+            priority: 5,
+            deadlineId: deadline.id,
+            deadlineStepId: step.id,
+            applicationId: deadline.applicationId,
+          };
+      }
+      if (result) break;
       for (
         let end = Math.floor(endLimit / 5) * 5;
         end - step.minutes >=
@@ -227,7 +299,9 @@ export function planDeadline(
     const week = monday(result.date);
     weeks[week] = {
       ...weeks[week],
-      activities: [...weeks[week].activities, result],
+      activities: weeks[week].activities.some((a) => a.id === result!.id)
+        ? weeks[week].activities.map((a) => (a.id === result!.id ? result! : a))
+        : [...weeks[week].activities, result],
     };
     placed.push(result);
     latestDate = result.date;

@@ -174,3 +174,72 @@ test("dokument och intervjuanteckningar återläses från molnet med bevarade av
   expect(f.documents.get(userA)!.data.applications).toEqual(saved.applications);
   expect(f.errors).toEqual([]);
 });
+
+test("deadlinebokning molnsparas och återläses med bevarade avklarade och importerade tider", async ({
+  page,
+}) => {
+  const original = plan("Deadlineplan");
+  const done = original.weeks[week].activities[0];
+  done.status = "done";
+  const external = {
+    ...done,
+    id: "external",
+    blockType: "locked" as const,
+    title: "Kalendermöte",
+    date: "2026-10-30",
+    start: 780,
+    end: 840,
+    estimatedMinutes: 60,
+    status: "planned" as const,
+    source: "external" as const,
+    external: {
+      provider: "google-calendar" as const,
+      calendarId: "c",
+      eventId: "e",
+      allDay: false,
+      busy: true,
+      originalStart: "2026-10-30T13:00:00+01:00",
+      originalEnd: "2026-10-30T14:00:00+01:00",
+    },
+  };
+  original.weeks[week].activities = [done, external];
+  original.weeks[week].weeklyRoutinesFrom = week;
+  const f = await mock(page, row(original));
+  await page.goto("./");
+  await login(page);
+  await status(page, "Sparat i molnet");
+  await page
+    .getByRole("navigation", { name: "Huvudnavigation" })
+    .getByRole("button", { name: "Jobb & nätverk", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Ny ansökan", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Organisation", { exact: true }).fill("Bolaget");
+  await dialog.getByLabel("Tjänst", { exact: true }).fill("Analytiker");
+  await dialog.getByLabel("Ansökningsdeadline").fill("2026-10-30");
+  await dialog
+    .getByRole("button", { name: "Spara ansökan", exact: true })
+    .click();
+  await status(page, "Sparat i molnet");
+  const reserved = f.documents.get(userA)!.data.weeks[week].activities;
+  expect(reserved.filter((a) => a.deadlineId)).toHaveLength(1);
+  expect(reserved).toContainEqual(done);
+  expect(reserved).toContainEqual(external);
+  const work = reserved.find((a) => a.deadlineId)!;
+  expect(work.end <= external.start || work.start >= external.end).toBe(true);
+  await page.reload();
+  await status(page, "Sparat i molnet");
+  await page
+    .getByRole("navigation", { name: "Huvudnavigation" })
+    .getByRole("button", { name: "Jobb & nätverk", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Redigera ansökan", exact: true })
+    .click();
+  await dialog
+    .getByRole("button", { name: "Spara ansökan", exact: true })
+    .click();
+  await status(page, "Sparat i molnet");
+  expect(f.documents.get(userA)!.data.weeks[week].activities).toEqual(reserved);
+  expect(f.errors).toEqual([]);
+});

@@ -59,6 +59,8 @@ import { downloadData } from "@/lib/storage";
 import { useWorkspaceStorage } from "@/lib/use-workspace-storage";
 import { StorageStatus, syncLabel } from "./storage-status";
 import { supabase } from "@/lib/supabase";
+import { bookDeadlineWork } from "@/lib/deadline-scheduling";
+import { DeadlinePlanning } from "./deadline-planning";
 import { DayFocus } from "./day-focus";
 import { Calendar } from "./calendar";
 import { ActivityEditor } from "./activity-editor";
@@ -1173,6 +1175,28 @@ export function Workspace() {
                         total={filterActivities.length}
                       />
                     </div>
+                    <DeadlinePlanning
+                      data={data}
+                      date={addDays(week, activeDay)}
+                      onOpen={(activity) =>
+                        editInWeek(monday(activity.date), activity)
+                      }
+                      onBook={(id) => {
+                        let errors: string[] = [];
+                        setData(
+                          (current) => {
+                            if (!current) return current;
+                            const result = bookDeadlineWork(current, id);
+                            errors = result.errors;
+                            if (result.activities.length)
+                              notify("Arbetstid före deadline är bokad.");
+                            return result.data;
+                          },
+                          { undoLabel: "deadlinebokning" },
+                        );
+                        return errors;
+                      }}
+                    />
                     <FollowUpPanel
                       data={data}
                       week={week}

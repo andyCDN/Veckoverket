@@ -30,6 +30,7 @@ import {
   completeApplicationAction,
   type ActionPeriod,
 } from "@/lib/applications";
+import { bookDeadlineWork, deadlineWork } from "@/lib/deadline-scheduling";
 import { ApplicationHistory } from "./application-history";
 import { ApplicationMaterials } from "./application-materials";
 import {
@@ -597,9 +598,10 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
             Ny deadline
           </button>
           <p>
-            Delsteg planeras i angiven ordning, bakåt från sluttiden, i lediga
-            tider. Befintliga aktiviteter flyttas inte. Nya veckor får låsta
-            reservationer, skyddade pass och återkommande aktiviteter.
+            När du sparar bokas delstegen bakåt från sluttiden. Ett framtida
+            automatiskt pass i samma kategori kan användas med oförändrad tid.
+            Annars används ledig tid. Nya veckor får låsta reservationer,
+            skyddade pass och återkommande aktiviteter.
           </p>
           {!deadlines.length && <p>Inga deadlines registrerade.</p>}
           {deadlines.map((d) => (
@@ -622,14 +624,43 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
                 >
                   Redigera deadline
                 </button>
-                <button
-                  className="button secondary"
-                  onClick={() =>
-                    showPreview(planDeadline(data, d), "Bakåtplanering")
-                  }
-                >
-                  Förhandsvisa bakåtplanering
-                </button>
+                {!linked("deadlineId", d.id).length && (
+                  <button
+                    className="button secondary"
+                    onClick={() =>
+                      showPreview(
+                        planDeadline(data, d, planningBoundary(), {
+                          reuseGenerated: true,
+                        }),
+                        "Bakåtplanering",
+                      )
+                    }
+                  >
+                    Förhandsvisa bakåtplanering
+                  </button>
+                )}
+                {linked("deadlineId", d.id).length > 0 &&
+                  d.steps.some(
+                    (step) =>
+                      !linked("deadlineId", d.id).some(
+                        (a) => a.deadlineStepId === step.id,
+                      ),
+                  ) && (
+                    <button
+                      className="button secondary"
+                      onClick={() => {
+                        const result = bookDeadlineWork(data, d.id);
+                        if (result.errors.length)
+                          setMessage(result.errors.join(" "));
+                        else {
+                          onChange(result.data, data);
+                          setMessage("Återstående delsteg är bokade.");
+                        }
+                      }}
+                    >
+                      Boka återstående delsteg
+                    </button>
+                  )}
               </div>
               {passes(linked("deadlineId", d.id))}
             </article>
@@ -720,20 +751,31 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
           contacts={contacts}
           onClose={() => setApplication(null)}
           onSave={(a) => {
-            onChange(
-              {
-                ...data,
-                applications: [
-                  ...applications.filter((x) => x.id !== a.id),
-                  saveApplication(
-                    applications.find((x) => x.id === a.id),
-                    a,
-                  ),
-                ],
-              },
-              data,
+            const next = {
+              ...data,
+              applications: [
+                ...applications.filter((x) => x.id !== a.id),
+                saveApplication(
+                  applications.find((x) => x.id === a.id),
+                  a,
+                ),
+              ],
+            };
+            const work = deadlineWork(next).find(
+              (w) => w.applicationOnly && w.deadline.applicationId === a.id,
             );
+            const result = work
+              ? bookDeadlineWork(next, work.deadline.id)
+              : { data: next, activities: [], errors: [] };
+            onChange(result.data, data);
             setApplication(null);
+            setMessage(
+              result.errors.length
+                ? `Ansökan är sparad. Arbetstid kunde inte bokas: ${result.errors.join(" ")}`
+                : result.activities.length
+                  ? "Ansökan är sparad och arbetstid före deadline är bokad."
+                  : "Ansökan är sparad.",
+            );
           }}
           onDelete={() => {
             if (
@@ -793,16 +835,19 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
           data={data}
           onClose={() => setDeadline(null)}
           onSave={(d) => {
-            onChange(
-              {
-                ...data,
-                deadlines: [...deadlines.filter((x) => x.id !== d.id), d],
-              },
-              data,
-            );
+            const next = {
+              ...data,
+              deadlines: [...deadlines.filter((x) => x.id !== d.id), d],
+            };
+            const result = bookDeadlineWork(next, d.id);
+            onChange(result.data, data);
             setDeadline(null);
             setMessage(
-              "Deadlinen är sparad. Förhandsvisa bakåtplaneringen under Deadlines.",
+              result.errors.length
+                ? `Deadlinen är sparad. Arbetstid kunde inte bokas: ${result.errors.join(" ")}`
+                : result.activities.length
+                  ? "Deadlinen är sparad och arbetstiden är bokad i kalendern."
+                  : "Deadlinen är sparad. Befintliga kalenderpass har behållits.",
             );
             setTab("deadlines");
           }}
@@ -961,6 +1006,11 @@ function ApplicationForm({
           {field("deadline", "Ansökningsdeadline", "date")}
           {field("followUpDate", "Uppföljningsdatum", "date")}
         </div>
+        <p className="help">
+          Utkast med deadline får en bokning före slutdagen om tiden räcker.
+          Utan egna delsteg är tidsbehovet 60 minuter. Egna delsteg anges under
+          Planera från deadline.
+        </p>
         {field("nextAction", "Nästa steg")}
         {field("notes", "Anteckningar")}
         <fieldset className="stack">
@@ -1154,7 +1204,7 @@ function DeadlineForm({
     ...value,
     steps: value.steps.length
       ? value.steps
-      : [{ id: uid(), title: "", minutes: 60 }],
+      : [{ id: uid(), title: "Arbetspass", minutes: 60 }],
   }));
   return (
     <Modal title="Deadline och delsteg" onClose={onClose}>

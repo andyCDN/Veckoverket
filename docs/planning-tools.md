@@ -36,3 +36,14 @@ Open **Veckoreflektion → Visa uppföljning över flera veckor**. Choose **4 ve
 - Reporting reads the saved workspace only and never writes new plans. Reset clears its underlying activity history; undoing the reset during the same session restores it.
 
 Verification includes unit tests for rule/manual precedence and import updates, history boundaries and snapshot limits, and report calculations, plus browser tests for mobile controls, undo persistence/account separation, and four/twelve-week filtering without creating missing weeks.
+
+
+## Deadlines i dagsplaneringen
+
+En ansökan i status **Utkast** med en ansökningsdeadline får automatiskt ett arbetspass när den sparas. Tidsbehovet är minst 60 minuter. När egna delsteg anges under **Planera från deadline** används deras tidsbehov i stället. En ny deadline har ett förifyllt delsteg **Arbetspass**, 60 minuter, som kan ändras.
+
+När en deadline sparas bokas arbetstiden bakåt från sluttiden. Ett framtida, automatiskt, flexibelt pass i samma kategori kan få den konkreta uppgiften; dess id, klockslag, längd och målkoppling bevaras och den tidigare rubriken sparas i beskrivningen. Annars används ledig tid. Befintliga manuella pass, avklarade eller påbörjade pass, kalenderimport, återkommande aktiviteter, lunch och buffert är fasta villkor. Ett redan bokat standardpass för samma ansökan kan användas när egna delsteg tillkommer. Genomfört arbete görs inte om.
+
+**Deadlines och arbetstid** i kalendern visar deadlines för vald dag, dagens tillhörande arbetspass och obokade deadlines under de kommande sju dagarna. Äldre, obokade deadlines kan bokas direkt där med **Boka arbetstid före deadline**. Kalenderkort får en deadlineetikett. Bokningen kan ångras med den vanliga ångrafunktionen och sparas via befintlig molnlagring.
+
+Om hela följden av delsteg inte ryms ändras ingen kalenderbokning och ett felmeddelande visas. Deadlineuppgifterna sparas ändå. Redan bokade pass flyttas inte automatiskt när datum ändras; översikten varnar om ett pass hamnar efter deadline eller behöver följas upp. Tillagda delsteg bokas utan att befintliga steg görs om. En ansökningsdeadline utan klockslag använder den sparade arbetsdagens sluttid. Funktionerna kräver ingen ny databasinstallation i Supabase.

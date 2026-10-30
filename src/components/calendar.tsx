@@ -28,6 +28,7 @@ function CalendarBlock({
   a,
   category,
   canMove,
+  deadlineDate,
   filteredOut,
   onEdit,
   onStatusChange,
@@ -36,6 +37,7 @@ function CalendarBlock({
   a: Activity;
   category: AppData["categories"][number] | undefined;
   canMove: boolean;
+  deadlineDate?: string;
   filteredOut: boolean;
   onEdit: () => void;
   onStatusChange: (status: Activity["status"]) => void;
@@ -95,6 +97,9 @@ function CalendarBlock({
             ? `${a.categoryId !== GOOGLE_CATEGORY_ID ? " · Google" : ""}${a.external.busy ? " · Upptagen" : " · Ledig"}`
             : ""}
         </span>
+        {deadlineDate && (
+          <span className="block-deadline">Deadline {deadlineDate}</span>
+        )}
         <span className="block-title">{a.title}</span>
         {a.end - a.start >= 100 && (
           <span className="block-subtitle">
@@ -419,6 +424,16 @@ export function Calendar({
                       )
                       .map((a) => (
                         <CalendarBlock
+                          deadlineDate={
+                            a.deadlineId
+                              ? (data.deadlines?.find(
+                                  (d) => d.id === a.deadlineId,
+                                )?.date ??
+                                data.applications?.find(
+                                  (app) => app.id === a.applicationId,
+                                )?.deadline)
+                              : undefined
+                          }
                           key={a.id}
                           a={a}
                           filteredOut={

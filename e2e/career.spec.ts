@@ -108,13 +108,6 @@ test("ansökan, kalenderuppföljning och bakåtplanering bevaras vid omladdning"
   await dialog
     .getByRole("button", { name: "Spara deadline", exact: true })
     .click();
-  await page
-    .getByRole("button", { name: "Förhandsvisa bakåtplanering", exact: true })
-    .click();
-  await expect(dialog.getByText(/Anpassa CV/)).toBeVisible();
-  await dialog
-    .getByRole("button", { name: "Använd förslaget", exact: true })
-    .click();
   await expect
     .poll(
       async () =>
@@ -501,4 +494,122 @@ test("dokumentversioner och intervjuflöde sparas med kalender och historik", as
     dialog.getByRole("link", { name: "Öppna dokument 1" }),
   ).toHaveAttribute("href", "https://drive.example.test/cv-v1");
   expect((await stored(page)).applications).toEqual(saved.applications);
+});
+
+test("ansökningsdeadline får arbetstid vid sparning och visas i dagsplaneringen utan dubbletter", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await setup(page);
+  await page.getByRole("button", { name: "Ny ansökan", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Organisation", { exact: true }).fill("Bolaget");
+  await dialog.getByLabel("Tjänst", { exact: true }).fill("Analytiker");
+  await dialog.getByLabel("Ansökningsdeadline").fill("2026-10-30");
+  await dialog
+    .getByRole("button", { name: "Spara ansökan", exact: true })
+    .click();
+  const saved = await stored(page);
+  const reserved = saved.weeks[week].activities.filter((a) => a.deadlineId);
+  expect(reserved).toHaveLength(1);
+  expect(reserved[0].end - reserved[0].start).toBe(60);
+  expect(reserved[0].date).toBe("2026-10-30");
+  expect(saved.weeks[week].activities.find((a) => a.id === "done")).toEqual(
+    fixture().weeks[week].activities[0],
+  );
+  await page
+    .getByRole("navigation", { name: "Huvudnavigation" })
+    .getByRole("button", { name: "Veckoplanerare", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Välj nästa dag", exact: true })
+    .click();
+  const deadlines = page.getByRole("region", {
+    name: "Deadlines i dagsplaneringen",
+    exact: true,
+  });
+  await expect(deadlines).toContainText("Analytiker · Bolaget");
+  await expect(deadlines).toContainText("Arbetstid är bokad före deadline.");
+  await expect(
+    page.locator(".day-shell.is-selected .block-deadline"),
+  ).toContainText("Deadline 2026-10-30");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: "/tmp/veckoverket-daily-deadline.png",
+    fullPage: true,
+  });
+  await page.reload();
+  expect(
+    (await stored(page)).weeks[week].activities.filter((a) => a.deadlineId),
+  ).toHaveLength(1);
+});
+
+test("äldre deadlines kan bokas i dagsvyn och platsbrist lämnar kalendern oförändrad", async ({
+  page,
+}) => {
+  const data = fixture();
+  data.applications = [
+    {
+      id: "legacy",
+      role: "Analytiker",
+      organization: "Bolaget",
+      status: "draft",
+      deadline: "2026-10-30",
+      nextAction: "",
+      followUpDate: "",
+      notes: "Befintlig ansökan",
+    },
+  ];
+  await page.addInitScript(
+    ({ key, data }) => {
+      if (!localStorage.getItem(key))
+        localStorage.setItem(key, JSON.stringify(data));
+    },
+    { key, data },
+  );
+  await setup(page);
+  await page
+    .getByRole("navigation", { name: "Huvudnavigation" })
+    .getByRole("button", { name: "Veckoplanerare", exact: true })
+    .click();
+  await page.locator(".deadline-planning > summary").click();
+  await page
+    .getByRole("button", { name: "Boka arbetstid före deadline", exact: true })
+    .click();
+  await expect
+    .poll(
+      async () =>
+        (await stored(page)).weeks[week].activities.filter((a) => a.deadlineId)
+          .length,
+    )
+    .toBe(1);
+  const reserved = (await stored(page)).weeks[week].activities;
+  expect(reserved.find((a) => a.id === "done")).toEqual(
+    data.weeks[week].activities[0],
+  );
+  await page.clock.setFixedTime(new Date("2026-10-30T14:15:00+01:00"));
+  await page
+    .getByRole("navigation", { name: "Huvudnavigation" })
+    .getByRole("button", { name: "Jobb & nätverk", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Deadlines", exact: true }).click();
+  await page.getByRole("button", { name: "Ny deadline", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog
+    .getByLabel("Rubrik", { exact: true })
+    .fill("Brådskande deadline");
+  await dialog.getByLabel("Deadline", { exact: true }).fill("2026-10-30");
+  await dialog.getByLabel("Sluttid", { exact: true }).fill("14:20");
+  await dialog
+    .getByRole("button", { name: "Spara deadline", exact: true })
+    .click();
+  await expect(
+    page.getByText(/Deadlinen är sparad. Arbetstid kunde inte bokas:/),
+  ).toBeVisible();
+  expect((await stored(page)).weeks[week].activities).toEqual(reserved);
+  expect((await stored(page)).deadlines).toHaveLength(1);
 });
