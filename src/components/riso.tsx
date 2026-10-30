@@ -9,6 +9,7 @@ import {
   orderedCategories,
 } from "@/lib/presentation";
 import type { Activity, AppData, Category, Goal, WeekPlan } from "@/lib/types";
+import { GOOGLE_CATEGORY } from "@/lib/external-calendar";
 
 export function CategoryFilter({
   categories,
@@ -39,13 +40,22 @@ export function CategoryFilter({
         >
           Alla
         </button>
-        {orderedCategories(categories).map((c) => (
+        {orderedCategories(
+          categories.some((c) => c.id === GOOGLE_CATEGORY.id)
+            ? categories
+            : [...categories, GOOGLE_CATEGORY],
+        ).map((c) => (
           <button
             key={c.id}
+            data-category={c.id}
             aria-pressed={selected === c.id}
             onClick={() => onChange(c.id)}
           >
-            <i style={{ background: categoryInk(c) }} />
+            <i
+              style={{
+                background: `var(--filter-category, ${categoryInk(c)})`,
+              }}
+            />
             {categoryLabel(c)}
           </button>
         ))}

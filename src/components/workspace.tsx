@@ -64,6 +64,7 @@ import { DeadlinePlanning } from "./deadline-planning";
 import { DayFocus } from "./day-focus";
 import { Calendar } from "./calendar";
 import { WeekSummary } from "./week-summary";
+import { WeekExtras } from "./week-extras";
 import { swapActivities } from "@/lib/activity-swap";
 import { ActivityEditor } from "./activity-editor";
 import { GoalsView, GoalForm } from "./goals";
@@ -158,6 +159,8 @@ export function Workspace() {
     setBlockedSave,
   } = useWorkspaceStorage(newWorkspace);
   const [careerEditing, setCareerEditing] = useState(false);
+  const [calendarMode, setCalendarMode] = useState<"week" | "day">("week");
+  const [weekendOpen, setWeekendOpen] = useState(false);
   const [week, setWeek] = useState(monday(today())),
     [view, setView] = useState<View>("dashboard");
   const [daySelection, setDaySelection] = useState<{
@@ -328,6 +331,9 @@ export function Workspace() {
   ]);
   const navigate = (v: View) => {
     setView(v);
+    requestAnimationFrame(() =>
+      window.scrollTo({ top: 0, behavior: "instant" }),
+    );
   };
   const navigateAndReveal = (v: View, target: string) => {
     navigate(v);
@@ -501,7 +507,10 @@ export function Workspace() {
   const filterActivities = mobile
     ? activities.filter((a) => a.date === addDays(week, activeDay))
     : activities;
-  const selectDay = (day: number) => setDaySelection({ week, day });
+  const selectDay = (day: number) => {
+    setDaySelection({ week, day });
+    if (day > 4) setWeekendOpen(true);
+  };
   function editInWeek(targetWeek: string, activity: Activity) {
     changeWeek(targetWeek);
     setDaySelection({
@@ -992,22 +1001,99 @@ export function Workspace() {
       }}
     />
   );
+  const isCalendar = view === "dashboard" || view === "planner";
+  const categoryFilters = (
+    <CategoryFilter
+      categories={data.categories}
+      selected={categoryFilter}
+      onChange={setCategoryFilter}
+      count={
+        filterActivities.filter((a) => a.categoryId === categoryFilter).length
+      }
+      total={filterActivities.length}
+    />
+  );
+  const dayFocus = (
+    <DayFocus
+      week={week}
+      days={days}
+      activeDay={activeDay}
+      activities={activities}
+      onSelectDay={(day) => {
+        if (day > 4) setWeekendOpen(true);
+        selectDay(day);
+      }}
+    />
+  );
+  function bookDeadline(id: string) {
+    let errors: string[] = [];
+    setData(
+      (current) => {
+        if (!current) return current;
+        const result = bookDeadlineWork(current, id);
+        errors = result.errors;
+        if (result.activities.length)
+          notify("Arbetstid före deadline är bokad.");
+        return result.data;
+      },
+      { undoLabel: "deadlinebokning" },
+    );
+    return errors;
+  }
+  const navigationBar = (
+    <div className="navigation-bar">
+      <nav className="workspace-navigation" aria-label="Huvudnavigation">
+        {NAV.map(({ id, label, icon: Icon }, index) => (
+          <button
+            key={id}
+            aria-label={standalone && mobile ? APP_NAV_LABELS[id] : label}
+            className={`nav-item ${view === id ? "active" : ""}`}
+            aria-current={view === id ? "page" : undefined}
+            onClick={() => {
+              navigate(id);
+              if (standalone && mobile) {
+                if (id === "dashboard") changeWeek(monday(today()));
+                requestAnimationFrame(() =>
+                  window.scrollTo({ top: 0, behavior: "instant" }),
+                );
+              }
+            }}
+          >
+            <span className="nav-index" aria-hidden="true">
+              0{index + 1}
+            </span>
+            <Icon size={15} />
+            <span className="nav-label">
+              {standalone && mobile ? APP_NAV_LABELS[id] : label}
+            </span>
+          </button>
+        ))}
+      </nav>
+      {!mobile && storageStatus}
+      <WorkspaceTools
+        showAccount={mobile}
+        connected={Boolean(user)}
+        onAccount={() => setAccount(true)}
+        onHelp={() => setHelp(true)}
+        undoLabel={undoAvailable ? undoLabel : ""}
+        onUndo={performUndo}
+      />
+    </div>
+  );
   return (
-    <div className="app-shell" data-view={view}>
+    <div
+      className="app-shell mockup-workspace"
+      data-view={view}
+      data-calendar-mode={calendarMode}
+    >
       <a className="skip-link" href="#main-content">
         Hoppa till innehållet
       </a>
       <PlannerMasthead
         dayFocus={
-          (view === "dashboard" || view === "planner") && (
-            <DayFocus
-              week={week}
-              days={days}
-              activeDay={activeDay}
-              activities={activities}
-              onSelectDay={selectDay}
-            />
-          )
+          (mobile || calendarMode === "day") && isCalendar
+            ? dayFocus
+            : undefined
         }
         week={week}
         settings={weekData.settings}
@@ -1016,44 +1102,7 @@ export function Workspace() {
           0,
         )}
       />
-      <div className="navigation-bar">
-        <nav className="workspace-navigation" aria-label="Huvudnavigation">
-          {NAV.map(({ id, label, icon: Icon }, index) => (
-            <button
-              key={id}
-              aria-label={standalone && mobile ? APP_NAV_LABELS[id] : label}
-              className={`nav-item ${view === id ? "active" : ""}`}
-              aria-current={view === id ? "page" : undefined}
-              onClick={() => {
-                navigate(id);
-                if (standalone && mobile) {
-                  if (id === "dashboard") changeWeek(monday(today()));
-                  requestAnimationFrame(() =>
-                    window.scrollTo({ top: 0, behavior: "instant" }),
-                  );
-                }
-              }}
-            >
-              <span className="nav-index" aria-hidden="true">
-                0{index + 1}
-              </span>
-              <Icon size={15} />
-              <span className="nav-label">
-                {standalone && mobile ? APP_NAV_LABELS[id] : label}
-              </span>
-            </button>
-          ))}
-        </nav>
-        {!mobile && storageStatus}
-        <WorkspaceTools
-          showAccount={mobile}
-          connected={Boolean(user)}
-          onAccount={() => setAccount(true)}
-          onHelp={() => setHelp(true)}
-          undoLabel={undoAvailable ? undoLabel : ""}
-          onUndo={performUndo}
-        />
-      </div>
+      {(mobile || !isCalendar) && navigationBar}
       <div className="main-shell">
         <main id="main-content" tabIndex={-1}>
           <div
@@ -1096,18 +1145,43 @@ export function Workspace() {
               <section className="week-section">
                 <div className="week-toolbar">
                   <div className="toolbar-week-controls">{weekControls}</div>
-                  <div className="week-actions">
-                    <button
-                      className="text-button this-week-button"
-                      onClick={() => changeWeek(monday(today()))}
+                  <button
+                    className="text-button this-week-button"
+                    onClick={() => changeWeek(monday(today()))}
+                  >
+                    {currentWeek
+                      ? mobile
+                        ? "Idag"
+                        : "Denna vecka"
+                      : "Till idag"}
+                  </button>
+                  {!mobile && (
+                    <div
+                      className="calendar-view-switch"
+                      role="group"
+                      aria-label="Kalendervy"
                     >
-                      {currentWeek
-                        ? mobile
-                          ? "Idag"
-                          : "Denna vecka"
-                        : "Till idag"}
-                    </button>
-                    {mobile ? (
+                      <button
+                        aria-pressed={calendarMode === "day"}
+                        onClick={() => setCalendarMode("day")}
+                      >
+                        Dag
+                      </button>
+                      <button
+                        aria-pressed={calendarMode === "week"}
+                        onClick={() => setCalendarMode("week")}
+                      >
+                        Vecka
+                      </button>
+                    </div>
+                  )}
+                  {!mobile && (
+                    <div className="toolbar-category-filters">
+                      {categoryFilters}
+                    </div>
+                  )}
+                  <div className="week-actions">
+                    {mobile && (
                       <details className="calendar-tools-menu">
                         <summary>
                           <MoreHorizontal size={19} aria-hidden="true" />{" "}
@@ -1132,7 +1206,7 @@ export function Workspace() {
                               setMobileFiltersOpen((open) => !open)
                             }
                           >
-                            <ListFilter size={16} />{" "}
+                            <ListFilter size={16} />
                             {mobileFiltersOpen
                               ? "Dölj filter"
                               : "Filtrera aktiviteter"}
@@ -1142,8 +1216,6 @@ export function Workspace() {
                           <AppInstallButton className="text-button" />
                         </div>
                       </details>
-                    ) : (
-                      calendarTools
                     )}
                     <button
                       className="button primary new-session"
@@ -1155,7 +1227,7 @@ export function Workspace() {
                         })
                       }
                     >
-                      <Plus size={14} />
+                      <Plus size={18} />
                       Nytt pass
                     </button>
                   </div>
@@ -1182,53 +1254,36 @@ export function Workspace() {
                         </button>
                       </div>
                     )}
-                    <div
-                      id="calendar-category-filters"
-                      className={`calendar-filters ${mobileFiltersOpen ? "is-open" : ""}`}
-                    >
-                      <CategoryFilter
-                        categories={data.categories}
-                        selected={categoryFilter}
-                        onChange={setCategoryFilter}
-                        count={
-                          filterActivities.filter(
-                            (a) => a.categoryId === categoryFilter,
-                          ).length
-                        }
-                        total={filterActivities.length}
-                      />
-                    </div>
-                    <DeadlinePlanning
-                      data={data}
-                      date={addDays(week, activeDay)}
-                      onOpen={(activity) =>
-                        editInWeek(monday(activity.date), activity)
-                      }
-                      onBook={(id) => {
-                        let errors: string[] = [];
-                        setData(
-                          (current) => {
-                            if (!current) return current;
-                            const result = bookDeadlineWork(current, id);
-                            errors = result.errors;
-                            if (result.activities.length)
-                              notify("Arbetstid före deadline är bokad.");
-                            return result.data;
-                          },
-                          { undoLabel: "deadlinebokning" },
-                        );
-                        return errors;
-                      }}
-                    />
-                    <FollowUpPanel
-                      data={data}
-                      week={week}
-                      onReschedule={reschedule}
-                      onEdit={editInWeek}
-                    />
+                    {mobile && (
+                      <div
+                        id="calendar-category-filters"
+                        className={`calendar-filters ${mobileFiltersOpen ? "is-open" : ""}`}
+                      >
+                        {categoryFilters}
+                      </div>
+                    )}
+                    {mobile && (
+                      <>
+                        <DeadlinePlanning
+                          data={data}
+                          date={addDays(week, activeDay)}
+                          onOpen={(activity) =>
+                            editInWeek(monday(activity.date), activity)
+                          }
+                          onBook={bookDeadline}
+                        />
+                        <FollowUpPanel
+                          data={data}
+                          week={week}
+                          onReschedule={reschedule}
+                          onEdit={editInWeek}
+                        />
+                      </>
+                    )}
                     {!mobile && <WeekSummary activities={activities} />}
                     <Calendar
-                      mobile={mobile}
+                      mobile={mobile || calendarMode === "day"}
+                      showWeekends={weekendOpen}
                       activeDay={activeDay}
                       onSelectDay={selectDay}
                       onDelete={(a) => deleteActivity(a.id, false)}
@@ -1256,6 +1311,45 @@ export function Workspace() {
                         })
                       }
                     />
+                    {!mobile && (
+                      <WeekExtras
+                        data={data}
+                        week={week}
+                        activities={activities}
+                        weekendOpen={weekendOpen}
+                        onWeekend={() => {
+                          if (weekendOpen && activeDay > 4)
+                            selectDay(days.find((d) => d < 5) ?? 0);
+                          setWeekendOpen((open) => !open);
+                        }}
+                        onOpen={openActivity}
+                        onBook={bookDeadline}
+                        onCreate={() =>
+                          setEditor({
+                            date: addDays(week, activeDay),
+                            start: weekData.settings.start,
+                          })
+                        }
+                      />
+                    )}
+                    {!mobile && (
+                      <>
+                        <DeadlinePlanning
+                          data={data}
+                          date={addDays(week, activeDay)}
+                          onOpen={(activity) =>
+                            editInWeek(monday(activity.date), activity)
+                          }
+                          onBook={bookDeadline}
+                        />
+                        <FollowUpPanel
+                          data={data}
+                          week={week}
+                          onReschedule={reschedule}
+                          onEdit={editInWeek}
+                        />
+                      </>
+                    )}
                     <div className="bottomstrip">
                       <span>{time(weekData.settings.start)} / Start</span>
                       <span className="registration-line" aria-hidden="true" />
@@ -1264,6 +1358,15 @@ export function Workspace() {
                   </div>
                 </div>
               </section>
+              {!mobile && (
+                <div className="calendar-secondary-controls">
+                  {navigationBar}
+                  <div className="calendar-secondary-tools">
+                    {calendarTools}
+                    {calendarMode === "week" && dayFocus}
+                  </div>
+                </div>
+              )}
               {view === "dashboard" && (
                 <details className="info-drawer">
                   <summary>

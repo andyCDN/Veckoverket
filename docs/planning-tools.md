@@ -52,3 +52,9 @@ Om hela följden av delsteg inte ryms ändras ingen kalenderbokning och ett felm
 Dra ett flyttbart pass över ett annat pass i veckovyn och släpp för att byta starttider och datum. För en tom dag gäller den vanliga flytten med bibehållen starttid. På mobil, eller med tangentbord: öppna passet, välj **Byt plats med** och sedan **Byt plats**. Spara eventuella andra ändringar först.
 
 Båda passen behåller längd, status, kategori, anteckningar och kopplingar. Ett byte sparas som en enda ändring som kan ångras. Ingen automatisk omplanering görs av andra bokningar. Låsta, importerade, avklarade eller missade pass byter inte plats. Överlappning, buffert och veckans sparade regler kontrolleras för båda passen; deadlinearbetets ordning och sluttid samt intervjuförberedelse skyddas. Om olika längder inte får plats i de nya positionerna lämnas hela planen oförändrad.
+
+## Kompakt veckovy
+
+Veckovyn följer den bifogade referensen med ljus logotyp i den röda mastheaden, datum till höger och en gemensam rad för veckobyte, Dag/Vecka, kategorifilter och nytt pass. Summeringen använder den aktuella veckans sparade tider; fördelningen mellan jobbsök och nätverkande visar faktiskt bokad tid.
+
+Lördag och söndag sammanfattas under vardagarna. Öppna ett helgpass direkt därifrån eller välj **Visa helgen**. **Dag** visar den valda dagens agenda. Dolda helgpass finns kvar i sparad plan och följer med vid utskrift. Kryssrutan uppe till höger på veckokortet ändrar endast aktivitetens status. Befintliga platsbyten, deadlinebokningar och molnlagring använder samma sparade data som tidigare.

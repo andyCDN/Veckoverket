@@ -3,6 +3,8 @@ import { AppInstallProvider } from "@/components/app-install";
 import { appPath } from "@/lib/app-path";
 import "./globals.css";
 import "./punk.css";
+import "@fontsource/anton/latin-400.css";
+import "./week-reference.css";
 export const metadata: Metadata = {
   title: "Veckoverket – Veckoplanering",
   description: "Veckoplanering med aktiviteter, tidsmål och uppföljning.",

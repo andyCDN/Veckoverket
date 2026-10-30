@@ -40,7 +40,7 @@ export function WeekSummary({ activities }: { activities: Activity[] }) {
         )}
       </dl>
       <div className="week-summary-balance">
-        <span>Bokad tid · jobbsök och nätverkande</span>
+        <span>Fördelning av jobbsök och nätverkande</span>
         <div
           className={`week-balance-bar ${career + networking === 0 ? "is-empty" : ""}`}
           aria-hidden="true"
@@ -48,13 +48,11 @@ export function WeekSummary({ activities }: { activities: Activity[] }) {
           <span style={{ width: `${share}%` }} />
         </div>
         <div className="week-balance-labels">
-          <span>
-            Jobbsök {hours(career)}
-            {career + networking > 0 && ` · ${share} %`}
+          <span title={`Jobbsök ${hours(career)}`}>
+            Jobbsök {career + networking > 0 ? `${share} %` : "0 h"}
           </span>
-          <span>
-            Nätverkande {hours(networking)}
-            {career + networking > 0 && ` · ${100 - share} %`}
+          <span title={`Nätverkande ${hours(networking)}`}>
+            Nätverkande {career + networking > 0 ? `${100 - share} %` : "0 h"}
           </span>
         </div>
         <small>Riktvärde: 75 % jobbsök · 25 % nätverkande</small>

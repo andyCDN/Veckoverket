@@ -1,6 +1,6 @@
 "use client";
 import { ArrowUpRight, CircleHelp } from "lucide-react";
-import { DAY_NAMES, hours, weekNumber } from "@/lib/date";
+import { DAY_NAMES, addDays, hours, weekNumber } from "@/lib/date";
 import { plannedDays } from "@/lib/planner";
 import { appPath } from "@/lib/app-path";
 import type { Settings } from "@/lib/types";
@@ -27,7 +27,6 @@ export function PlannerMasthead({
     >
       <div className="planner-header-text">
         <div className="masthead-kicker">
-          <strong className="masthead-week">Vecka {weekNumber(week)}</strong>
           <span className="masthead-range">{range}</span>
         </div>
         <div className="title-line">
@@ -44,6 +43,23 @@ export function PlannerMasthead({
           </span>
           <span className="schema-label">Veckans schema</span>
         </div>
+      </div>
+      <div className="masthead-period">
+        <strong className="masthead-week">Vecka {weekNumber(week)}</strong>
+        <span>
+          {new Intl.DateTimeFormat("sv-SE", {
+            day: "numeric",
+            month: "short",
+            timeZone: "UTC",
+          }).format(new Date(`${week}T12:00:00Z`))}{" "}
+          –{" "}
+          {new Intl.DateTimeFormat("sv-SE", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            timeZone: "UTC",
+          }).format(new Date(`${addDays(week, 6)}T12:00:00Z`))}
+        </span>
       </div>
       {dayFocus && <div className="masthead-day-focus">{dayFocus}</div>}
       <div className="week-total" aria-label={`${hours(minutes)} planerad tid`}>

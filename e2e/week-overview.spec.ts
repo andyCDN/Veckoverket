@@ -57,8 +57,8 @@ test("veckovyn visar bokad fördelning och gemensam tid utan att ändra planer e
   );
   await page.reload();
   const overview = page.getByRole("region", { name: "Veckans tidsöversikt" });
-  await expect(overview).toContainText("Jobbsök 4,5 h · 75 %");
-  await expect(overview).toContainText("Nätverkande 1,5 h · 25 %");
+  await expect(overview).toContainText("Jobbsök 75 %");
+  await expect(overview).toContainText("Nätverkande 25 %");
   await expect(overview.locator("dl")).toContainText(
     "Planerat7,5 hGenomfört1,5 hÅterstår6 h",
   );

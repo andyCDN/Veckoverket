@@ -33,7 +33,7 @@ it("aligns the same clock time across days and makes short bookings readable wit
   const before = structuredClone(entries);
   const result = weekTimeline(entries, settings);
   expect(result.entries.get("a")!.top).toBe(result.entries.get("b")!.top);
-  expect(result.entries.get("a")!.height).toBeGreaterThanOrEqual(124);
+  expect(result.entries.get("a")!.height).toBeGreaterThanOrEqual(38);
   expect(
     result.entries.get("a")!.top + result.entries.get("a")!.height,
   ).toBeLessThan(result.entries.get("c")!.top);
@@ -62,4 +62,14 @@ it("includes bookings outside work hours, midnight and an empty week", () => {
   expect(result.entries.get("all-day")!.height).toBeGreaterThan(0);
   expect(weekTimeline([], settings).entries.size).toBe(0);
   expect(weekTimeline([], settings).height).toBeGreaterThan(0);
+});
+
+it("keeps the reference workday compact while positioning arbitrary clock minutes on the shared axis", () => {
+  const result = weekTimeline([], settings);
+  expect(result.start).toBe(480);
+  expect(result.end).toBe(1020);
+  expect(result.height).toBeLessThan(450);
+  const nine = result.ticks.find((t) => t.minute === 540)!.top;
+  const ten = result.ticks.find((t) => t.minute === 600)!.top;
+  expect(result.position(570)).toBeCloseTo((nine + ten) / 2);
 });

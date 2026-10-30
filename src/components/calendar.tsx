@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   DndContext,
   useDraggable,
@@ -22,7 +22,14 @@ import {
   X,
 } from "lucide-react";
 import type { Activity, AppData } from "@/lib/types";
-import { addDays, DAY_NAMES, fullDate, time, today } from "@/lib/date";
+import {
+  addDays,
+  DAY_NAMES,
+  fullDate,
+  time,
+  today,
+  planningBoundary,
+} from "@/lib/date";
 import { canFollowUp } from "@/lib/follow-up";
 import { visibleDays } from "@/lib/planner";
 import { categoryLabel, categoryStyle } from "@/lib/presentation";
@@ -88,7 +95,8 @@ function CalendarBlock({
     <div
       ref={setEntryRef}
       data-activity-id={a.id}
-      className={`calendar-entry ${isOver && !isDragging ? "is-swap-target" : ""} ${a.status === "skipped" ? "is-missed" : ""} ${filteredOut ? "is-filtered-out" : ""} ${isDragging ? "is-dragging" : ""}`}
+      data-category={a.categoryId}
+      className={`calendar-entry ${a.end - a.start < 45 ? "is-short-entry" : ""} ${isOver && !isDragging ? "is-swap-target" : ""} ${a.deadlineId ? "has-deadline" : ""} ${a.categoryId === "rest" && a.blockType === "locked" ? "is-lunch-entry" : ""} ${a.status === "skipped" ? "is-missed" : ""} ${filteredOut ? "is-filtered-out" : ""} ${isDragging ? "is-dragging" : ""}`}
       style={
         {
           ...categoryStyle(category),
@@ -248,6 +256,7 @@ export function Calendar({
   onCreate,
   onStatusChange,
   mobile = false,
+  showWeekends = false,
 }: {
   week: string;
   data: AppData;
@@ -262,8 +271,12 @@ export function Calendar({
   onSelectDay: (day: number) => void;
   onDelete: (a: Activity) => void;
   mobile?: boolean;
+  showWeekends?: boolean;
 }) {
   const weekDays = visibleDays(data.settings, activities);
+  const shownDays = weekDays.filter(
+    (day) => day < 5 || showWeekends || weekDays.every((d) => d > 4),
+  );
   const days = mobile ? [0, 1, 2, 3, 4, 5, 6] : weekDays;
   const completedDays = new Set(
     days.filter((day) => {
@@ -274,6 +287,11 @@ export function Calendar({
   const viewport = useRef<HTMLDivElement>(null);
   const activeDate = addDays(week, activeDay);
   const currentDate = today();
+  const [clock, setClock] = useState(planningBoundary);
+  useEffect(() => {
+    const timer = setInterval(() => setClock(planningBoundary()), 60000);
+    return () => clearInterval(timer);
+  }, []);
   const dayTone = (date: string) =>
     date < currentDate
       ? "is-past"
@@ -318,10 +336,15 @@ export function Calendar({
         <p>Välj vilka dagar du vill planera i inställningarna.</p>
       </div>
     );
-  const timeline = weekTimeline(activities, data.settings);
+  const timeline = weekTimeline(
+    activities.filter((a) =>
+      shownDays.some((day) => a.date === addDays(week, day)),
+    ),
+    data.settings,
+  );
   return (
     <div
-      className={`calendar-wrap ${mobile ? "" : "week-timeline"}`}
+      className={`calendar-wrap ${mobile ? "day-agenda" : "week-timeline"}`}
       style={
         { "--timeline-height": `${timeline.height}px` } as React.CSSProperties
       }
@@ -363,7 +386,7 @@ export function Calendar({
               {
                 "--days": weekDays.length,
                 "--mobile-days": days.length,
-                "--day-columns": `repeat(${days.length}, minmax(0, 1fr))`,
+                "--day-columns": `repeat(${shownDays.length || 1}, minmax(0, 1fr))`,
                 "--mobile-columns": mobileOrder
                   .map((d) =>
                     d === activeDay
@@ -390,7 +413,7 @@ export function Calendar({
               const date = addDays(week, d);
               return (
                 <div
-                  className={`day-heading ${d === activeDay ? "is-selected mobile-active" : ""} ${dayTone(date)} ${completedDays.has(d) ? "is-completed" : ""} ${weekDays.includes(d) ? "" : "is-off-plan"}`}
+                  className={`day-heading ${!mobile && !shownDays.includes(d) ? "is-weekend-collapsed" : ""} ${d === activeDay ? "is-selected mobile-active" : ""} ${dayTone(date)} ${completedDays.has(d) ? "is-completed" : ""} ${weekDays.includes(d) ? "" : "is-off-plan"}`}
                   key={d}
                   data-day={d}
                   style={
@@ -417,6 +440,9 @@ export function Calendar({
                       <span className="day-name-short" aria-hidden="true">
                         {DAY_NAMES[d].slice(0, 2)}
                       </span>
+                    </span>
+                    <span className="day-date-inline" aria-hidden="true">
+                      {Number(date.slice(8))}
                     </span>
                     <span className="day-meta">
                       <strong>
@@ -460,7 +486,7 @@ export function Calendar({
               const date = addDays(week, d);
               return (
                 <div
-                  className={`day-shell ${d === activeDay ? "is-selected mobile-active" : ""} ${dayTone(date)} ${completedDays.has(d) ? "is-completed" : ""} ${weekDays.includes(d) ? "" : "is-off-plan"}`}
+                  className={`day-shell ${!mobile && !shownDays.includes(d) ? "is-weekend-collapsed" : ""} ${d === activeDay ? "is-selected mobile-active" : ""} ${dayTone(date)} ${completedDays.has(d) ? "is-completed" : ""} ${weekDays.includes(d) ? "" : "is-off-plan"}`}
                   key={date}
                   style={
                     {
@@ -471,6 +497,17 @@ export function Calendar({
                   }
                 >
                   <DayColumn date={date} onCreate={() => onCreate(date)}>
+                    {date === clock.date &&
+                      clock.minute >= timeline.start &&
+                      clock.minute <= timeline.end && (
+                        <div
+                          className="week-now-line"
+                          style={{ top: timeline.position(clock.minute) }}
+                          aria-label={`Nu ${time(clock.minute)}`}
+                        >
+                          <span>Nu</span>
+                        </div>
+                      )}
                     <div className="week-time-lines" aria-hidden="true">
                       {timeline.ticks.map(({ minute, top }) => (
                         <span key={minute} style={{ top }} />
