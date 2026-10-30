@@ -67,12 +67,20 @@ For local development, put the same variable in `.env.local` and restart `npm ru
 3. Click **Anslut Google-konto**, choose your account and approve both read-only calendar permissions.
 4. Select the calendars to include.
 5. Click **Förhandsgranska import**.
-6. Review the events and any planning conflicts. **Anpassa oredigerade planeringsförslag efter bokningarna** can regenerate suggestions around busy events. Your own activities, completed activities and protected music blocks remain in place. If those activities conflict with the bookings, the import keeps the current plan and reports the overlaps.
+6. Review the events, choose **Kategori** for each booking and check any planning conflicts. The list includes your existing and custom categories. **Anpassa oredigerade planeringsförslag efter bokningarna** can regenerate suggestions around busy events. Your own activities, completed activities and protected music blocks remain in place. If those activities conflict with the bookings, the import keeps the current plan and reports the overlaps.
 7. Click **Importera kalenderhändelser** to save the import.
 
 Events marked **Upptagen** reserve time. **Ledig** events appear without blocking planning. All-day and free events are excluded from hour totals. Weekend and evening events remain visible even outside your planning hours. Times are displayed in **Europe/Stockholm**.
 
 You can mark imported events as completed in Veckoverket. Change their titles, dates and times in Google Calendar, then preview and import the week again. Reimporting updates the saved events without creating duplicates; removed events disappear from that week's import. A moved event also updates its previously imported segments in other saved weeks when that event is received again.
+
+## Categorize saved bookings
+
+Open an imported booking, choose **Kategori**, then click **Spara kategori**. The category controls its color, filters and time reporting in Veckoverket. Choose **Ej kategoriserad (Google Kalender)** to clear the classification. The Google event's title, dates, times and read-only source link stay attached.
+
+The choice is saved per Google calendar and event ID, so it survives renaming, rescheduling, reimport and events split across several dates or saved weeks. A recurring Google occurrence has its own event ID and can be categorized separately. Selections and completion marks are included in account storage and JSON backups; no database migration is needed. Removing all imported events or resetting planning clears the saved Google category choices.
+
+Busy timed bookings count toward the selected category's time budget and completion totals. Free and all-day entries stay excluded from hour totals and do not satisfy training-session or full-morning music requirements. If automatic weekly planning is enabled, changing a booking's category recalculates affected future suggestions using the updated totals.
 
 ## Connection and storage
 

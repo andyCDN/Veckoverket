@@ -203,6 +203,115 @@ test("läser Google-bokningar, planerar runt dem och behåller avbockning vid up
   ).toHaveCount(0);
   expect(cloud.errors).toEqual([]);
 });
+test("kategoriserar Google-bokningar före och efter import och behåller valet vid uppdatering på mobil", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  await page.addInitScript(() =>
+    Object.defineProperty(navigator, "standalone", { get: () => true }),
+  );
+  await page.setViewportSize({ width: 320, height: 740 });
+  const cloud = await mock(page),
+    g = await googleMock(page);
+  g.events = [
+    event({
+      start: { dateTime: "2026-10-30T13:00:00+01:00" },
+      end: { dateTime: "2026-10-30T13:30:00+01:00" },
+    }),
+  ];
+  await page.goto("./");
+  await login(page);
+  await connect(page);
+  await preview(page);
+  await page
+    .getByRole("combobox", { name: /^Kategori för Bokat i Google/ })
+    .selectOption("learning");
+  await apply(page);
+  await page.getByRole("button", { name: /^Visa fredag/ }).click();
+  let imported = cloud.documents
+    .get(userA)!
+    .data.weeks[week].activities.find((a) => a.external)!;
+  expect(imported.categoryId).toBe("learning");
+  const entry = page.locator(`[data-activity-id="${imported.id}"]`);
+  await expect(entry.locator(".block-category")).toContainText(
+    "Lärande · Google",
+  );
+  await entry.locator(".calendar-block").click();
+  const category = page.getByRole("combobox", {
+    name: "Kategori",
+    exact: true,
+  });
+  await expect(category).toHaveValue("learning");
+  await category.selectOption("health");
+  expect(
+    await category.evaluate(
+      (element) => element.getBoundingClientRect().height,
+    ),
+  ).toBeGreaterThanOrEqual(44);
+  expect(
+    await page
+      .getByRole("dialog")
+      .evaluate((element) => element.scrollWidth <= element.clientWidth),
+  ).toBe(true);
+  const { default: AxeBuilder } = await import("@axe-core/playwright");
+  const scan = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+    .analyze();
+  expect(scan.violations.map((violation) => violation.id)).toEqual([]);
+  await page
+    .getByRole("button", { name: "Spara kategori", exact: true })
+    .click();
+  await status(page, "Sparat i molnet");
+  imported = cloud.documents
+    .get(userA)!
+    .data.weeks[week].activities.find((a) => a.external)!;
+  expect(imported).toMatchObject({
+    categoryId: "health",
+    source: "external",
+    blockType: "locked",
+    start: 780,
+    end: 810,
+  });
+  await entry.getByRole("checkbox", { name: /^Genomförd:/ }).check();
+  await status(page, "Sparat i molnet");
+  g.events = [
+    event({
+      summary: "Uppdaterad bokning",
+      start: { dateTime: "2026-10-30T13:30:00+01:00" },
+      end: { dateTime: "2026-10-30T14:00:00+01:00" },
+    }),
+  ];
+  await open(page);
+  await preview(page);
+  await expect(
+    page.getByRole("combobox", { name: /^Kategori för Uppdaterad bokning/ }),
+  ).toHaveValue("health");
+  await apply(page);
+  expect(
+    cloud.documents
+      .get(userA)!
+      .data.weeks[week].activities.find((a) => a.external),
+  ).toMatchObject({
+    categoryId: "health",
+    status: "done",
+    start: 810,
+    end: 840,
+  });
+  await page.reload();
+  await status(page, "Sparat i molnet");
+  await page.getByRole("button", { name: /^Visa fredag/ }).click();
+  await page
+    .locator(".calendar-block")
+    .filter({ hasText: "Uppdaterad bokning" })
+    .click();
+  await expect(
+    page.getByRole("combobox", { name: "Kategori", exact: true }),
+  ).toHaveValue("health");
+  expect(
+    g.methods.every((method) => method === "GET" || method === "OPTIONS"),
+  ).toBe(true);
+  expect(cloud.errors).toEqual([]);
+});
 test("avbokade Google-händelser tas bort medan egna aktiviteter bevaras", async ({
   page,
 }) => {

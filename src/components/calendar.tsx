@@ -25,6 +25,7 @@ import { addDays, DAY_NAMES, fullDate, time, today } from "@/lib/date";
 import { canFollowUp } from "@/lib/follow-up";
 import { visibleDays } from "@/lib/planner";
 import { categoryLabel, categoryStyle } from "@/lib/presentation";
+import { GOOGLE_CATEGORY_ID } from "@/lib/external-calendar";
 function CalendarBlock({
   a,
   category,
@@ -92,7 +93,9 @@ function CalendarBlock({
         </span>
         <span className="block-category">
           {categoryLabel(category)}
-          {a.external ? (a.external.busy ? " · Upptagen" : " · Ledig") : ""}
+          {a.external
+            ? `${a.categoryId !== GOOGLE_CATEGORY_ID ? " · Google" : ""}${a.external.busy ? " · Upptagen" : " · Ledig"}`
+            : ""}
         </span>
         <span className="block-title">{a.title}</span>
         {a.end - a.start >= 100 && (

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Check, Trash2, LockKeyhole, ShieldCheck, Move } from "lucide-react";
 import { Modal } from "./modal";
+import { GoogleCategorySelect } from "./google-category-select";
 import {
   addDays,
   fullDate,
@@ -25,6 +26,7 @@ export function ActivityEditor({
   onSave,
   onDelete,
   onClose,
+  onCategorize,
 }: {
   activity?: Activity;
   data: AppData;
@@ -39,6 +41,7 @@ export function ActivityEditor({
   ) => void;
   onDelete: (id: string, series: boolean) => void;
   onClose: () => void;
+  onCategorize: (activity: Activity, categoryId: string) => void;
 }) {
   const [form, setForm] = useState<Activity>(
     activity ?? {
@@ -153,6 +156,23 @@ export function ActivityEditor({
         onClose={onClose}
       >
         <div className="stack">
+          <GoogleCategorySelect
+            categories={data.categories}
+            value={form.categoryId}
+            onChange={(categoryId) => patch({ categoryId })}
+          />
+          <p>
+            Kategorin används för färg, filtrering och tidsuppföljning i
+            Veckoverket.
+          </p>
+          <button
+            className="button primary"
+            disabled={form.categoryId === activity.categoryId}
+            onClick={() => onCategorize(activity, form.categoryId)}
+          >
+            <Check size={16} />
+            Spara kategori
+          </button>
           <p>
             {source.allDay
               ? `${fullDate(source.originalStart)} – ${fullDate(addDays(source.originalEnd, -1))}`

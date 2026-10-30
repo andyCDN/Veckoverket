@@ -55,7 +55,7 @@ Utan ett konfigurerat molnprojekt sparas planen på den här enheten. Med Supaba
 - Återkommande aktiviteter varje vecka eller varje vardag. Befintliga och tidigare veckor bevaras. Nya veckor genereras vid navigering. Regeln läggs även in när en befintlig vecka genereras om.
 - Automatisk lokal lagring, JSON-export och validerad import. Korrupt lagring skrivs inte över. Vid lagringsfel visas ett meddelande; exportera då en säkerhetskopia.
 - Nollställ planering och statistik från inställningarna, med bekräftelse och valfri säkerhetskopia. Profil, kategorier och sparade planeringsregler behålls. [Beskrivning på engelska](docs/reset-planning.md).
-- Google Kalender för Gmail- och Google-konton: välj kalendrar, förhandsgranska och importera bokningar. Upptagen tid ingår i planeringen; importerade händelser kan bockas av. [Installationsguide på engelska](docs/google-calendar-setup.md).
+- Google Kalender för Gmail- och Google-konton: välj kalendrar, förhandsgranska, kategorisera och importera bokningar. Kategori kan också väljas på sparade bokningar och följer med vid uppdatering. Upptagen tid ingår i planeringen och vald kategoris tidsuppföljning; importerade händelser kan bockas av. [Installationsguide på engelska](docs/google-calendar-setup.md).
 - Supabase-inloggning med automatisk hämtning och sparning av hela kontots arbetsyta, en separat enhetscache, återhämtning efter avbrott och revisionskontroll vid samtidiga ändringar. Befintlig lokal plan flyttas efter ett uttryckligt val vid första inloggningen.
 
 ## Planeringsregler och antaganden

@@ -78,6 +78,8 @@ import { useGoogleCalendar } from "@/lib/use-google-calendar";
 import {
   previewGoogleImport,
   removeGoogleImports,
+  categorizeGoogleEvent,
+  type GoogleCategoryChoices,
   type GoogleSnapshot,
 } from "@/lib/google-calendar";
 import { FollowUpPanel } from "./follow-up";
@@ -726,9 +728,15 @@ export function Workspace() {
     setView("dashboard");
     notify("Planen har lästs in.");
   }
-  function importGoogle(snapshot: GoogleSnapshot, replan: boolean) {
+  function importGoogle(
+    snapshot: GoogleSnapshot,
+    replan: boolean,
+    categories: GoogleCategoryChoices,
+  ) {
     setData((current) =>
-      current ? previewGoogleImport(current, snapshot, replan).data : current,
+      current
+        ? previewGoogleImport(current, snapshot, replan, categories).data
+        : current,
     );
     setGoogleOpen(false);
     notify(
@@ -1334,6 +1342,24 @@ export function Workspace() {
           date={editor.date}
           onSave={saveActivity}
           onDelete={deleteActivity}
+          onCategorize={(activity, categoryId) => {
+            setData((current) => {
+              if (!current) return current;
+              const affected = Object.keys(current.weeks).filter((key) =>
+                current.weeks[key].activities.some(
+                  (a) =>
+                    a.external?.calendarId === activity.external?.calendarId &&
+                    a.external?.eventId === activity.external?.eventId,
+                ),
+              );
+              return replanAfterBookings(
+                categorizeGoogleEvent(current, activity, categoryId),
+                affected,
+              );
+            });
+            setEditor(null);
+            notify("Bokningens kategori är sparad.");
+          }}
           onClose={() => setEditor(null)}
         />
       )}

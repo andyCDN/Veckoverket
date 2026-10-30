@@ -8,7 +8,11 @@ import type {
   WeekPlan,
 } from "./types";
 import { addDays, weekday } from "./date";
-import { blocksTime, GOOGLE_CATEGORY_ID } from "./external-calendar";
+import {
+  blocksTime,
+  countsCategoryTime,
+  GOOGLE_CATEGORY_ID,
+} from "./external-calendar";
 import {
   addWeeklyRoutines,
   ROUTINE_CATEGORY,
@@ -34,11 +38,7 @@ export function categoryMinutes(
   status?: Activity["status"],
 ): Record<string, number> {
   return activities
-    .filter(
-      (a) =>
-        (!status || a.status === status) &&
-        (!a.external || (a.external.busy && !a.external.allDay)),
-    )
+    .filter((a) => (!status || a.status === status) && countsCategoryTime(a))
     .reduce<Record<string, number>>((totals, a) => {
       totals[a.categoryId] = (totals[a.categoryId] || 0) + a.end - a.start;
       return totals;
@@ -244,7 +244,12 @@ export function generateWeek(
   );
   // Without explicit permission, existing protected music retains its original place.
   // Reducing the requested count explicitly releases the surplus generated mornings.
-  const heldMusic = activities.filter((a) => a.categoryId === "music").length;
+  const isMusicMorning = (a: Activity) =>
+    a.categoryId === "music" &&
+    countsCategoryTime(a) &&
+    a.start === s.start &&
+    a.end === s.lunchStart;
+  const heldMusic = activities.filter(isMusicMorning).length;
   let retainMusic = Math.max(0, s.musicMornings - heldMusic);
   for (const a of existing?.activities ?? []) {
     if (
@@ -282,6 +287,7 @@ export function generateWeek(
           a.start === from &&
           a.end === to &&
           a.categoryId === categoryId &&
+          !a.external &&
           a.blockType === "locked",
       );
       if (
@@ -350,10 +356,7 @@ export function generateWeek(
           : "Minska tidsmålet, minska bufferten eller utöka din tillgänglighet. Inga fasta åtaganden har flyttats.",
     });
   const music = categories.find((c) => c.id === "music");
-  const existingMusic = activities.filter(
-    (a) =>
-      a.categoryId === "music" && a.start === s.start && a.end === s.lunchStart,
-  ).length;
+  const existingMusic = activities.filter(isMusicMorning).length;
   let musicNeeded = Math.max(0, s.musicMornings - existingMusic);
   if (music)
     for (const day of [1, 4, 0, 2, 3, 5, 6].filter((d) =>
@@ -446,7 +449,9 @@ export function generateWeek(
         s.trainingSessions -
           activities.filter(
             (a) =>
-              a.categoryId === "health" && a.end - a.start >= s.trainingMinutes,
+              a.categoryId === "health" &&
+              countsCategoryTime(a) &&
+              a.end - a.start >= s.trainingMinutes,
           ).length,
       );
       const slots = () =>
@@ -612,7 +617,9 @@ export function assessWeek(
     rules.trainingSessions >
       plan.activities.filter(
         (a) =>
-          a.categoryId === "health" && a.end - a.start >= rules.trainingMinutes,
+          a.categoryId === "health" &&
+          countsCategoryTime(a) &&
+          a.end - a.start >= rules.trainingMinutes,
       ).length &&
     !conflicts.some((c) => c.id === "target-health")
   )

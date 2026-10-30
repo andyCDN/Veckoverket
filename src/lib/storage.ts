@@ -1,5 +1,5 @@
 import type { AppData } from "./types";
-import { GOOGLE_CATEGORY_ID, googleEventUrl } from "./external-calendar";
+import { googleEventUrl, isGoogleEventKey } from "./external-calendar";
 import { isLocalDate } from "./google-time";
 import { refreshDemoCopy } from "./defaults";
 export const STORAGE_KEY = "veckoverket.workspace.v1";
@@ -128,7 +128,6 @@ export function decodeData(raw: string): AppData {
           e.provider !== "google-calendar" ||
           a.source !== "external" ||
           a.blockType !== "locked" ||
-          a.categoryId !== GOOGLE_CATEGORY_ID ||
           typeof e.calendarId !== "string" ||
           !e.calendarId ||
           typeof e.eventId !== "string" ||
@@ -212,7 +211,17 @@ export function decodeData(raw: string): AppData {
       typeof g.lastImportedWeek !== "string" ||
       !isLocalDate(g.lastImportedWeek) ||
       typeof g.lastImportedAt !== "string" ||
-      !Number.isFinite(Date.parse(g.lastImportedAt))
+      !Number.isFinite(Date.parse(g.lastImportedAt)) ||
+      (g.eventCategories !== undefined &&
+        (!g.eventCategories ||
+          typeof g.eventCategories !== "object" ||
+          Array.isArray(g.eventCategories) ||
+          !Object.entries(g.eventCategories).every(
+            ([key, categoryId]) =>
+              isGoogleEventKey(key) &&
+              typeof categoryId === "string" &&
+              ids.has(categoryId),
+          )))
     )
       throw new Error("Google-kalenderns importinställningar är ogiltiga.");
   }

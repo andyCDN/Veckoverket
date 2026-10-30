@@ -111,6 +111,7 @@ export type AppData = {
     calendarIds: string[];
     lastImportedWeek: string;
     lastImportedAt: string;
+    eventCategories?: Record<string, string>;
   };
 };
 export type Conflict = {

@@ -1939,6 +1939,16 @@ body {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.google-category-field {
+  margin-top: 6px;
+  max-width: 100%;
+}
+.google-category-field select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  font-size: 16px;
+}
 .day-name-short,
 .mobile-day-summary {
   display: none;

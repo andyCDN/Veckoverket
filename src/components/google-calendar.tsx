@@ -6,9 +6,13 @@ import { Modal } from "./modal";
 import type { AppData } from "@/lib/types";
 import {
   previewGoogleImport,
+  googleCategoryChoices,
+  type GoogleCategoryChoices,
   type GoogleSnapshot,
 } from "@/lib/google-calendar";
 import type { GoogleConnection } from "@/lib/use-google-calendar";
+import { googleEventKey, GOOGLE_CATEGORY_ID } from "@/lib/external-calendar";
+import { GoogleCategorySelect } from "./google-category-select";
 import { fullDate, time, weekLabel } from "@/lib/date";
 export function GoogleCalendarModal({
   data,
@@ -21,13 +25,18 @@ export function GoogleCalendarModal({
   data: AppData;
   week: string;
   connection: GoogleConnection;
-  onImport: (snapshot: GoogleSnapshot, replan: boolean) => void;
+  onImport: (
+    snapshot: GoogleSnapshot,
+    replan: boolean,
+    categories: GoogleCategoryChoices,
+  ) => void;
   onRemove: () => void;
   onClose: () => void;
 }) {
   const [selected, setSelected] = useState<string[]>([]),
     [snapshot, setSnapshot] = useState<GoogleSnapshot | null>(null),
     [replan, setReplan] = useState(true),
+    [categoryChoices, setCategoryChoices] = useState<GoogleCategoryChoices>({}),
     [loading, setLoading] = useState(false),
     [error, setError] = useState("");
   const request = useRef(0);
@@ -42,6 +51,7 @@ export function GoogleCalendarModal({
         : connection.calendars.filter((c) => c.primary).map((c) => c.id),
     );
     setSnapshot(null);
+    setCategoryChoices({});
     setLoading(false);
     setError("");
     request.current++;
@@ -55,14 +65,19 @@ export function GoogleCalendarModal({
     [],
   );
   const preview = useMemo(
-    () => (snapshot ? previewGoogleImport(data, snapshot, replan) : null),
-    [data, snapshot, replan],
+    () =>
+      snapshot
+        ? previewGoogleImport(data, snapshot, replan, categoryChoices)
+        : null,
+    [data, snapshot, replan, categoryChoices],
   );
+  const chosenCategories = googleCategoryChoices(data, categoryChoices);
   async function fetchWeek() {
     const id = ++request.current;
     setLoading(true);
     setError("");
     setSnapshot(null);
+    setCategoryChoices({});
     try {
       const result = await connection.readWeek(
         connection.calendars.filter((c) => selected.includes(c.id)),
@@ -255,6 +270,19 @@ export function GoogleCalendarModal({
                       : `${time(a.start)}–${time(a.end)}`}{" "}
                     · {a.external?.busy ? "Upptagen" : "Ledig"}
                   </span>
+                  <GoogleCategorySelect
+                    categories={data.categories}
+                    value={
+                      chosenCategories[googleEventKey(a)] ?? GOOGLE_CATEGORY_ID
+                    }
+                    name={`Kategori för ${a.title}, ${fullDate(a.date)}`}
+                    onChange={(categoryId) =>
+                      setCategoryChoices((current) => ({
+                        ...current,
+                        [googleEventKey(a)]: categoryId,
+                      }))
+                    }
+                  />
                 </li>
               ))}
             </ul>
@@ -270,6 +298,7 @@ export function GoogleCalendarModal({
                 onImport(
                   snapshot,
                   replan || Boolean(data.settings.autoPlanning),
+                  categoryChoices,
                 )
               }
             >
