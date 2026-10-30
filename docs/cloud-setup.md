@@ -1,6 +1,6 @@
 # Activate cloud storage for Veckoverket
 
-After cloud storage is working, the optional [private iCal connection](ical-calendar-setup.md) can read Google Calendar bookings without Google OAuth setup. It needs its own migration and Edge Function installation in this project.
+After cloud storage is working, the optional [private iCal connection](ical-calendar-setup.md) can read Google Calendar bookings without Google OAuth setup. Its migration and Edge Function can be installed entirely in your browser using GitHub Codespaces and the Supabase dashboard, with no software installation on your computer.
 
 The app is prepared for Supabase cloud storage. Your existing GitHub Pages address stays the same:
 

@@ -4,6 +4,8 @@ En svensk webbapp för veckoplanering, målhantering och uppföljning.
 
 Appen kan installeras på hemskärmen med en egen RISO-ikon. På mobilen finns **Installera appen** under **Verktyg**, och på datorn finns alternativet i **Inställningar**. Följ [installationsguiden på engelska](docs/install-app.md). Den sparade appvyn kan öppnas utan nät; inloggning, molnsynk och Google-import kräver anslutning.
 
+Kalenderkopplingen med privat iCal-länk kan installeras helt i webbläsaren. Följ [Codespaces-guiden på engelska](docs/ical-calendar-setup.md); Node.js och installationskommandona körs i GitHubs molnmiljö.
+
 ## Starta lokalt
 
 Kräver Node.js 22 eller 24 och npm. Node 24 har använts vid verifiering.
@@ -56,7 +58,7 @@ Utan ett konfigurerat molnprojekt sparas planen på den här enheten. Med Supaba
 - Automatisk lokal lagring, JSON-export och validerad import. Korrupt lagring skrivs inte över. Vid lagringsfel visas ett meddelande; exportera då en säkerhetskopia.
 - Nollställ planering och statistik från inställningarna, med bekräftelse och valfri säkerhetskopia. Profil, kategorier och sparade planeringsregler behålls. [Beskrivning på engelska](docs/reset-planning.md).
 - Google Kalender för Gmail- och Google-konton: välj kalendrar, förhandsgranska, kategorisera och importera bokningar. Kategori kan också väljas på sparade bokningar och följer med vid uppdatering. Upptagen tid ingår i planeringen och vald kategoris tidsuppföljning; importerade händelser kan bockas av. [Installationsguide på engelska](docs/google-calendar-setup.md).
-- Privat iCal-länk som enklare Google-anslutning: klistra in länken en gång, förhandsgranska och importera. Den visade veckan uppdateras automatiskt medan appen är öppen. Kategorier och genomförd status bevaras. Länken lagras krypterad via en Supabase Edge Function och ingår inte i säkerhetskopior. [Installation och användning på engelska](docs/ical-calendar-setup.md).
+- Privat iCal-länk som enklare Google-anslutning: klistra in länken en gång, förhandsgranska och importera. Den visade veckan uppdateras automatiskt medan appen är öppen. Kategorier och genomförd status bevaras. Länken lagras krypterad via en Supabase Edge Function och ingår inte i säkerhetskopior. [Installation via GitHub Codespaces, helt i webbläsaren](docs/ical-calendar-setup.md) (guide på engelska).
 - Automatiska kategoriregler för kalenderbokningar: matcha rubrik, välj kategori och prioritera regler. Manuella val bevaras och kan återställas till Automatisk. Regler används vid både Google- och iCal-import och kan tillämpas på sparade bokningar.
 - Ångra sparade ändringar, inklusive borttagning och omplanering, via Verktyg, meddelandet eller Ctrl/Cmd+Z utanför textfält. Historiken gäller den öppna sessionen och hålls åtskild mellan konton.
 - Uppföljning över fyra eller tolv veckor under Veckoreflektion: filtrera livsområde och jämför tidsmål, planerad tid och genomförd tid. Saknade veckor skapas inte. [Guide för regler, ångra och statistik](docs/planning-tools.md).
