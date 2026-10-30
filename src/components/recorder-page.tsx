@@ -5,6 +5,7 @@ import { supabase, cloudTransport } from "@/lib/supabase";
 import type { CloudDocument } from "@/lib/workspace-sync";
 import { appPath } from "@/lib/app-path";
 import { fullDate, today } from "@/lib/date";
+import { orderedCategories, categoryLabel } from "@/lib/presentation";
 import { PcmCapture } from "@/lib/recording-audio";
 import {
   listQueuedAudio,
@@ -73,7 +74,9 @@ export function RecorderPage() {
       <a className="text-button" href={appPath("/")}>
         ← Till Veckoverket
       </a>
-      <h1>Samtalsinspelning</h1>
+      <h1 aria-label="Samtalsinspelning">
+        Samtals<span>inspelning</span>
+      </h1>
       {!loaded ? (
         <p role="status">Läser in kontot…</p>
       ) : !user ? (
@@ -96,6 +99,7 @@ function RecorderWorkspace({ user }: { user: User }) {
     [finishing, setFinishing] = useState<string[]>([]),
     [sessions, setSessions] = useState<RecordingSession[]>([]),
     [current, setCurrent] = useState<RecordingSession | null>(null);
+  const [categoryId, setCategoryId] = useState("");
   const [applicationId, setApplicationId] = useState(""),
     [contactId, setContactId] = useState(""),
     [interviewId, setInterviewId] = useState(""),
@@ -110,6 +114,8 @@ function RecorderWorkspace({ user }: { user: User }) {
     [failedLocal, setFailedLocal] = useState<QueuedAudio[]>([]),
     [summary, setSummary] = useState<RecordingSummary | null>(null),
     [review, setReview] = useState("");
+  const classification = useRef<HTMLElement | null>(null);
+  const suggestedContext = useRef<RecordingContext>({});
   const capture = useRef<PcmCapture | null>(null),
     live = useRef(true),
     summaryJobs = useRef(new Set<string>()),
@@ -125,6 +131,7 @@ function RecorderWorkspace({ user }: { user: User }) {
   const active = mode !== "idle";
   const app = document?.data.applications?.find((a) => a.id === applicationId);
   const context = (): RecordingContext => ({
+    ...(categoryId ? { categoryId } : {}),
     ...(applicationId ? { applicationId } : {}),
     ...(contactId ? { contactId } : {}),
     ...(interviewId && applicationId ? { interviewId } : {}),
@@ -152,10 +159,6 @@ function RecorderWorkspace({ user }: { user: User }) {
     const doc = await cloudTransport(user.id).load();
     if (live.current) {
       setDocument(doc);
-      if (!doc)
-        setNotice(
-          "Öppna Veckoverket och spara en molnarbetsyta innan du startar inspelningen.",
-        );
     }
     return doc;
   }
@@ -274,16 +277,29 @@ function RecorderWorkspace({ user }: { user: User }) {
     setApplicationId(params.get("applicationId") ?? "");
     setContactId(params.get("contactId") ?? "");
     setInterviewId(params.get("interviewId") ?? "");
+    suggestedContext.current = {
+      applicationId: params.get("applicationId") ?? undefined,
+      contactId: params.get("contactId") ?? undefined,
+      interviewId: params.get("interviewId") ?? undefined,
+    };
     void loadWorkspace().catch((e) => {
       if (live.current) setError(message(e));
     });
     void api
-      .call<{ ready: boolean; aiReady: boolean }>({ action: "status" })
+      .call<{
+        ready: boolean;
+        aiReady: boolean;
+        deferredCategorization?: boolean;
+      }>({ action: "status" })
       .then((result) => {
         if (live.current) {
-          setReady(result.ready);
+          setReady(result.ready && result.deferredCategorization === true);
           setAiReady(result.aiReady);
-          if (!result.ready)
+          if (result.ready && !result.deferredCategorization)
+            setError(
+              "Inspelningstjänsten behöver uppdateras innan du kan spela in utan kategorisering.",
+            );
+          else if (!result.ready)
             setNotice(
               "Serverdelen för ljudlagring behöver aktiveras innan inspelning kan startas.",
             );
@@ -336,26 +352,10 @@ function RecorderWorkspace({ user }: { user: User }) {
   async function start() {
     setError("");
     setNotice("");
-    if (!ready || !document) {
+    if (!ready) {
       setError(
-        "Serverdelen och en sparad molnarbetsyta behövs innan inspelningen kan startas.",
+        "Serverdelen behöver vara aktiverad innan inspelningen kan startas.",
       );
-      return;
-    }
-    if (
-      (applicationId && !app) ||
-      (contactId && !document.data.contacts?.some((c) => c.id === contactId)) ||
-      (interviewId && !app?.interviews?.some((i) => i.id === interviewId))
-    ) {
-      setError("Den valda kopplingen finns inte längre i arbetsytan.");
-      return;
-    }
-    if (!applicationId && !contactId) {
-      setError("Välj en ansökan eller kontakt.");
-      return;
-    }
-    if (!title.trim() || title.length > 200) {
-      setError("Ange en rubrik på högst 200 tecken.");
       return;
     }
     if (failed.current.length) {
@@ -421,8 +421,8 @@ function RecorderWorkspace({ user }: { user: User }) {
       void navigator.storage?.persist?.().catch(() => false);
       const result = await api.call<{ session: RecordingSession }>({
         action: "create",
-        title: title.trim(),
-        context: context(),
+        title: `Samtal ${fullDate(today())}`,
+        context: {},
       });
       sessionId = result.session.id;
       if (!live.current) {
@@ -431,6 +431,23 @@ function RecorderWorkspace({ user }: { user: User }) {
       }
       nextIndex.current = 0;
       setSession(result.session);
+      setTitle(result.session.title);
+      setCategoryId("");
+      const suggested = suggestedContext.current;
+      const suggestedApp = document?.data.applications?.find(
+        (a) => a.id === suggested.applicationId,
+      );
+      setApplicationId(suggestedApp?.id ?? "");
+      setContactId(
+        document?.data.contacts?.some((c) => c.id === suggested.contactId)
+          ? suggested.contactId!
+          : "",
+      );
+      setInterviewId(
+        suggestedApp?.interviews?.some((i) => i.id === suggested.interviewId)
+          ? suggested.interviewId!
+          : "",
+      );
       setSummary(null);
       setReview("");
       setSeconds(0);
@@ -486,7 +503,11 @@ function RecorderWorkspace({ user }: { user: User }) {
       const count = capturedCount ?? state.nextIndex;
       await api.call({ action: "stop", id: session.id, count });
       if (displaying())
-        setSession({ ...session, state: "stopped", segmentCount: count });
+        setSession({
+          ...currentRef.current!,
+          state: "stopped",
+          segmentCount: count,
+        });
       await refreshSessions();
       await pumps.ai(session.id);
       // Also recover cloud audio from a previous browser session.
@@ -515,7 +536,7 @@ function RecorderWorkspace({ user }: { user: User }) {
       finishRequests.current.delete(session.id);
       if (displaying()) {
         setSession({
-          ...session,
+          ...currentRef.current!,
           state: "complete",
           segmentCount: count,
           summary: result.summary,
@@ -542,7 +563,9 @@ function RecorderWorkspace({ user }: { user: User }) {
     setBusy(true);
     setError("");
     try {
-      await capture.current?.stop();
+      const engine = capture.current;
+      await engine?.stop();
+      if (engine) setSeconds(engine.seconds);
       capture.current = null;
       setMode("idle");
       await releaseScreen();
@@ -550,6 +573,12 @@ function RecorderWorkspace({ user }: { user: User }) {
         "Inspelningen är stoppad. Uppladdning och sammanfattning fortsätter i bakgrunden på den här sidan.",
       );
       beginFinish(session, nextIndex.current);
+      requestAnimationFrame(() =>
+        classification.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        }),
+      );
     } catch (e) {
       setError(message(e));
     } finally {
@@ -569,6 +598,8 @@ function RecorderWorkspace({ user }: { user: User }) {
         pendingIndices: number[];
       }>({ action: "get", id: item.id });
       setSession(result.session);
+      setTitle(result.session.title);
+      setCategoryId(result.session.context.categoryId ?? "");
       setApplicationId(result.session.context.applicationId ?? "");
       setContactId(result.session.context.contactId ?? "");
       setInterviewId(result.session.context.interviewId ?? "");
@@ -595,12 +626,64 @@ function RecorderWorkspace({ user }: { user: User }) {
       beginFinish(session);
     }
   }
-  async function saveSummary() {
+  async function persistDetails() {
     const session = currentRef.current;
-    if (!session) return;
+    if (!session || capture.current)
+      throw new Error("Stoppa inspelningen innan du kategoriserar den.");
+    const selected = context();
+    if (!title.trim() || title.length > 200)
+      throw new Error("Ange en rubrik på högst 200 tecken.");
+    if (
+      (categoryId &&
+        !document?.data.categories.some((c) => c.id === categoryId)) ||
+      (applicationId && !app) ||
+      (contactId &&
+        !document?.data.contacts?.some((c) => c.id === contactId)) ||
+      (interviewId && !app?.interviews?.some((i) => i.id === interviewId))
+    )
+      throw new Error(
+        "Den valda kategorin eller kopplingen finns inte längre i arbetsytan.",
+      );
+    if (
+      session.title === title.trim() &&
+      (
+        ["categoryId", "applicationId", "contactId", "interviewId"] as const
+      ).every((key) => session.context[key] === selected[key])
+    )
+      return session;
+    const result = await api.call<{ session: RecordingSession }>({
+      action: "categorize",
+      id: session.id,
+      title: title.trim(),
+      context: selected,
+    });
+    const updated = {
+      ...currentRef.current!,
+      title: result.session.title,
+      context: result.session.context,
+    };
+    setSession(updated);
+    await refreshSessions();
+    return updated;
+  }
+  async function categorize() {
     setBusy(true);
     setError("");
     try {
+      await persistDetails();
+      setNotice("Kategoriseringen är sparad.");
+    } catch (e) {
+      setError(message(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function saveSummary() {
+    if (!currentRef.current) return;
+    setBusy(true);
+    setError("");
+    try {
+      const session = await persistDetails();
       const transport = cloudTransport(user.id),
         latest = await transport.load();
       if (!latest)
@@ -653,10 +736,83 @@ function RecorderWorkspace({ user }: { user: User }) {
   }
   return (
     <div className="stack">
-      <p>
-        Håll sidan öppen och synlig under samtalet. Mikrofonen spelar in ljud i
-        omgivningen och fångar inte automatiskt ljud från andra appar eller
-        telefonsamtal. Inspelningen pausas när sidan döljs.
+      <section
+        className={`recording-deck is-${mode}`}
+        aria-label="Inspelningskontroller"
+      >
+        <div className="recording-deck-top">
+          <span>Ljud / 01</span>
+          <span aria-hidden="true">＋</span>
+        </div>
+        <strong className="recording-state" role="status">
+          {mode === "recording"
+            ? "● Inspelning pågår"
+            : mode === "paused"
+              ? "Inspelning pausad"
+              : "Mikrofonen är avstängd"}
+        </strong>
+        <button
+          className="recording-trigger"
+          aria-label={
+            mode === "recording"
+              ? "Stoppa och sammanfatta"
+              : mode === "paused"
+                ? "Fortsätt"
+                : "Starta inspelning"
+          }
+          disabled={busy || (mode === "idle" && (!ready || !queueReady))}
+          aria-busy={busy}
+          onClick={() =>
+            void (mode === "recording"
+              ? stop()
+              : mode === "paused"
+                ? resume()
+                : start())
+          }
+        >
+          <span className="recording-target" aria-hidden="true">
+            <span />
+          </span>
+          <span className="recording-trigger-label">
+            {busy
+              ? "Vänta…"
+              : mode === "recording"
+                ? "Stoppa"
+                : mode === "paused"
+                  ? "Fortsätt"
+                  : "Spela in"}
+          </span>
+          <span className="recording-trigger-meta">
+            {mode === "idle"
+              ? "Kategorisera efteråt"
+              : mode === "paused"
+                ? "Återuppta samtalet"
+                : "Sparar ljud löpande"}
+          </span>
+        </button>
+        <div className="recording-deck-bottom">
+          <span aria-label="Inspelad tid">
+            {Math.floor(seconds / 60)
+              .toString()
+              .padStart(2, "0")}
+            :{(seconds % 60).toString().padStart(2, "0")}
+          </span>
+          <span aria-hidden="true">● REC</span>
+        </div>
+        {active && (
+          <button
+            className="button secondary recording-secondary"
+            disabled={busy}
+            onClick={() =>
+              void (mode === "recording" ? pauseCapture() : stop())
+            }
+          >
+            {mode === "recording" ? "Pausa" : "Stoppa och sammanfatta"}
+          </button>
+        )}
+      </section>
+      <p className="recording-instruction">
+        Håll sidan öppen och synlig under samtalet.
       </p>
       {!ready && (
         <p>
@@ -680,121 +836,115 @@ function RecorderWorkspace({ user }: { user: User }) {
         </p>
       )}
       {notice && <p role="status">{notice}</p>}
-      <fieldset className="stack" disabled={busy || active}>
-        <legend>Koppling och rubrik</legend>
-        <label>
-          Ansökan
-          <select
-            value={applicationId}
-            onChange={(e) => {
-              setApplicationId(e.target.value);
-              setInterviewId("");
-            }}
-          >
-            <option value="">Ingen ansökan</option>
-            {document?.data.applications?.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.role} · {a.organization}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Kontakt
-          <select
-            value={contactId}
-            onChange={(e) => setContactId(e.target.value)}
-          >
-            <option value="">Ingen kontakt</option>
-            {document?.data.contacts?.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} · {c.organization}
-              </option>
-            ))}
-          </select>
-        </label>
-        {!!app?.interviews?.length && (
-          <label>
-            Intervju
-            <select
-              value={interviewId}
-              onChange={(e) => setInterviewId(e.target.value)}
-            >
-              <option value="">Ingen särskild intervju</option>
-              {app.interviews.map((i) => (
-                <option key={i.id} value={i.id}>
-                  {i.title} · {i.date}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        <label>
-          Samtalets rubrik
-          <input
-            maxLength={200}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-        </label>
-      </fieldset>
-      <section
-        className="recording-controls stack"
-        aria-label="Inspelningskontroller"
-      >
-        <strong role="status">
-          {mode === "recording"
-            ? "● Inspelning pågår"
-            : mode === "paused"
-              ? "Inspelning pausad"
-              : "Mikrofonen är avstängd"}{" "}
-          ·{" "}
-          {Math.floor(seconds / 60)
-            .toString()
-            .padStart(2, "0")}
-          :{(seconds % 60).toString().padStart(2, "0")}
-        </strong>
-        <p>
-          {queue.filter((q) => !q.uploaded).length} ljuddelar sparade lokalt,
-          väntar på uppladdning. {queue.filter((q) => q.uploaded).length}{" "}
-          ljuddelar bekräftade i molnet, väntar på transkribering.
+
+      {busy && <p role="status">Bearbetar… Låt sidan vara öppen.</p>}
+      {(queue.length > 0 || active) && (
+        <p className="recording-queue-status">
+          {queue.filter((q) => !q.uploaded).length} ljuddelar väntar på
+          uppladdning. {queue.filter((q) => q.uploaded).length} väntar på
+          transkribering.
         </p>
-        {finishing.length > 0 && (
-          <p role="status">
-            {finishing.length} samtal bearbetas i bakgrunden. Du kan starta
-            nästa inspelning.
+      )}
+      {finishing.length > 0 && (
+        <p role="status">
+          {finishing.length} samtal bearbetas i bakgrunden. Du kan starta nästa
+          inspelning.
+        </p>
+      )}
+      {current && !active && (
+        <section
+          className="recording-classification stack"
+          ref={classification}
+          aria-label="Kategorisera inspelningen"
+        >
+          <span className="recording-section-label">
+            Efter inspelningen / 02
+          </span>
+          <h2>Kategorisera</h2>
+          <p>
+            Välj kategori och lägg vid behov till en ansökan, intervju eller
+            kontakt. Du kan göra det senare.
           </p>
-        )}
-        <div className="career-actions">
-          {mode === "idle" ? (
+          <fieldset className="stack" disabled={busy}>
+            <legend>Kategori och koppling</legend>
+            <label>
+              Kategori
+              <select
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+              >
+                <option value="">Okategoriserad</option>
+                {orderedCategories(document?.data.categories ?? []).map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {categoryLabel(c)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Ansökan
+              <select
+                value={applicationId}
+                onChange={(e) => {
+                  setApplicationId(e.target.value);
+                  setInterviewId("");
+                }}
+              >
+                <option value="">Ingen ansökan</option>
+                {document?.data.applications?.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.role} · {a.organization}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Kontakt
+              <select
+                value={contactId}
+                onChange={(e) => setContactId(e.target.value)}
+              >
+                <option value="">Ingen kontakt</option>
+                {document?.data.contacts?.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} · {c.organization}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {!!app?.interviews?.length && (
+              <label>
+                Intervju
+                <select
+                  value={interviewId}
+                  onChange={(e) => setInterviewId(e.target.value)}
+                >
+                  <option value="">Ingen särskild intervju</option>
+                  {app.interviews.map((i) => (
+                    <option key={i.id} value={i.id}>
+                      {i.title} · {i.date}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <label>
+              Samtalets rubrik
+              <input
+                maxLength={200}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </label>
             <button
-              className="button primary"
-              disabled={busy || !ready || !document || !queueReady}
-              onClick={() => void start()}
+              className="button secondary"
+              onClick={() => void categorize()}
             >
-              Starta inspelning
+              Spara kategorisering
             </button>
-          ) : (
-            <>
-              <button
-                className="button secondary"
-                disabled={busy}
-                onClick={() =>
-                  void (mode === "recording" ? pauseCapture() : resume())
-                }
-              >
-                {mode === "recording" ? "Pausa" : "Fortsätt"}
-              </button>
-              <button
-                className="button primary"
-                disabled={busy}
-                onClick={() => void stop()}
-              >
-                Stoppa och sammanfatta
-              </button>
-            </>
-          )}
-          {current && mode === "idle" && current.state !== "complete" && (
+          </fieldset>
+
+          {current.state !== "complete" && (
             <button
               className="button secondary"
               disabled={busy || finishing.includes(current.id)}
@@ -803,9 +953,8 @@ function RecorderWorkspace({ user }: { user: User }) {
               Avsluta och sammanfatta sparat ljud
             </button>
           )}
-        </div>
-        {busy && <p role="status">Bearbetar… Låt sidan vara öppen.</p>}
-      </section>
+        </section>
+      )}
       {(queue.length > 0 || failedLocal.length > 0) && (
         <details>
           <summary>Väntande ljud och återhämtning</summary>
@@ -853,7 +1002,8 @@ function RecorderWorkspace({ user }: { user: User }) {
           <p>
             Överenskommelser, förslag och osäkra uppgifter hålls isär.
             Kontrollera texten mot citaten och rätta eventuella fel innan du
-            sparar. Texten sparas med inspelningens ursprungliga koppling.
+            sparar. Välj koppling under Kategorisera för att lägga texten i rätt
+            historik.
           </p>
           <details>
             <summary>Citat som förslaget bygger på</summary>
@@ -878,53 +1028,80 @@ function RecorderWorkspace({ user }: { user: User }) {
             {review.length} / 4000 tecken. En längre text behöver kortas före
             sparning.
           </p>
+          {!applicationId && !contactId && (
+            <p>
+              Välj en ansökan eller kontakt för att spara texten i historiken.
+              Ljudet och AI-förslaget finns kvar i inspelningen.
+            </p>
+          )}
           <button
             className="button primary"
-            disabled={busy || !review.trim() || review.length > 4000}
+            disabled={
+              busy ||
+              !review.trim() ||
+              review.length > 4000 ||
+              (!applicationId && !contactId)
+            }
             onClick={() => void saveSummary()}
           >
             Spara granskad sammanfattning i historiken
           </button>
         </section>
       )}
-      <section className="stack" aria-label="Tidigare inspelningar">
-        <h2>Tidigare inspelningar</h2>
-        {!sessions.length && <p>Inga inspelningar att visa.</p>}
-        {sessions.map((s) => (
-          <article className="recording-session stack" key={s.id}>
-            <h3>{s.title}</h3>
-            <p>
-              {s.startedAt.slice(0, 10)} ·{" "}
-              {s.state === "complete"
-                ? "Sammanfattad"
-                : s.state === "stopped"
-                  ? "Väntar på sammanfattning"
-                  : "Ej avslutad"}
-            </p>
-            <div className="career-actions">
-              <button
-                className="button secondary"
-                disabled={busy || active}
-                onClick={() => void openSession(s)}
-              >
-                Öppna inspelning
-              </button>
-              <button
-                className="text-button"
-                disabled={
-                  busy ||
-                  active ||
-                  finishing.length > 0 ||
-                  queue.some((q) => q.sessionId === s.id && !q.uploaded)
-                }
-                onClick={() => void removeSession(s)}
-              >
-                Radera inspelning
-              </button>
-            </div>
-          </article>
-        ))}
-      </section>
+      <details className="recording-archive" open={current !== null}>
+        <summary>
+          Tidigare inspelningar <span>{sessions.length}</span>
+        </summary>
+        <section className="stack" aria-label="Tidigare inspelningar">
+          <h2>Tidigare inspelningar</h2>
+          {!sessions.length && <p>Inga inspelningar att visa.</p>}
+          {sessions.map((s) => (
+            <article className="recording-session stack" key={s.id}>
+              <h3>{s.title}</h3>
+              <p>
+                {document?.data.categories.find(
+                  (c) => c.id === s.context.categoryId,
+                )?.name ?? "Okategoriserad"}{" "}
+                · {s.startedAt.slice(0, 10)} ·{" "}
+                {s.state === "complete"
+                  ? "Sammanfattad"
+                  : s.state === "stopped"
+                    ? "Väntar på sammanfattning"
+                    : "Ej avslutad"}
+              </p>
+              <div className="career-actions">
+                <button
+                  className="button secondary"
+                  disabled={busy || active}
+                  onClick={() => void openSession(s)}
+                >
+                  Öppna inspelning
+                </button>
+                <button
+                  className="text-button"
+                  disabled={
+                    busy ||
+                    active ||
+                    finishing.length > 0 ||
+                    queue.some((q) => q.sessionId === s.id && !q.uploaded)
+                  }
+                  onClick={() => void removeSession(s)}
+                >
+                  Radera inspelning
+                </button>
+              </div>
+            </article>
+          ))}
+        </section>
+      </details>
+      <details className="recording-about">
+        <summary>Om inspelningen</summary>
+        <p>
+          Mikrofonen spelar in ljud i omgivningen och fångar inte automatiskt
+          ljud från andra appar eller telefonsamtal. Inspelningen pausas när
+          sidan döljs.
+        </p>
+      </details>
     </div>
   );
 }

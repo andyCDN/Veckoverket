@@ -118,6 +118,14 @@ const store: RecordingStore = {
     if (error) throw error;
     return data ? session(data) : null;
   },
+  async categorize(user, id, title, context) {
+    const { error } = await client
+      .from("recording_sessions")
+      .update({ title, context })
+      .eq("user_id", user)
+      .eq("id", id);
+    if (error) throw error;
+  },
   async segments(user, id) {
     return (await rows(user, id))
       .filter((r) => r.state === "ready")

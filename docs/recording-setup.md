@@ -1,6 +1,8 @@
 # Samtalsinspelning
 
-Mobilwebbsidan finns på `/Veckoverket/inspelning/`. Öppna den från en ansökan, intervju eller kontakt. Logga in med samma Supabase-konto som i Veckoverket. Håll sidan öppen och synlig under samtalet. Start och stopp styrs av användaren; mikrofonen arbetar kontinuerligt mellan dessa åtgärder.
+Mobilwebbsidan finns på `/Veckoverket/inspelning/`. Öppna den direkt eller från en ansökan, intervju eller kontakt. Startvyn har en stor inspelningsknapp; ingen kategori, rubrik eller koppling behöver väljas i förväg. Logga in med samma Supabase-konto som i Veckoverket. Håll sidan öppen och synlig under samtalet. Start och stopp styrs av användaren; mikrofonen arbetar kontinuerligt mellan dessa åtgärder.
+
+Efter stopp visas **Kategorisera**. Välj valfri kategori, ändra rubrik och koppla vid behov en ansökan, intervju eller kontakt. **Spara kategorisering** sparar dessa uppgifter även om sammanfattningen ännu inte är klar. Du kan också lämna inspelningen okategoriserad och öppna den från **Tidigare inspelningar** senare. En länk från en ansökan eller kontakt föreslår kopplingen i efterhand; den sparas först när du väljer att spara.
 
 ## Aktivera serverdelen
 
@@ -12,6 +14,8 @@ GitHub Pages publicerar gränssnittet. Supabase-tabellerna, ljudlagringen och Ed
    ```sh
    supabase functions deploy recording --project-ref DITT_PROJEKT
    ```
+
+   Publicera funktionen på nytt om den redan är installerad: den nya versionen tillåter okategoriserad start och sparar kategorisering i efterhand. Tabellerna behöver ingen ny migrering för denna ändring; kategori och koppling ligger i det befintliga JSON-fältet `context`. En äldre serverversion känns igen av gränssnittet och startknappen är då avstängd tills funktionen är uppdaterad.
 
    `supabase/config.toml` pekar på projektets befintliga import map. Plattformens `verify_jwt` är avstängd eftersom funktionen själv verifierar token med `Auth.getUser`, inklusive nyare signeringsnycklar. Ta inte bort denna kontroll i funktionen.
 3. För automatisk transkribering och sammanfattning: lägg till `RECORDING_AI_KEY` under **Edge Functions → Secrets** i Supabase Dashboard. Använd en servernyckel för OpenAI med tillgång till de valda modellerna. Nyckeln ska aldrig läggas i frontendvariabler, GitHub Pages, källkod eller chatt. Ljudlagring fungerar även innan AI-nyckeln är tillagd; bearbetningen väntar.

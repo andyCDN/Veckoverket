@@ -42,6 +42,9 @@ function fixture() {
     },
     load: async (user, key) =>
       records.get(key)?.owner === user ? records.get(key)!.session : null,
+    categorize: async (_u, key, title, context) => {
+      Object.assign(records.get(key)!.session, { title, context });
+    },
     segments: async () =>
       [...segments.values()].sort((a, b) => a.index - b.index),
     pending: async () => [...pending],
@@ -144,6 +147,62 @@ function fixture() {
   };
 }
 describe("privat inspelningstjänst", () => {
+  it("kan spela in okategoriserat och kategorisera i efterhand utan att påverka ljud eller AI-resultat", async () => {
+    const f = fixture();
+    const created = await f.request({
+      action: "create",
+      title: "Samtal",
+      context: {},
+    });
+    expect(created.status).toBe(200);
+    expect(created.data.session.context).toEqual({});
+    await f.request({ action: "acknowledge", id, index: 0 });
+    await f.request({ action: "stop", id, count: 1 });
+    const updated = await f.request({
+      action: "categorize",
+      id,
+      title: "Intervju med Kim",
+      context: { categoryId: "career", applicationId: "a", contactId: "c" },
+    });
+    expect(updated.status).toBe(200);
+    expect(updated.data.session).toMatchObject({
+      title: "Intervju med Kim",
+      context: { categoryId: "career", applicationId: "a", contactId: "c" },
+      state: "stopped",
+      segmentCount: 1,
+    });
+    expect(f.pending.has(0)).toBe(true);
+    expect(f.calls).toBe(0);
+    expect(
+      (
+        await f.request(
+          { action: "categorize", id, title: "Annan", context: {} },
+          "b",
+        )
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await f.request({
+          action: "categorize",
+          id,
+          title: "Fel",
+          context: { interviewId: "i" },
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await f.request({
+          action: "categorize",
+          id,
+          title: "Fel",
+          context: { injected: "x" },
+        })
+      ).status,
+    ).toBe(400);
+  });
+
   it("kräver autentisering och rätt origin samt håller konton åtskilda", async () => {
     const f = fixture();
     expect((await f.request({ action: "list" }, "invalid")).status).toBe(401);
@@ -171,6 +230,7 @@ describe("privat inspelningstjänst", () => {
     expect((await f.request({ action: "status" })).data).toEqual({
       ready: true,
       aiReady: false,
+      deferredCategorization: true,
     });
     expect(
       (

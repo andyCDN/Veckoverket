@@ -86,7 +86,12 @@ async function setup(page: Page) {
         json: body,
         headers: { "access-control-allow-origin": "*" },
       });
-    if (b.action === "status") return reply({ ready: true, aiReady: true });
+    if (b.action === "status")
+      return reply({
+        ready: true,
+        aiReady: true,
+        deferredCategorization: true,
+      });
     if (b.action === "list") return reply({ sessions: [...sessions.values()] });
     if (b.action === "create") {
       const id = `33333333-3333-4333-8333-${String(++seq).padStart(12, "0")}`;
@@ -107,6 +112,11 @@ async function setup(page: Page) {
     if (b.action === "acknowledge") {
       received.get(b.id)!.add(b.index);
       return reply({ received: true, sha256: b.sha256 });
+    }
+    if (b.action === "categorize") {
+      s.title = b.title;
+      s.context = b.context;
+      return reply({ session: s });
     }
     if (b.action === "transcribe") {
       aiCalls++;
@@ -231,9 +241,6 @@ test("fortsätter spela in och ladda upp medan AI står still och låter nästa 
     page.getByRole("button", { name: "Starta inspelning", exact: true }),
   ).toBeEnabled();
   await page
-    .getByRole("textbox", { name: "Samtalets rubrik" })
-    .fill("Nästa samtal");
-  await page
     .getByRole("button", { name: "Starta inspelning", exact: true })
     .click();
   f.unblock();
@@ -246,7 +253,8 @@ test("fortsätter spela in och ladda upp medan AI står still och låter nästa 
   ).toBeVisible();
   await expect(
     page.getByRole("textbox", { name: "Samtalets rubrik" }),
-  ).toHaveValue("Nästa samtal");
+  ).toHaveCount(0);
+  expect([...f.sessions.values()][1].context).toEqual({});
   await expect(
     page.getByRole("heading", { name: "Granska sammanfattningen" }),
   ).toHaveCount(0);
@@ -278,6 +286,7 @@ test("återhämtar lokalt ljud efter nätfel och omladdning och sparar granskad 
   f.offline = false;
   await page.evaluate(() => window.dispatchEvent(new Event("online")));
   await expect.poll(() => localAudio(page)).toEqual({ raw: 0, uploaded: 0 });
+  await page.locator(".recording-archive > summary").click();
   await page
     .getByRole("button", { name: "Öppna inspelning", exact: true })
     .click();
@@ -301,6 +310,18 @@ test("återhämtar lokalt ljud efter nätfel och omladdning och sparar granskad 
     path: "/tmp/veckoverket-recorder-mobile.png",
     fullPage: true,
   });
+  await page
+    .getByRole("combobox", { name: "Kategori", exact: true })
+    .selectOption("career");
+  await page
+    .getByRole("combobox", { name: "Ansökan", exact: true })
+    .selectOption("application");
+  await page
+    .getByRole("combobox", { name: "Kontakt", exact: true })
+    .selectOption("contact");
+  await page
+    .getByRole("textbox", { name: "Samtalets rubrik", exact: true })
+    .fill("Intervju med Kim");
   await review.fill("Kim skickar länken på fredag. Granskat.");
   const save = page.getByRole("button", {
     name: "Spara granskad sammanfattning i historiken",
@@ -378,5 +399,88 @@ test("behåller ljud som inte kan skrivas lokalt och erbjuder nedladdning före 
   await page
     .getByRole("button", { name: "Stoppa och sammanfatta", exact: true })
     .click();
+  expect(f.f.errors).toEqual([]);
+});
+
+test("stor inspelningsknapp startar utan kategori och kategorisering sker efter stopp", async ({
+  page,
+}) => {
+  const f = await setup(page);
+  await page.goto("./inspelning/");
+  const start = page.getByRole("button", {
+    name: "Starta inspelning",
+    exact: true,
+  });
+  await expect(start).toBeEnabled();
+  await expect(page.getByRole("combobox")).toHaveCount(0);
+  await expect(page.getByRole("textbox")).toHaveCount(0);
+  const box = await start.boundingBox();
+  expect(box!.width).toBeGreaterThan(300);
+  expect(box!.height).toBeGreaterThan(280);
+  expect(box!.y + box!.height).toBeLessThan(844);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: "/tmp/veckoverket-recorder-riso-start.png",
+    fullPage: true,
+  });
+  for (const width of [320, 768, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await expect(start).toBeInViewport();
+  }
+  await page.screenshot({
+    path: "/tmp/veckoverket-recorder-riso-desktop.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await start.click();
+  await capturePart(page);
+  expect([...f.sessions.values()][0].context).toEqual({});
+  await page
+    .getByRole("button", { name: "Stoppa och sammanfatta", exact: true })
+    .click();
+  await expect(
+    page.getByRole("region", {
+      name: "Kategorisera inspelningen",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page
+    .getByRole("combobox", { name: "Kategori", exact: true })
+    .selectOption("networking");
+  await page
+    .getByRole("textbox", { name: "Samtalets rubrik", exact: true })
+    .fill("Nätverkssamtal med Kim");
+  await page
+    .getByRole("button", { name: "Spara kategorisering", exact: true })
+    .click();
+  await expect(
+    page.getByText("Kategoriseringen är sparad.", { exact: true }),
+  ).toBeVisible();
+  await expect
+    .poll(() => [...f.sessions.values()][0].context.categoryId)
+    .toBe("networking");
+  await expect.poll(() => [...f.sessions.values()][0].state).toBe("complete");
+  await page.reload();
+  await page.locator(".recording-archive > summary").click();
+  await page
+    .getByRole("button", { name: "Öppna inspelning", exact: true })
+    .click();
+  await expect(
+    page.getByRole("combobox", { name: "Kategori", exact: true }),
+  ).toHaveValue("networking");
+  await expect(
+    page.getByRole("textbox", { name: "Samtalets rubrik", exact: true }),
+  ).toHaveValue("Nätverkssamtal med Kim");
+  expect(f.f.documents.get(userA)!.data.weeks).toEqual(f.original.weeks);
+  expect(f.f.writes).toHaveLength(0);
   expect(f.f.errors).toEqual([]);
 });

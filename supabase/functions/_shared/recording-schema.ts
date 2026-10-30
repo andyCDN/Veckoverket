@@ -2,6 +2,7 @@ export const RECORDING_BUCKET = "interview-recordings";
 export const MAX_AUDIO_BYTES = 3 * 1024 * 1024;
 export const SUMMARY_BATCH_SIZE = 30;
 export type RecordingContext = {
+  categoryId?: string;
   applicationId?: string;
   contactId?: string;
   interviewId?: string;

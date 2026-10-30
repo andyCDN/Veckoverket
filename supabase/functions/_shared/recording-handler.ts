@@ -16,6 +16,12 @@ export type RecordingStore = {
     context: RecordingContext,
   ): Promise<RecordingSession>;
   load(user: string, id: string): Promise<RecordingSession | null>;
+  categorize(
+    user: string,
+    id: string,
+    title: string,
+    context: RecordingContext,
+  ): Promise<void>;
   segments(user: string, id: string): Promise<RecordingSegment[]>;
   pending(user: string, id: string): Promise<number[]>;
   received(user: string, id: string): Promise<number[]>;
@@ -103,11 +109,15 @@ export function recordingHandler(deps: {
       const action = body.action;
       if (action === "status") {
         await deps.store.list(user);
-        return reply({ ready: true, aiReady: deps.configured });
+        return reply({
+          ready: true,
+          aiReady: deps.configured,
+          deferredCategorization: true,
+        });
       }
       if (action === "list")
         return reply({ sessions: await deps.store.list(user) });
-      if (action === "create") {
+      if (action === "create" || action === "categorize") {
         const title = body.title,
           context = body.context as RecordingContext;
         if (
@@ -119,21 +129,26 @@ export function recordingHandler(deps: {
           Array.isArray(context) ||
           Object.entries(context).some(
             ([k, v]) =>
-              !["applicationId", "contactId", "interviewId"].includes(k) ||
+              ![
+                "categoryId",
+                "applicationId",
+                "contactId",
+                "interviewId",
+              ].includes(k) ||
               typeof v !== "string" ||
               !v.trim() ||
               v.length > 200,
           ) ||
-          (!context.applicationId && !context.contactId) ||
           (context.interviewId && !context.applicationId)
         )
           return reply(
-            { error: "Välj kontakt eller ansökan och ange en rubrik." },
+            { error: "Ange en rubrik och giltiga kategoriseringsuppgifter." },
             400,
           );
-        return reply({
-          session: await deps.store.create(user, title.trim(), context),
-        });
+        if (action === "create")
+          return reply({
+            session: await deps.store.create(user, title.trim(), context),
+          });
       }
       const id = body.id;
       if (
@@ -149,6 +164,15 @@ export function recordingHandler(deps: {
           { error: "Inspelningen finns inte eller tillhör ett annat konto." },
           404,
         );
+      if (action === "categorize") {
+        await deps.store.categorize(
+          user,
+          id,
+          (body.title as string).trim(),
+          body.context as RecordingContext,
+        );
+        return reply({ session: await deps.store.load(user, id) });
+      }
       if (action === "get") {
         const segments = await deps.store.segments(user, id),
           pendingIndices = await deps.store.pending(user, id),
