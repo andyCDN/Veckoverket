@@ -3322,3 +3322,25 @@ body {
     padding: 0;
   }
 }
+
+/* Keep desktop save status on the navigation row, with full conflict controls. */
+.navigation-bar > .storage-status {
+  margin: 0 0 0 auto;
+  padding: 2px 0;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.navigation-bar > .storage-status .storage-status-line {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 3px 10px;
+}
+.navigation-bar > .storage-status .storage-status-line > span {
+  font-size: 8px;
+}
+.navigation-bar > .storage-status.needs-attention {
+  padding: 6px;
+}
+.navigation-bar > .storage-status .storage-status-detail {
+  max-width: 420px;
+}

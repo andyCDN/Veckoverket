@@ -1,3 +1,4 @@
+import { validateApplicationMaterials } from "./application-materials";
 import type { Activity, AppData, Deadline, Settings, WeekPlan } from "./types";
 import { addDays, monday, planningBoundary, weekday } from "./date";
 import { generateWeek, plannedDays, validateMove } from "./planner";
@@ -273,6 +274,35 @@ export function validateCareerData(d: AppData) {
       !text(a.notes)
     )
       throw new Error("En ansökan är ogiltig.");
+    validateApplicationMaterials(a as import("./types").JobApplication);
+    if (a.interviews !== undefined)
+      for (const i of records(a.interviews)) {
+        if (
+          !text(i.title, 200) ||
+          !i.title.trim() ||
+          !date(i.date) ||
+          !i.date ||
+          !Number.isInteger(i.start) ||
+          !Number.isInteger(i.end) ||
+          i.start < 0 ||
+          i.end > 1440 ||
+          i.end <= i.start ||
+          !text(i.location, 1000) ||
+          !text(i.meetingActivityId, 200) ||
+          !i.meetingActivityId.trim() ||
+          (i.preparationActivityId !== undefined &&
+            (!text(i.preparationActivityId, 200) ||
+              !i.preparationActivityId.trim())) ||
+          (i.contactId !== undefined &&
+            (!text(i.contactId, 200) || !i.contactId.trim())) ||
+          !text(i.preparationNotes) ||
+          !text(i.outcomeNotes) ||
+          (i.completedAt !== undefined &&
+            (!text(i.completedAt, 100) ||
+              !Number.isFinite(Date.parse(i.completedAt))))
+        )
+          throw new Error("En intervju är ogiltig.");
+      }
     if (
       a.contactIds !== undefined &&
       (!Array.isArray(a.contactIds) ||

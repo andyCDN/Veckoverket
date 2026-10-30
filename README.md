@@ -70,6 +70,10 @@ Utan ett konfigurerat molnprojekt sparas planen på den här enheten. Med Supaba
 
 Ansökningarnas nästa steg kan filtreras på **Idag**, **Kommande sju dagar**, **Passerat datum** och **Utan datum**, i kombination med statusfilter. Avslag och avslutade ansökningar ingår inte i åtgärdsfiltren. **Markera nästa steg klart** registrerar utfallet i historiken och tömmer åtgärden och dess uppföljningsdatum; kalenderpassens status ändras inte.
 
+**Dokumentunderlag** sparar annonslänk och annonstext samt flera dokumentversioner med typ, länk, versionsnamn och skickat datum. Länkar öppnas i ett nytt fönster; materialet sparas i samma arbetsyta och molnsynk som ansökan.
+
+**Boka intervju** lägger in ett låst intervjupass och, om önskat, ett skyddat förberedelsepass före mötet. Allt sparas atomiskt: vid kapacitetsbrist ändras varken kalender eller ansökan. Ansökans status blir Intervju, och aktuella kalenderpass kan öppnas direkt från ansökan. **Intervjuanteckningar** sparar förberedelser, utfall, nästa steg och uppföljningsdatum. Genomfördmarkering ändrar endast intervjupassets status, inte förberedelser eller andra aktiviteter. Datum och status läses från de verkliga kalenderpassen även efter manuell redigering.
+
 **Visa historik** visar registrering, statusändringar, ändrade nästa steg och egna daterade kontakt-, intervju- och återkopplingsanteckningar. Äldre ansökningar får ingen automatiskt konstruerad historik. Kontakter kopplas via ansökningsformuläret och kan öppnas från ansökan. Historik och kopplingar följer med i säkerhetskopior, ångra och kontoavgränsad molnsynk. Borttagna kontakter visas som borttagna utan att tidigare händelser raderas.
 
 Under **Jobb & nätverk** finns en ansökningsöversikt med statusfilter, organisation, tjänst, deadline, nästa steg och uppföljningsdatum. Kontaktloggen sparar daterade anteckningar, kontaktkanal och nästa uppföljning. **Boka uppföljning** och **Boka kontakt** skapar kopplade pass i den befintliga kalendern. Passen kan öppnas, redigeras och markeras som genomförda där.

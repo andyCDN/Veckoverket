@@ -126,11 +126,36 @@ export type ApplicationHistoryEntry = {
   status?: ApplicationStatus;
   contactId?: string;
 };
+export type ApplicationMaterial = {
+  id: string;
+  title: string;
+  kind: "cv" | "letter" | "other";
+  url: string;
+  version: string;
+  sentOn: string;
+};
+export type ApplicationInterview = {
+  id: string;
+  title: string;
+  date: string;
+  start: number;
+  end: number;
+  location: string;
+  contactId?: string;
+  meetingActivityId: string;
+  preparationActivityId?: string;
+  preparationNotes: string;
+  outcomeNotes: string;
+  completedAt?: string;
+};
 export type JobApplication = {
   id: string;
   organization: string;
   contactIds?: string[];
   history?: ApplicationHistoryEntry[];
+  advertisement?: { url: string; text: string };
+  materials?: ApplicationMaterial[];
+  interviews?: ApplicationInterview[];
   role: string;
   status: ApplicationStatus;
   deadline: string;

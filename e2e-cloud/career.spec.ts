@@ -93,3 +93,84 @@ test("ansökningar och kontaktlogg molnsparas, återläses och hålls åtskilda 
   expect(f.writes.every((w) => w.user === userA)).toBe(true);
   expect(f.errors).toEqual([]);
 });
+
+test("dokument och intervjuanteckningar återläses från molnet med bevarade avklarade pass", async ({
+  page,
+}) => {
+  const original = plan("Molnplan");
+  const done = original.weeks[week].activities[0];
+  done.status = "done";
+  original.weeks[week].activities = [done];
+  original.weeks[week].weeklyRoutinesFrom = week;
+  original.applications = [
+    {
+      id: "application",
+      organization: "Bolaget",
+      role: "Analytiker",
+      status: "sent",
+      deadline: "",
+      nextAction: "",
+      followUpDate: "",
+      notes: "",
+    },
+  ];
+  const f = await mock(page, row(original));
+  await page.goto("./");
+  await login(page);
+  await status(page, "Sparat i molnet");
+  await page
+    .getByRole("navigation", { name: "Huvudnavigation" })
+    .getByRole("button", { name: "Jobb & nätverk", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog");
+  await page
+    .getByRole("button", { name: "Dokumentunderlag", exact: true })
+    .click();
+  await dialog.getByLabel("Annonstext", { exact: true }).fill("Sparad annons");
+  await dialog
+    .getByRole("button", { name: "Lägg till dokument", exact: true })
+    .click();
+  await dialog
+    .getByLabel("Dokumentlänk", { exact: true })
+    .fill("https://example.test/cv-v2");
+  await dialog
+    .getByRole("button", { name: "Spara dokumentunderlag", exact: true })
+    .click();
+  await status(page, "Sparat i molnet");
+  await page
+    .getByRole("button", { name: "Boka intervju", exact: true })
+    .click();
+  await dialog.getByLabel("Intervjudatum", { exact: true }).fill("2026-10-30");
+  await dialog.getByLabel("Intervjuns starttid", { exact: true }).fill("13:30");
+  await dialog
+    .getByRole("button", {
+      name: "Spara intervju och förberedelse",
+      exact: true,
+    })
+    .click();
+  await status(page, "Sparat i molnet");
+  await page
+    .getByRole("button", { name: "Intervjuanteckningar", exact: true })
+    .click();
+  await dialog
+    .getByLabel("Anteckningar efter intervjun", { exact: true })
+    .fill("Nästa samtal om en vecka.");
+  await dialog
+    .getByRole("button", { name: "Markera intervjun genomförd", exact: true })
+    .click();
+  await status(page, "Sparat i molnet");
+  const saved = structuredClone(f.documents.get(userA)!.data);
+  expect(saved.applications![0].materials?.[0].url).toBe(
+    "https://example.test/cv-v2",
+  );
+  expect(saved.applications![0].interviews?.[0].outcomeNotes).toBe(
+    "Nästa samtal om en vecka.",
+  );
+  expect(saved.weeks[week].activities.find((a) => a.id === done.id)).toEqual(
+    done,
+  );
+  await page.reload();
+  await status(page, "Sparat i molnet");
+  expect(f.documents.get(userA)!.data.applications).toEqual(saved.applications);
+  expect(f.errors).toEqual([]);
+});

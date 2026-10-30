@@ -107,3 +107,12 @@ export function completeApplicationAction(
     ],
   };
 }
+
+export function recordApplicationEvent(
+  a: JobApplication,
+  kind: ApplicationHistoryEntry["kind"],
+  notes: string,
+  now = new Date(),
+): JobApplication {
+  return { ...a, history: [...(a.history ?? []), entry(kind, notes, now)] };
+}

@@ -56,12 +56,14 @@ export function PlannerMasthead({
 
 export function WorkspaceTools({
   connected,
+  showAccount = true,
   onAccount,
   onHelp,
   undoLabel,
   onUndo,
 }: {
   connected: boolean;
+  showAccount?: boolean;
   onAccount: () => void;
   onHelp: () => void;
   undoLabel?: string;
@@ -82,10 +84,12 @@ export function WorkspaceTools({
       >
         Ångra
       </button>
-      <button className="text-button" onClick={onAccount}>
-        {connected ? "Konto" : "Lagring"}
-        <ArrowUpRight size={11} />
-      </button>
+      {showAccount && (
+        <button className="text-button" onClick={onAccount}>
+          {connected ? "Konto" : "Lagring"}
+          <ArrowUpRight size={11} />
+        </button>
+      )}
       <button className="text-button" onClick={onHelp}>
         <CircleHelp size={12} />
         Hjälp

@@ -31,6 +31,20 @@ import {
   type ActionPeriod,
 } from "@/lib/applications";
 import { ApplicationHistory } from "./application-history";
+import { ApplicationMaterials } from "./application-materials";
+import {
+  InterviewBookingForm,
+  InterviewNotesForm,
+} from "./application-interviews";
+import {
+  documentUrl,
+  saveApplicationMaterials,
+} from "@/lib/application-materials";
+import {
+  interviewActivity,
+  scheduleApplicationInterview,
+  saveInterviewNotes,
+} from "@/lib/application-interviews";
 import { Modal } from "./modal";
 
 const statuses = APPLICATION_STATUSES;
@@ -42,6 +56,14 @@ type Props = {
 };
 
 export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
+  const [materialsId, setMaterialsId] = useState<string | null>(null);
+  const [interviewBookingId, setInterviewBookingId] = useState<string | null>(
+    null,
+  );
+  const [interviewNotes, setInterviewNotes] = useState<{
+    applicationId: string;
+    interviewId: string;
+  } | null>(null);
   const [historyId, setHistoryId] = useState<string | null>(null);
   const [period, setPeriod] = useState<ActionPeriod>("all");
   const [tab, setTab] = useState("applications");
@@ -60,7 +82,15 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
     label: string;
   } | null>(null);
   const editing = Boolean(
-    application || contact || deadline || booking || preview || historyId,
+    application ||
+    contact ||
+    deadline ||
+    booking ||
+    preview ||
+    historyId ||
+    materialsId ||
+    interviewBookingId ||
+    interviewNotes,
   );
   useLayoutEffect(() => {
     onEditing(editing);
@@ -105,6 +135,16 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
       },
       data,
     );
+  const materialApplication = applications.find((a) => a.id === materialsId);
+  const bookingApplication = applications.find(
+    (a) => a.id === interviewBookingId,
+  );
+  const notesApplication = applications.find(
+    (a) => a.id === interviewNotes?.applicationId,
+  );
+  const notesInterview = notesApplication?.interviews?.find(
+    (i) => i.id === interviewNotes?.interviewId,
+  );
   const historyApplication = applications.find((a) => a.id === historyId);
   const nextDate = (date: string) => (date && date >= today() ? date : today());
   return (
@@ -246,6 +286,18 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
                   <div className="career-actions">
                     <button
                       className="button secondary"
+                      onClick={() => setMaterialsId(a.id)}
+                    >
+                      Dokumentunderlag
+                    </button>
+                    <button
+                      className="button secondary"
+                      onClick={() => setInterviewBookingId(a.id)}
+                    >
+                      Boka intervju
+                    </button>
+                    <button
+                      className="button secondary"
                       onClick={() => setHistoryId(a.id)}
                     >
                       Visa historik
@@ -301,6 +353,117 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
                       Planera från deadline
                     </button>
                   </div>
+                  {!!a.interviews?.length && (
+                    <section
+                      className="stack"
+                      aria-label={`Intervjuer för ${a.role}`}
+                    >
+                      <h3>Intervjuer</h3>
+                      {a.interviews.map((i) => {
+                        const meeting = interviewActivity(
+                          data,
+                          i.meetingActivityId,
+                        )?.activity;
+                        const prep = interviewActivity(
+                          data,
+                          i.preparationActivityId,
+                        )?.activity;
+                        const date = meeting?.date ?? i.date,
+                          start = meeting?.start ?? i.start,
+                          end = meeting?.end ?? i.end;
+                        const late =
+                          meeting &&
+                          prep &&
+                          (prep.date > meeting.date ||
+                            (prep.date === meeting.date &&
+                              prep.end > meeting.start));
+                        return (
+                          <div className="career-interview stack" key={i.id}>
+                            <h4>{i.title}</h4>
+                            <p>
+                              {date} · {time(start)}–{time(end)} ·{" "}
+                              {meeting
+                                ? meeting.status === "done"
+                                  ? "Genomförd"
+                                  : meeting.status === "skipped"
+                                    ? "Blev inte av"
+                                    : "Planerad"
+                                : "Kalenderpass saknas"}
+                            </p>
+                            {i.location && (
+                              <p className="career-notes">
+                                {i.location}
+                                {documentUrl(i.location) && (
+                                  <>
+                                    {" "}
+                                    ·{" "}
+                                    <a
+                                      href={documentUrl(i.location)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      Öppna möteslänk
+                                    </a>
+                                  </>
+                                )}
+                              </p>
+                            )}
+                            {i.contactId && (
+                              <p>
+                                Kontakt:{" "}
+                                {contacts.find((c) => c.id === i.contactId)
+                                  ?.name ?? "Borttagen kontakt"}
+                              </p>
+                            )}
+                            {prep && (
+                              <p>
+                                Förberedelse: {prep.date} {time(prep.start)}–
+                                {time(prep.end)}
+                              </p>
+                            )}
+                            {i.preparationActivityId && !prep && (
+                              <p>Förberedelsepasset saknas i kalendern.</p>
+                            )}
+                            {late && (
+                              <p role="status">
+                                Förberedelsepasset ligger inte före intervjun.
+                                Kontrollera tiderna i kalendern.
+                              </p>
+                            )}
+                            <div className="career-actions">
+                              <button
+                                className="button secondary"
+                                onClick={() =>
+                                  setInterviewNotes({
+                                    applicationId: a.id,
+                                    interviewId: i.id,
+                                  })
+                                }
+                              >
+                                Intervjuanteckningar
+                              </button>
+                              {meeting && (
+                                <button
+                                  className="button secondary"
+                                  onClick={() => onOpen(meeting)}
+                                >
+                                  Öppna intervjupass
+                                </button>
+                              )}
+                              {prep && (
+                                <button
+                                  className="button secondary"
+                                  onClick={() => onOpen(prep)}
+                                >
+                                  Öppna förberedelsepass
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </section>
+                  )}
                   {passes(linked("applicationId", a.id))}
                 </article>
               ))}
@@ -457,6 +620,58 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
           Förhandsvisa dagens omplanering
         </button>
       </section>
+      {materialApplication && (
+        <ApplicationMaterials
+          value={materialApplication}
+          onClose={() => setMaterialsId(null)}
+          onSave={(fields) => {
+            onChange(
+              saveApplicationMaterials(data, materialApplication.id, fields),
+              data,
+            );
+            setMaterialsId(null);
+          }}
+        />
+      )}
+      {bookingApplication && (
+        <InterviewBookingForm
+          application={bookingApplication}
+          data={data}
+          onClose={() => setInterviewBookingId(null)}
+          onSave={(input) => {
+            const result = scheduleApplicationInterview(
+              data,
+              bookingApplication.id,
+              input,
+            );
+            if (result.errors.length) return result.errors.join(" ");
+            onChange(result.data, data);
+            setInterviewBookingId(null);
+            return undefined;
+          }}
+        />
+      )}
+      {notesApplication && notesInterview && (
+        <InterviewNotesForm
+          application={notesApplication}
+          interview={notesInterview}
+          data={data}
+          onClose={() => setInterviewNotes(null)}
+          onSave={(fields, complete) => {
+            onChange(
+              saveInterviewNotes(
+                data,
+                notesApplication.id,
+                notesInterview.id,
+                fields,
+                complete,
+              ),
+              data,
+            );
+            setInterviewNotes(null);
+          }}
+        />
+      )}
       {historyApplication && (
         <ApplicationHistory
           value={historyApplication}

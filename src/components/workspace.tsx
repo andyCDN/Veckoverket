@@ -953,6 +953,20 @@ export function Workspace() {
         automaticDraft ? { notBefore: planningBoundary() } : {},
       )
     : null;
+  const storageStatus = (
+    <StorageStatus
+      compact={standalone && mobile}
+      configured={configured}
+      state={cloud}
+      onAccount={() => setAccount(true)}
+      onRetry={() => {
+        void retry();
+      }}
+      onResolve={(choice) => {
+        void resolveConflict(choice);
+      }}
+    />
+  );
   return (
     <div className="app-shell" data-view={view}>
       <a className="skip-link" href="#main-content">
@@ -1005,7 +1019,9 @@ export function Workspace() {
             </button>
           ))}
         </nav>
+        {!mobile && storageStatus}
         <WorkspaceTools
+          showAccount={mobile}
           connected={Boolean(user)}
           onAccount={() => setAccount(true)}
           onHelp={() => setHelp(true)}
@@ -1026,18 +1042,7 @@ export function Workspace() {
               </h1>
             </div>
           </div>
-          <StorageStatus
-            compact={standalone && mobile}
-            configured={configured}
-            state={cloud}
-            onAccount={() => setAccount(true)}
-            onRetry={() => {
-              void retry();
-            }}
-            onResolve={(choice) => {
-              void resolveConflict(choice);
-            }}
-          />
+          {mobile && storageStatus}
           {ical.error && data.icalCalendar?.autoRefresh && !googleOpen && (
             <div className="ical-sync-error" role="status">
               <p>{ical.error}</p>

@@ -402,3 +402,103 @@ test("ansökans nästa steg, historik och kontaktkoppling fungerar på mobil och
   await page.reload();
   expect((await stored(page)).applications).toEqual(saved.applications);
 });
+
+test("dokumentversioner och intervjuflöde sparas med kalender och historik", async ({
+  page,
+}) => {
+  await setup(page);
+  const before = await stored(page),
+    dialog = page.getByRole("dialog");
+  await page.getByRole("button", { name: "Ny ansökan", exact: true }).click();
+  await dialog.getByLabel("Organisation", { exact: true }).fill("Bolaget");
+  await dialog.getByLabel("Tjänst", { exact: true }).fill("Analytiker");
+  await dialog
+    .getByRole("button", { name: "Spara ansökan", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Dokumentunderlag", exact: true })
+    .click();
+  await dialog
+    .getByLabel("Annonslänk", { exact: true })
+    .fill("https://example.test/job");
+  await dialog
+    .getByRole("textbox", { name: "Annonstext", exact: true })
+    .fill("Sparad annons, även efter sista ansökningsdag.");
+  await dialog
+    .getByRole("button", { name: "Lägg till dokument", exact: true })
+    .click();
+  await dialog
+    .getByLabel("Dokumentlänk", { exact: true })
+    .fill("https://drive.example.test/cv-v1");
+  await dialog
+    .getByLabel("Version", { exact: true })
+    .fill("Version 1, skickad");
+  await dialog.getByLabel("Skickat datum", { exact: true }).fill("2026-10-29");
+  await dialog
+    .getByRole("button", { name: "Spara dokumentunderlag", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Boka intervju", exact: true })
+    .click();
+  await dialog.getByLabel("Intervjudatum", { exact: true }).fill("2026-10-30");
+  await dialog.getByLabel("Intervjuns starttid", { exact: true }).fill("13:30");
+  await dialog
+    .getByLabel("Förberedelseanteckningar", { exact: true })
+    .fill("Läs annonsen och förbered frågor.");
+  await dialog
+    .getByRole("button", {
+      name: "Spara intervju och förberedelse",
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Intervju: Analytiker · Bolaget" }),
+  ).toBeVisible();
+  await expect
+    .poll(async () => (await stored(page)).applications?.[0].interviews?.length)
+    .toBe(1);
+  await page
+    .getByRole("button", { name: "Intervjuanteckningar", exact: true })
+    .click();
+  await dialog
+    .getByLabel("Anteckningar efter intervjun", { exact: true })
+    .fill("Avtalat att skicka referenser.");
+  await dialog
+    .getByLabel("Nästa steg efter intervjun", { exact: true })
+    .fill("Skicka referenser");
+  await dialog
+    .getByLabel("Uppföljningsdatum efter intervjun", { exact: true })
+    .fill("2026-11-02");
+  await dialog
+    .getByRole("button", { name: "Markera intervjun genomförd", exact: true })
+    .click();
+  const saved = await stored(page),
+    i = saved.applications![0].interviews![0];
+  expect(
+    saved.weeks[week].activities.find((a) => a.id === i.meetingActivityId)
+      ?.status,
+  ).toBe("done");
+  expect(
+    saved.weeks[week].activities.find((a) => a.id === i.preparationActivityId)
+      ?.status,
+  ).toBe("planned");
+  expect(saved.weeks[week].activities.find((a) => a.id === "done")).toEqual(
+    before.weeks[week].activities[0],
+  );
+  expect(saved.applications![0].nextAction).toBe("Skicka referenser");
+  await page.reload();
+  await page
+    .getByRole("navigation", { name: "Huvudnavigation" })
+    .getByRole("button", { name: "Jobb & nätverk", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Dokumentunderlag", exact: true })
+    .click();
+  await expect(
+    dialog.getByRole("textbox", { name: "Annonstext", exact: true }),
+  ).toHaveValue("Sparad annons, även efter sista ansökningsdag.");
+  await expect(
+    dialog.getByRole("link", { name: "Öppna dokument 1" }),
+  ).toHaveAttribute("href", "https://drive.example.test/cv-v1");
+  expect((await stored(page)).applications).toEqual(saved.applications);
+});
