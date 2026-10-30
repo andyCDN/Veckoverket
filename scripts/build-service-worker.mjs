@@ -23,6 +23,7 @@ export async function buildServiceWorker(basePath = "/Veckoverket") {
     join(root, "inspelning", "index.html"),
     join(root, "pcm-capture.worklet.js"),
     join(root, "manifest.webmanifest"),
+    join(root, "inspelning", "manifest.webmanifest"),
     ...(await files(join(root, "_next", "static"))),
     ...(await files(join(root, "icons"))),
   ].sort();

@@ -77,6 +77,21 @@ test("PWA-manifest, appikoner och webbläsarens installationskrav", async ({
     const client = await regular.newCDPSession(normalPage);
     const eligibility = await client.send("Page.getInstallabilityErrors");
     expect(eligibility.installabilityErrors).toEqual([]);
+    await normalPage.goto(new URL("inspelning/", root).href);
+    await expect(
+      normalPage.getByRole("heading", {
+        name: "Samtalsinspelning",
+        exact: true,
+      }),
+    ).toBeVisible();
+    const recordingManifest = await client.send("Page.getAppManifest");
+    expect(JSON.parse(recordingManifest.data!).id).toBe(
+      `${root.pathname}inspelning/`,
+    );
+    const recordingEligibility = await client.send(
+      "Page.getInstallabilityErrors",
+    );
+    expect(recordingEligibility.installabilityErrors).toEqual([]);
   } finally {
     await regular.close();
     await rm(profile, { recursive: true, force: true });
@@ -231,4 +246,88 @@ test("en uppdaterad service worker väntar och lämnar ett öppet formulär orö
   await expect(page.getByLabel("Namn", { exact: true })).toHaveValue(
     "Pågående redigering",
   );
+});
+
+test("inspelningen har egen appidentitet, hemskärmsikon och offline-manifest", async ({
+  page,
+  context,
+}) => {
+  await ready(page);
+  const root = new URL(page.url());
+  const mainManifestURL = new URL(
+    (await page.locator('link[rel="manifest"]').getAttribute("href"))!,
+    root,
+  );
+  const mainManifest = await (
+    await page.request.get(mainManifestURL.href)
+  ).json();
+  const mainIcon = await (
+    await page.request.get(new URL(mainManifest.icons[0].src, root).href)
+  ).body();
+  await page.goto(new URL("inspelning/", root).href);
+  const manifestLink = page.locator('link[rel="manifest"]');
+  await expect(manifestLink).toHaveCount(1);
+  const manifestURL = new URL((await manifestLink.getAttribute("href"))!, root);
+  expect(manifestURL.pathname).toBe(
+    `${root.pathname}inspelning/manifest.webmanifest`,
+  );
+  const response = await page.request.get(manifestURL.href);
+  expect(response.ok()).toBe(true);
+  expect(response.headers()["content-type"]).toContain(
+    "application/manifest+json",
+  );
+  const manifest = await response.json();
+  expect(manifest).toMatchObject({
+    name: "Samtalsinspelning",
+    short_name: "Inspelning",
+    id: `${root.pathname}inspelning/`,
+    start_url: `${root.pathname}inspelning/`,
+    scope: `${root.pathname}inspelning/`,
+    theme_color: "#f04b31",
+  });
+  expect(manifest.id).not.toBe(mainManifest.id);
+  expect(
+    manifest.icons.some(
+      (icon: { purpose: string }) => icon.purpose === "maskable",
+    ),
+  ).toBe(true);
+  for (const icon of manifest.icons) {
+    const iconResponse = await page.request.get(new URL(icon.src, root).href);
+    expect(iconResponse.ok()).toBe(true);
+    const bytes = await iconResponse.body();
+    expect(bytes.equals(mainIcon)).toBe(false);
+    expect(bytes.toString("ascii", 1, 4)).toBe("PNG");
+    expect(`${bytes.readUInt32BE(16)}x${bytes.readUInt32BE(20)}`).toBe(
+      icon.sizes,
+    );
+    expect(icon.src).toContain("/icons/inspelning-");
+  }
+  await expect(
+    page.locator('meta[name="apple-mobile-web-app-title"]'),
+  ).toHaveAttribute("content", "Inspelning");
+  await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveCount(1);
+  await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute(
+    "href",
+    `${root.pathname}icons/inspelning-180.png`,
+  );
+  const faviconLinks = page.locator('link[rel="icon"]');
+  for (const icon of await faviconLinks.all())
+    expect(await icon.getAttribute("href")).toContain("/icons/inspelning-");
+  await context.setOffline(true);
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Samtalsinspelning", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      async (url) => (await fetch(url)).json(),
+      manifestURL.href,
+    ),
+  ).toMatchObject({ id: manifest.id });
+  expect(
+    await page.evaluate(
+      async (path) => (await fetch(path)).ok,
+      `${root.pathname}icons/inspelning-180.png`,
+    ),
+  ).toBe(true);
 });

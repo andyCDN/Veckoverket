@@ -4,6 +4,12 @@ Mobilwebbsidan finns på `/Veckoverket/inspelning/`. Öppna den direkt eller fr�
 
 Efter stopp visas **Kategorisera**. Välj valfri kategori, ändra rubrik och koppla vid behov en ansökan, intervju eller kontakt. **Spara kategorisering** sparar dessa uppgifter även om sammanfattningen ännu inte är klar. Du kan också lämna inspelningen okategoriserad och öppna den från **Tidigare inspelningar** senare. En länk från en ansökan eller kontakt föreslår kopplingen i efterhand; den sparas först när du väljer att spara.
 
+## Egen appikon på hemskärmen
+
+Öppna [inspelningssidan](https://andycdn.github.io/Veckoverket/inspelning/) i mobilens webbläsare och installera just den sidan. På iPhone: **Dela → Lägg till på hemskärmen**. På Android: **⋮ → Installera appen** eller **Lägg till på startskärmen**. Inspelning får en egen röd ikon med en svart inspelningspunkt, eget appnamn och startadress. Veckoverket behåller sin V-ikon.
+
+Om en genväg till inspelningen redan har skapats med den gamla V-ikonen kan den behöva läggas till på nytt från inspelningssidan. Kontrollera att väntande ljud har laddats upp innan en äldre hemskärmsinstallation tas bort. Behåll Veckoverkets vanliga ikon. Befintliga molnplaner och uppladdat ljud berörs inte.
+
 ## Aktivera serverdelen
 
 GitHub Pages publicerar gränssnittet. Supabase-tabellerna, ljudlagringen och Edge-funktionen måste installeras separat av projektets administratör. GitHub Pages publicering installerar inte dessa delar.
