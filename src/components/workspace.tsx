@@ -19,6 +19,7 @@ import {
   Printer,
   MoreHorizontal,
   ListFilter,
+  Undo2,
 } from "lucide-react";
 import type {
   Activity,
@@ -76,6 +77,7 @@ import { PlannerMasthead, WorkspaceTools, BackCoverInfo } from "./punk";
 import { GoogleCalendarModal } from "./google-calendar";
 import { useGoogleCalendar } from "@/lib/use-google-calendar";
 import { useIcalCalendar } from "@/lib/use-ical-calendar";
+import { applyCalendarCategoryRules } from "@/lib/calendar-categories";
 import {
   previewGoogleImport,
   removeGoogleImports,
@@ -126,6 +128,8 @@ export function Workspace() {
   const {
     data,
     setData,
+    undo,
+    undoLabel,
     user,
     authReady,
     authError,
@@ -163,21 +167,24 @@ export function Workspace() {
     [googleOpen, setGoogleOpen] = useState(false),
     [resetOpen, setResetOpen] = useState(false),
     [routineId, setRoutineId] = useState<string | null>(null),
-    [notice, setNotice] = useState("");
+    [notice, setNotice] = useState(""),
+    [undoVersion, setUndoVersion] = useState(0);
   const google = useGoogleCalendar(
     configured ? (user?.id ?? "signed-out") : "local",
   );
   const autoImportIcal = useCallback(
     (snapshot: GoogleSnapshot) => {
-      setData((current) =>
-        current?.icalCalendar?.autoRefresh &&
-        current.icalCalendar.calendarId === snapshot.calendarIds[0]
-          ? previewGoogleImport(
-              current,
-              snapshot,
-              Boolean(current.settings.autoPlanning),
-            ).data
-          : current,
+      setData(
+        (current) =>
+          current?.icalCalendar?.autoRefresh &&
+          current.icalCalendar.calendarId === snapshot.calendarIds[0]
+            ? previewGoogleImport(
+                current,
+                snapshot,
+                Boolean(current.settings.autoPlanning),
+              ).data
+            : current,
+        { history: false },
       );
     },
     [setData],
@@ -204,8 +211,45 @@ export function Workspace() {
   const notify = useCallback((message: string) => setNotice(message), []);
   useEffect(() => {
     if (!data || (configured && cloud.phase !== "synced")) return;
-    setData((current) => (current ? upgradeWeeklyRoutines(current) : current));
+    setData((current) => (current ? upgradeWeeklyRoutines(current) : current), {
+      history: false,
+    });
   }, [data, configured, cloud.phase, setData]);
+  const undoAvailable = Boolean(
+    undoLabel &&
+    !editor &&
+    !generator &&
+    !newGoal &&
+    !account &&
+    !googleOpen &&
+    !resetOpen &&
+    !routineId &&
+    !help,
+  );
+  const performUndo = useCallback(() => {
+    if (undo()) {
+      setUndoVersion((value) => value + 1);
+      setNotice("Den senaste ändringen har ångrats.");
+    }
+  }, [undo]);
+  useEffect(() => {
+    const keydown = (event: KeyboardEvent) => {
+      const element = event.target as HTMLElement | null;
+      if (
+        !undoAvailable ||
+        (!event.ctrlKey && !event.metaKey) ||
+        event.altKey ||
+        event.shiftKey ||
+        event.key.toLowerCase() !== "z" ||
+        element?.closest("input,textarea,select,[contenteditable=true]")
+      )
+        return;
+      event.preventDefault();
+      performUndo();
+    };
+    document.addEventListener("keydown", keydown);
+    return () => document.removeEventListener("keydown", keydown);
+  }, [performUndo, undoAvailable]);
   useEffect(() => {
     const query = window.matchMedia(
       standalone ? "(max-width: 950px)" : "(max-width: 700px)",
@@ -280,28 +324,34 @@ export function Workspace() {
     setRoutineId(null);
     setWeek(w);
     setDaySelection(null);
-    setData((d) => {
-      if (!d || d.weeks[w]) return d;
-      return {
-        ...d,
-        weeks: {
-          ...d.weeks,
-          [w]: linkedPlan(
-            generateWeek(
-              w,
-              d,
-              undefined,
-              d.settings.autoPlanning ? { notBefore: planningBoundary() } : {},
-            ).plan,
-            d.goals,
-          ),
-        },
-      };
-    });
+    setData(
+      (d) => {
+        if (!d || d.weeks[w]) return d;
+        return {
+          ...d,
+          weeks: {
+            ...d.weeks,
+            [w]: linkedPlan(
+              generateWeek(
+                w,
+                d,
+                undefined,
+                d.settings.autoPlanning
+                  ? { notBefore: planningBoundary() }
+                  : {},
+              ).plan,
+              d.goals,
+            ),
+          },
+        };
+      },
+      { history: false },
+    );
   }
   function updatePlan(plan: WeekPlan) {
-    setData((d) =>
-      d ? { ...d, weeks: { ...d.weeks, [plan.week]: plan } } : d,
+    setData(
+      (d) => (d ? { ...d, weeks: { ...d.weeks, [plan.week]: plan } } : d),
+      { undoLabel: "aktivitetsstatus" },
     );
   }
   if (configured && authReady && !user)
@@ -543,7 +593,7 @@ export function Workspace() {
       notify(conflict.message);
       return;
     }
-    setData(next);
+    setData(next, { undoLabel: "flytt av aktivitet" });
     notify("Aktiviteten har flyttats.");
   }
   function saveActivity(
@@ -663,7 +713,10 @@ export function Workspace() {
         return;
       }
     }
-    setData({ ...current, weeks, recurring });
+    setData(
+      { ...current, weeks, recurring },
+      { undoLabel: "sparad aktivitet" },
+    );
     setEditor(null);
     notify(
       recurrence
@@ -707,6 +760,7 @@ export function Workspace() {
     };
     setData(
       a.source !== "generated" ? replanAfterBookings(next, changedWeeks) : next,
+      { undoLabel: "borttagning av aktivitet" },
     );
     setEditor(null);
     notify(
@@ -746,7 +800,7 @@ export function Workspace() {
           : [],
       ),
     };
-    setData(next);
+    setData(next, { undoLabel: "planeringsinställningar" });
     navigate("dashboard");
     notify(
       result.conflicts.length
@@ -757,7 +811,10 @@ export function Workspace() {
   function replaceData(imported: AppData) {
     setBlockedSave(false);
     setDaySelection(null);
-    setData(imported);
+    setData(imported, {
+      history: !blockedSave,
+      undoLabel: "inläst säkerhetskopia",
+    });
     const w = Object.keys(imported.weeks).sort().at(-1);
     if (w) setWeek(w);
     setView("dashboard");
@@ -792,8 +849,12 @@ export function Workspace() {
     if (configured && cloud.phase === "conflict") return;
     const currentWeek = monday(today());
     setBlockedSave(false);
-    setData((current) =>
-      current ? resetPlanning(current, currentWeek) : current,
+    setData(
+      (current) => (current ? resetPlanning(current, currentWeek) : current),
+      {
+        history: !blockedSave,
+        undoLabel: "nollställning av planering och statistik",
+      },
     );
     setResetOpen(false);
     setCategoryFilter("all");
@@ -830,6 +891,20 @@ export function Workspace() {
   );
   const calendarTools = (
     <>
+      <button
+        className="text-button undo-action"
+        disabled={!undoAvailable}
+        title={
+          undoLabel
+            ? `Ångra: ${undoLabel}`
+            : "Inget att ångra i den här sessionen"
+        }
+        onClick={performUndo}
+        aria-label="Ångra senaste ändringen"
+      >
+        <Undo2 size={16} />
+        Ångra
+      </button>
       <button
         className="text-button print-button"
         onClick={() => window.print()}
@@ -909,6 +984,8 @@ export function Workspace() {
           connected={Boolean(user)}
           onAccount={() => setAccount(true)}
           onHelp={() => setHelp(true)}
+          undoLabel={undoAvailable ? undoLabel : ""}
+          onUndo={performUndo}
         />
       </div>
       <div className="main-shell">
@@ -1296,11 +1373,38 @@ export function Workspace() {
           )}
           {view === "settings" && (
             <SettingsView
-              key={`settings-${week}`}
+              key={`settings-${week}-${undoVersion}`}
               data={data}
               week={week}
               cloudEnabled={configured}
               onGoogle={() => setGoogleOpen(true)}
+              onCategoryRules={(rules) =>
+                setData(
+                  (current) =>
+                    current
+                      ? { ...current, calendarCategoryRules: rules }
+                      : current,
+                  { undoLabel: "kategoriregler" },
+                )
+              }
+              onApplyCategoryRules={() => {
+                setData(
+                  (current) => {
+                    if (!current) return current;
+                    const result = applyCalendarCategoryRules(current);
+                    return replanAfterBookings(
+                      result.data,
+                      Object.keys(current.weeks).filter(
+                        (key) => current.weeks[key] !== result.data.weeks[key],
+                      ),
+                    );
+                  },
+                  { undoLabel: "kategorisering av sparade bokningar" },
+                );
+                notify(
+                  "Kategorireglerna har tillämpats. Manuella kategorival har behållits.",
+                );
+              }}
               onApply={applySettings}
               onImport={replaceData}
               onRemoveRecurring={(id) =>
@@ -1341,6 +1445,15 @@ export function Workspace() {
       {notice && (
         <div className="toast" role="status">
           <span>{notice}</span>
+          {undoAvailable && (
+            <button
+              className="text-button"
+              onClick={performUndo}
+              aria-label="Ångra senaste ändringen"
+            >
+              Ångra
+            </button>
+          )}
           <button
             className="icon-button"
             onClick={() => setNotice("")}
@@ -1384,11 +1497,14 @@ export function Workspace() {
             )
           }
           onIcalDisconnected={() =>
-            setData((current) => {
-              if (!current) return current;
-              const { icalCalendar: _feed, ...rest } = current;
-              return rest;
-            })
+            setData(
+              (current) => {
+                if (!current) return current;
+                const { icalCalendar: _feed, ...rest } = current;
+                return rest;
+              },
+              { history: false },
+            )
           }
           onImport={importGoogle}
           onRemove={() => {

@@ -9,6 +9,13 @@ export type Category = {
   movable: boolean;
 };
 export type BlockType = "locked" | "protected" | "flexible";
+export type CalendarCategoryRule = {
+  id: string;
+  contains: string;
+  categoryId: string;
+  enabled: boolean;
+  calendarId?: string;
+};
 export type GoogleEventSource = {
   provider: "google-calendar";
   calendarId: string;
@@ -107,6 +114,7 @@ export type AppData = {
   tasks: Task[];
   recurring: RecurringActivity[];
   reflections: Record<string, Reflection>;
+  calendarCategoryRules?: CalendarCategoryRule[];
   // No private URL is stored in the workspace, browser cache, or backups.
   icalCalendar?: { calendarId: string; autoRefresh: boolean };
   googleCalendar?: {
@@ -114,6 +122,7 @@ export type AppData = {
     lastImportedWeek: string;
     lastImportedAt: string;
     eventCategories?: Record<string, string>;
+    eventCategorySources?: Record<string, "manual" | "rule">;
   };
 };
 export type Conflict = {

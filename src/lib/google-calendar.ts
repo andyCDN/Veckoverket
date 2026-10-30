@@ -5,9 +5,14 @@ import {
   GOOGLE_CATEGORY_ID,
   googleEventUrl,
   googleEventKey as eventKey,
-  isGoogleEventKey,
 } from "./external-calendar";
 import { generateWeek, validatePlan } from "./planner";
+import {
+  googleCategoryChoices,
+  resolvedCalendarCategory,
+  categoryMetadata,
+  type GoogleCategoryChoices,
+} from "./calendar-categories";
 import { planningBoundary } from "./date";
 import { replanAfterBookings } from "./auto-planning";
 import {
@@ -121,76 +126,11 @@ export async function listGoogleCalendars(token: string, signal: AbortSignal) {
       ["owner", "writer", "reader"].includes(c.accessRole ?? "reader"),
   );
 }
-export type GoogleCategoryChoices = Record<string, string>;
-
-/** Local choices follow the source event, including moves and day segments. */
-export function googleCategoryChoices(
-  data: AppData,
-  overrides: GoogleCategoryChoices = {},
-): GoogleCategoryChoices {
-  const categories: GoogleCategoryChoices = {
-    ...data.googleCalendar?.eventCategories,
-  };
-  for (const plan of Object.values(data.weeks))
-    for (const activity of plan.activities) {
-      const key = eventKey(activity);
-      if (
-        key &&
-        activity.categoryId !== GOOGLE_CATEGORY_ID &&
-        categories[key] === undefined
-      )
-        categories[key] = activity.categoryId;
-    }
-  for (const [key, categoryId] of Object.entries(overrides)) {
-    if (!isGoogleEventKey(key)) continue;
-    if (categoryId === GOOGLE_CATEGORY_ID) delete categories[key];
-    else if (data.categories.some((c) => c.id === categoryId))
-      categories[key] = categoryId;
-  }
-  return categories;
-}
-
-export function categorizeGoogleEvent(
-  data: AppData,
-  activity: Activity,
-  categoryId: string,
-): AppData {
-  const key = eventKey(activity);
-  if (
-    !key ||
-    !Object.values(data.weeks).some((plan) =>
-      plan.activities.some((a) => eventKey(a) === key),
-    ) ||
-    (categoryId !== GOOGLE_CATEGORY_ID &&
-      !data.categories.some((c) => c.id === categoryId))
-  )
-    return data;
-  const eventCategories = googleCategoryChoices(data, { [key]: categoryId });
-  return {
-    ...data,
-    categories:
-      categoryId === GOOGLE_CATEGORY_ID &&
-      !data.categories.some((c) => c.id === GOOGLE_CATEGORY_ID)
-        ? [...data.categories, { ...GOOGLE_CATEGORY }]
-        : data.categories,
-    weeks: Object.fromEntries(
-      Object.entries(data.weeks).map(([week, plan]) => [
-        week,
-        plan.activities.some((a) => eventKey(a) === key)
-          ? {
-              ...plan,
-              activities: plan.activities.map((a) =>
-                eventKey(a) === key ? { ...a, categoryId } : a,
-              ),
-            }
-          : plan,
-      ]),
-    ),
-    ...(data.googleCalendar
-      ? { googleCalendar: { ...data.googleCalendar, eventCategories } }
-      : {}),
-  };
-}
+export {
+  googleCategoryChoices,
+  categorizeGoogleEvent,
+} from "./calendar-categories";
+export type { GoogleCategoryChoices } from "./calendar-categories";
 export function googleEventActivities(
   calendar: GoogleCalendar,
   events: GoogleEvent[],
@@ -336,11 +276,18 @@ export function previewGoogleImport(
           : "planned",
     );
   }
-  const withStatus = (a: Activity): Activity => ({
-    ...a,
-    categoryId: eventCategories[eventKey(a)] ?? GOOGLE_CATEGORY_ID,
-    status: statusById.get(a.id) ?? statusByEvent.get(eventKey(a)) ?? "planned",
-  });
+  const sources = { ...data.googleCalendar?.eventCategorySources };
+  const withStatus = (a: Activity): Activity => {
+    const resolved = resolvedCalendarCategory(data, a, eventCategories);
+    if (resolved.source) sources[eventKey(a)] = resolved.source;
+    else delete sources[eventKey(a)];
+    return {
+      ...a,
+      categoryId: resolved.categoryId,
+      status:
+        statusById.get(a.id) ?? statusByEvent.get(eventKey(a)) ?? "planned",
+    };
+  };
   const imported = snapshot.activities.map(withStatus);
   const received = new Map(snapshot.activities.map((a) => [eventKey(a), a]));
   const deleted = new Set(
@@ -447,9 +394,9 @@ export function previewGoogleImport(
     ...current,
     weeks: { ...current.weeks, [week]: plan },
     googleCalendar: {
+      ...categoryMetadata(current, eventCategories, sources),
       calendarIds: snapshot.calendarIds,
       lastImportedAt: snapshot.importedAt,
-      ...(Object.keys(eventCategories).length ? { eventCategories } : {}),
       lastImportedWeek: week,
     },
   };

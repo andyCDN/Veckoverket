@@ -76,6 +76,34 @@ export function decodeData(raw: string): AppData {
     ids.add(c.id);
   }
   const date = /^\d{4}-\d{2}-\d{2}$/;
+  if (d.calendarCategoryRules !== undefined) {
+    if (
+      !Array.isArray(d.calendarCategoryRules) ||
+      d.calendarCategoryRules.length > 100
+    )
+      throw new Error("Kategorireglerna är ogiltiga.");
+    const ruleIds = new Set();
+    for (const rule of d.calendarCategoryRules) {
+      if (
+        !rule ||
+        typeof rule.id !== "string" ||
+        !rule.id.trim() ||
+        ruleIds.has(rule.id) ||
+        typeof rule.contains !== "string" ||
+        !rule.contains.trim() ||
+        rule.contains.length > 120 ||
+        !ids.has(rule.categoryId) ||
+        rule.categoryId === "google-calendar" ||
+        typeof rule.enabled !== "boolean" ||
+        (rule.calendarId !== undefined &&
+          (typeof rule.calendarId !== "string" ||
+            !rule.calendarId.trim() ||
+            rule.calendarId.length > 500))
+      )
+        throw new Error("En kategoriregel är ogiltig.");
+      ruleIds.add(rule.id);
+    }
+  }
   for (const [week, plan] of Object.entries(d.weeks) as [
     string,
     { week: string; activities: Record<string, unknown>[] },
@@ -237,6 +265,15 @@ export function decodeData(raw: string): AppData {
               isGoogleEventKey(key) &&
               typeof categoryId === "string" &&
               ids.has(categoryId),
+          ))) ||
+      (g.eventCategorySources !== undefined &&
+        (!g.eventCategorySources ||
+          typeof g.eventCategorySources !== "object" ||
+          Array.isArray(g.eventCategorySources) ||
+          !Object.entries(g.eventCategorySources).every(
+            ([key, source]) =>
+              isGoogleEventKey(key) &&
+              ["manual", "rule"].includes(String(source)),
           )))
     )
       throw new Error("Google-kalenderns importinställningar är ogiltiga.");

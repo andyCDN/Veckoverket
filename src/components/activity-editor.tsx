@@ -15,6 +15,12 @@ import {
 import { validatePlan } from "@/lib/planner";
 import { bookingConstraints } from "@/lib/auto-planning";
 import { GOOGLE_CATEGORY_ID } from "@/lib/external-calendar";
+import {
+  AUTO_CATEGORY,
+  googleCategoryChoices,
+  resolvedCalendarCategory,
+} from "@/lib/calendar-categories";
+import { googleEventKey } from "@/lib/external-calendar";
 import type { Activity, AppData, RecurringActivity } from "@/lib/types";
 export function ActivityEditor({
   activity,
@@ -43,6 +49,12 @@ export function ActivityEditor({
   onClose: () => void;
   onCategorize: (activity: Activity, categoryId: string) => void;
 }) {
+  const initialCategory = activity?.external
+    ? (googleCategoryChoices(data)[googleEventKey(activity)] ?? AUTO_CATEGORY)
+    : activity?.categoryId;
+  const [calendarCategory, setCalendarCategory] = useState(
+    initialCategory ?? AUTO_CATEGORY,
+  );
   const [form, setForm] = useState<Activity>(
     activity ?? {
       id: uid(),
@@ -158,8 +170,21 @@ export function ActivityEditor({
         <div className="stack">
           <GoogleCategorySelect
             categories={data.categories}
-            value={form.categoryId}
-            onChange={(categoryId) => patch({ categoryId })}
+            value={calendarCategory}
+            automaticName={
+              data.categories.find(
+                (c) =>
+                  c.id ===
+                  resolvedCalendarCategory(
+                    data,
+                    activity,
+                    googleCategoryChoices(data, {
+                      [googleEventKey(activity)]: AUTO_CATEGORY,
+                    }),
+                  ).categoryId,
+              )?.name ?? "Ej kategoriserad"
+            }
+            onChange={setCalendarCategory}
           />
           <p>
             Kategorin används för färg, filtrering och tidsuppföljning i
@@ -167,8 +192,8 @@ export function ActivityEditor({
           </p>
           <button
             className="button primary"
-            disabled={form.categoryId === activity.categoryId}
-            onClick={() => onCategorize(activity, form.categoryId)}
+            disabled={calendarCategory === initialCategory}
+            onClick={() => onCategorize(activity, calendarCategory)}
           >
             <Check size={16} />
             Spara kategori

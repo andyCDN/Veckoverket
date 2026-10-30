@@ -80,6 +80,8 @@ You can mark imported events as completed in Veckoverket. Change their titles, d
 
 Open an imported booking, choose **Kategori**, then click **Spara kategori**. The category controls its color, filters and time reporting in Veckoverket. Choose **Ej kategoriserad (Google Kalender)** to clear the classification. The Google event's title, dates, times and read-only source link stay attached.
 
+For automatic classification, add rules under **Inställningar → Automatisk kategorisering**. The first matching enabled title rule wins; manual choices, including an explicit uncategorized choice, take precedence. Choose **Automatisk: …** to return a booking to the rules. Rule results are recalculated on later imports. See [category rules, undo, and reporting](planning-tools.md).
+
 The choice is saved per Google calendar and event ID, so it survives renaming, rescheduling, reimport and events split across several dates or saved weeks. A recurring Google occurrence has its own event ID and can be categorized separately. Selections and completion marks are included in account storage and JSON backups; no database migration is needed. Removing all imported events or resetting planning clears the saved Google category choices.
 
 Busy timed bookings count toward the selected category's time budget and completion totals. Free and all-day entries stay excluded from hour totals and do not satisfy training-session or full-morning music requirements. If automatic weekly planning is enabled, changing a booking's category recalculates affected future suggestions using the updated totals.

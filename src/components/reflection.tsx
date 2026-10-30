@@ -4,6 +4,7 @@ import { categoryMinutes } from "@/lib/planner";
 import { categoryInk } from "@/lib/presentation";
 import { hours, weekLabel, weekNumber } from "@/lib/date";
 import type { AppData, Reflection } from "@/lib/types";
+import { PeriodStatistics } from "./period-statistics";
 const prompts = [
   [
     "startPlan",
@@ -63,6 +64,7 @@ export function ReflectionView({
         <div>
           <h2>Uppföljning av veckan</h2>
           <p>Jämför planerad tid, genomförd tid och resultat.</p>
+          <a href="#period-statistics">Visa uppföljning över flera veckor</a>
         </div>
         <span className="saved-label">
           <Check size={14} />
@@ -160,6 +162,9 @@ export function ReflectionView({
             {!goals.length && <p>Inga veckomål ännu.</p>}
           </div>
         </aside>
+      </div>
+      <div id="period-statistics">
+        <PeriodStatistics data={data} week={week} onWeek={onWeek} />
       </div>
     </section>
   );

@@ -10,7 +10,13 @@ import {
   LockKeyhole,
   Trash2,
 } from "lucide-react";
-import type { AppData, Category, Settings } from "@/lib/types";
+import type {
+  AppData,
+  Category,
+  Settings,
+  CalendarCategoryRule,
+} from "@/lib/types";
+import { CalendarCategoryRules } from "./calendar-category-rules";
 import { DAY_NAMES, hours, parseTime, time, uid } from "@/lib/date";
 import {
   capacity,
@@ -92,6 +98,8 @@ export function SettingsView({
   onReset,
   cloudEnabled = false,
   onGoogle,
+  onCategoryRules,
+  onApplyCategoryRules,
 }: {
   data: AppData;
   week: string;
@@ -102,6 +110,8 @@ export function SettingsView({
   onReset: () => void;
   cloudEnabled?: boolean;
   onGoogle: () => void;
+  onCategoryRules: (rules: CalendarCategoryRule[]) => void;
+  onApplyCategoryRules: () => void;
 }) {
   const [s, setS] = useState(data.settings),
     [cats, setCats] = useState(data.categories),
@@ -641,6 +651,11 @@ export function SettingsView({
           Hantera Google Kalender
         </button>
       </section>
+      <CalendarCategoryRules
+        data={data}
+        onChange={onCategoryRules}
+        onApply={onApplyCategoryRules}
+      />
       <section className="data-section" id="storage-settings" tabIndex={-1}>
         <div>
           <h3>Lagring och säkerhetskopiering</h3>

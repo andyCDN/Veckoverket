@@ -50,13 +50,30 @@ export function WorkspaceTools({
   connected,
   onAccount,
   onHelp,
+  undoLabel,
+  onUndo,
 }: {
   connected: boolean;
   onAccount: () => void;
   onHelp: () => void;
+  undoLabel?: string;
+  onUndo: () => void;
 }) {
   return (
     <div className="workspace-tools">
+      <button
+        className="text-button"
+        onClick={onUndo}
+        disabled={!undoLabel}
+        title={
+          undoLabel
+            ? `Ångra: ${undoLabel}`
+            : "Inget att ångra i den här sessionen"
+        }
+        aria-label="Ångra senaste ändringen"
+      >
+        Ångra
+      </button>
       <button className="text-button" onClick={onAccount}>
         {connected ? "Konto" : "Lagring"}
         <ArrowUpRight size={11} />

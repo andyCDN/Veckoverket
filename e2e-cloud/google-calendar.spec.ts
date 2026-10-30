@@ -204,6 +204,81 @@ test("läser Google-bokningar, planerar runt dem och behåller avbockning vid up
   ).toHaveCount(0);
   expect(cloud.errors).toEqual([]);
 });
+test("kategoriregler används vid Google-import och manuella undantag kan återgå till automatisk kategori", async ({
+  page,
+}) => {
+  const initial = plan("Regeltest");
+  initial.calendarCategoryRules = [
+    { id: "booking", contains: "Bokat", categoryId: "learning", enabled: true },
+    {
+      id: "interview",
+      contains: "Intervju",
+      categoryId: "career",
+      enabled: true,
+    },
+  ];
+  const cloud = await mock(page, row(initial)),
+    g = await googleMock(page);
+  await page.goto("./");
+  await login(page);
+  await status(page, "Sparat i molnet");
+  await connect(page);
+  await preview(page);
+  await expect(
+    page.getByRole("combobox", { name: /^Kategori för Bokat/ }),
+  ).toHaveValue("__calendar_auto__");
+  await apply(page);
+  expect(
+    cloud.documents
+      .get(userA)!
+      .data.weeks[week].activities.find((a) => a.external)?.categoryId,
+  ).toBe("learning");
+  g.events = [event({ summary: "Intervju i Google" })];
+  await open(page);
+  await preview(page);
+  await apply(page);
+  expect(
+    cloud.documents
+      .get(userA)!
+      .data.weeks[week].activities.find((a) => a.external)?.categoryId,
+  ).toBe("career");
+  const entry = page
+    .locator(".calendar-block")
+    .filter({ hasText: "Intervju i Google" });
+  await entry.click();
+  await page
+    .getByRole("combobox", { name: "Kategori", exact: true })
+    .selectOption("google-calendar");
+  await page
+    .getByRole("button", { name: "Spara kategori", exact: true })
+    .click();
+  await status(page, "Sparat i molnet");
+  await open(page);
+  await preview(page);
+  await expect(
+    page.getByRole("combobox", { name: /^Kategori för Intervju/ }),
+  ).toHaveValue("google-calendar");
+  await apply(page);
+  expect(
+    cloud.documents
+      .get(userA)!
+      .data.weeks[week].activities.find((a) => a.external)?.categoryId,
+  ).toBe("google-calendar");
+  await entry.click();
+  await page
+    .getByRole("combobox", { name: "Kategori", exact: true })
+    .selectOption("__calendar_auto__");
+  await page
+    .getByRole("button", { name: "Spara kategori", exact: true })
+    .click();
+  await status(page, "Sparat i molnet");
+  expect(
+    cloud.documents
+      .get(userA)!
+      .data.weeks[week].activities.find((a) => a.external)?.categoryId,
+  ).toBe("career");
+  expect(cloud.errors).toEqual([]);
+});
 test("kategoriserar Google-bokningar före och efter import och behåller valet vid uppdatering på mobil", async ({
   page,
 }) => {

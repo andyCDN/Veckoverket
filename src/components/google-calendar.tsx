@@ -11,10 +11,14 @@ import {
   type GoogleSnapshot,
 } from "@/lib/google-calendar";
 import type { GoogleConnection } from "@/lib/use-google-calendar";
-import { googleEventKey, GOOGLE_CATEGORY_ID } from "@/lib/external-calendar";
+import { googleEventKey } from "@/lib/external-calendar";
 import { GoogleCategorySelect } from "./google-category-select";
 import { IcalCalendarPanel } from "./ical-calendar";
 import type { IcalConnection } from "@/lib/use-ical-calendar";
+import {
+  AUTO_CATEGORY,
+  resolvedCalendarCategory,
+} from "@/lib/calendar-categories";
 import { fullDate, time, weekLabel } from "@/lib/date";
 export function GoogleCalendarModal({
   data,
@@ -303,6 +307,10 @@ export function GoogleCalendarModal({
               {data.settings.autoPlanning &&
                 "Automatisk veckoplanering är aktiv efter importen."}
             </p>
+            <p>
+              Kategoriregler föreslår kategori utifrån bokningens rubrik. Ett
+              manuellt val har företräde. Regler hanteras under Inställningar.
+            </p>
             {preview.conflicts.length > 0 && (
               <div className="google-import-conflicts" role="status">
                 <strong>{preview.conflicts.length} planeringsfrågor</strong>
@@ -331,8 +339,19 @@ export function GoogleCalendarModal({
                   </span>
                   <GoogleCategorySelect
                     categories={data.categories}
-                    value={
-                      chosenCategories[googleEventKey(a)] ?? GOOGLE_CATEGORY_ID
+                    value={chosenCategories[googleEventKey(a)] ?? AUTO_CATEGORY}
+                    automaticName={
+                      data.categories.find(
+                        (c) =>
+                          c.id ===
+                          resolvedCalendarCategory(
+                            data,
+                            a,
+                            googleCategoryChoices(data, {
+                              [googleEventKey(a)]: AUTO_CATEGORY,
+                            }),
+                          ).categoryId,
+                      )?.name ?? "Ej kategoriserad"
                     }
                     name={`Kategori för ${a.title}, ${fullDate(a.date)}`}
                     onChange={(categoryId) =>
