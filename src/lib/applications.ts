@@ -76,7 +76,9 @@ export function saveApplication(
       previous.nextAction !== draft.nextAction ||
       previous.followUpDate !== draft.followUpDate ||
       (previous.nextActionReason ?? "") !== (draft.nextActionReason ?? "") ||
-      (previous.nextActionOwner ?? "Jag") !== (draft.nextActionOwner ?? "Jag")
+      (previous.nextActionOwner ?? "Jag") !==
+        (draft.nextActionOwner ?? "Jag") ||
+      (previous.nextActionKind ?? "task") !== (draft.nextActionKind ?? "task")
     )
       history.push(
         entry(
@@ -110,6 +112,7 @@ export function completeApplicationAction(
     ...a,
     nextAction: "",
     nextActionId: undefined,
+    nextActionKind: undefined,
     followUpDate: "",
     history: [
       ...(a.history ?? []),

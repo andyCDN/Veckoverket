@@ -1,6 +1,18 @@
 export const RECORDING_BUCKET = "interview-recordings";
 export const MAX_AUDIO_BYTES = 3 * 1024 * 1024;
 export const SUMMARY_BATCH_SIZE = 30;
+export class RecordingRevisionConflict extends Error {
+  constructor() {
+    super(
+      "Transkriptionen har ändrats. Läs in den senaste versionen och försök igen.",
+    );
+  }
+}
+export class RecordingLeaseConflict extends Error {
+  constructor() {
+    super("Ljuddelen bearbetas av ett annat jobb. Försök igen om en stund.");
+  }
+}
 export type RecordingContext = {
   categoryId?: string;
   applicationId?: string;
@@ -26,11 +38,23 @@ export type RecordingSession = {
   startedAt: string;
   segmentCount: number;
   summary?: RecordingSummary;
+  transcriptRevision?: number;
+  summaryRevision?: number;
+  summaryStale?: boolean;
+  job?: RecordingJob;
+};
+export type RecordingJob = {
+  state: "queued" | "processing" | "blocked" | "complete";
+  attempts: number;
+  nextAttemptAt: string;
+  error?: string;
 };
 export type RecordingSegment = {
   index: number;
   transcript: string;
   durationMs: number;
+  originalTranscript?: string;
+  revision?: number;
 };
 export function wavDuration(bytes: Uint8Array): number {
   if (bytes.length < 46 || bytes.length > MAX_AUDIO_BYTES)

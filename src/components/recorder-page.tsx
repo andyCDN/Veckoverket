@@ -18,6 +18,11 @@ import { recordingPumps } from "@/lib/recording-pumps";
 import { recordingClient } from "@/lib/recording-client";
 import { saveReviewedRecording } from "@/lib/recording-workspace";
 import { importRecordingActions } from "@/lib/recording-actions";
+import { bookCareerAction, reviewCareerAgreement } from "@/lib/career-actions";
+import { RecordingTranscript } from "./recording-transcript";
+import { RecordingFollowUp } from "./recording-follow-up";
+import { RecordingBooking } from "./recording-booking";
+import type { AppData } from "@/lib/types";
 import { RecordingActionReview, RecordingEvidence } from "./recording-actions";
 import type { CareerAction } from "@/lib/types";
 import {
@@ -101,6 +106,17 @@ export function RecorderPage() {
 }
 function RecorderWorkspace({ user }: { user: User }) {
   const api = useMemo(() => recordingClient(supabase!, user.id), [user.id]);
+  const serverQueue = useRef<boolean | null>(null),
+    reviewDirty = useRef(false);
+  const [serverQueueReady, setServerQueueReady] = useState(false),
+    [transcriptEditing, setTranscriptEditing] = useState(false);
+  const [reviewNeedsRefresh, setReviewNeedsRefresh] = useState(false);
+  const [booking, setBooking] = useState<{
+    action: CareerAction;
+    segments: RecordingSegment[];
+    data: AppData;
+    session: RecordingSession;
+  } | null>(null);
   const [document, setDocument] = useState<CloudDocument | null>(null),
     [ready, setReady] = useState(false),
     [aiReady, setAiReady] = useState(false),
@@ -235,6 +251,7 @@ function RecorderWorkspace({ user }: { user: User }) {
     [api, user.id],
   );
   function kickAI() {
+    if (serverQueue.current !== false) return;
     void pumps
       .ai()
       .then(() => {
@@ -330,11 +347,17 @@ function RecorderWorkspace({ user }: { user: User }) {
         ready: boolean;
         aiReady: boolean;
         deferredCategorization?: boolean;
+        durableQueue?: boolean;
+        transcriptEditing?: boolean;
       }>({ action: "status" })
       .then((result) => {
         if (live.current) {
           setReady(result.ready && result.deferredCategorization === true);
           setAiReady(result.aiReady);
+          serverQueue.current = result.durableQueue === true;
+          setServerQueueReady(serverQueue.current);
+          if (!serverQueue.current) kickAI();
+          setTranscriptEditing(result.transcriptEditing === true);
           if (result.ready && !result.deferredCategorization)
             setError(
               "Inspelningstjänsten behöver uppdateras innan du kan spela in utan kategorisering.",
@@ -392,6 +415,73 @@ function RecorderWorkspace({ user }: { user: User }) {
       window.removeEventListener("beforeunload", unload);
     };
   }, [api, user.id]);
+  useEffect(() => {
+    if (!serverQueueReady) return;
+    let mounted = true,
+      running = false;
+    const refresh = async () => {
+      if (running || !live.current) return;
+      running = true;
+      try {
+        await refreshSessions();
+        const items = await listQueuedAudio(user.id),
+          ids = new Set(
+            items.filter((q) => q.uploaded).map((q) => q.sessionId),
+          );
+        if (currentRef.current) ids.add(currentRef.current.id);
+        for (const id of ids) {
+          const result = await api.call<{
+            session: RecordingSession;
+            pendingIndices: number[];
+            nextIndex: number;
+          }>({ action: "get", id });
+          if (!mounted) return;
+          for (const item of items.filter(
+            (q) =>
+              q.sessionId === id &&
+              q.uploaded &&
+              q.index < result.nextIndex &&
+              !result.pendingIndices.includes(q.index),
+          ))
+            await removeQueuedAudio(item.key);
+          if (currentRef.current?.id === id && !capture.current) {
+            const old = currentRef.current;
+            setSession(result.session);
+            if (
+              result.session.state === "complete" &&
+              !result.session.summaryStale &&
+              result.session.summary &&
+              (old.state !== "complete" ||
+                old.summaryRevision !== result.session.summaryRevision)
+            ) {
+              setSummary(result.session.summary);
+              if (!reviewDirty.current)
+                setReview(summaryText(result.session.summary));
+              else {
+                setReviewNeedsRefresh(true);
+                setNotice(
+                  "En ny AI-sammanfattning finns. Din redigerade text har bevarats; granska den mot den nya versionen före sparning.",
+                );
+              }
+            }
+          }
+        }
+        await refreshQueue();
+      } catch {
+        /* Network failure leaves jobs and local metadata intact. */
+      } finally {
+        running = false;
+      }
+    };
+    const timer = setInterval(() => void refresh(), 10000);
+    const focused = () => void refresh();
+    window.addEventListener("focus", focused);
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+      window.removeEventListener("focus", focused);
+    };
+  }, [api, user.id, serverQueueReady]);
   async function start() {
     setError("");
     setNotice("");
@@ -493,6 +583,8 @@ function RecorderWorkspace({ user }: { user: User }) {
       );
       setSummary(null);
       setReview("");
+      reviewDirty.current = false;
+      setReviewNeedsRefresh(false);
       setSeconds(0);
       await engine.start();
       setMode("recording");
@@ -552,6 +644,14 @@ function RecorderWorkspace({ user }: { user: User }) {
           segmentCount: count,
         });
       await refreshSessions();
+      if (serverQueue.current) {
+        finishRequests.current.delete(session.id);
+        if (displaying())
+          setNotice(
+            "Alla ljuddelar är verifierade i molnet. Servern fortsätter bearbetningen även om du stänger sidan.",
+          );
+        return;
+      }
       await pumps.ai(session.id);
       // Also recover cloud audio from a previous browser session.
       const remaining = await api.call<{ pendingIndices: number[] }>({
@@ -578,14 +678,14 @@ function RecorderWorkspace({ user }: { user: User }) {
         throw new Error("Sammanfattningen kunde inte läsas.");
       finishRequests.current.delete(session.id);
       if (displaying()) {
-        setSession({
-          ...currentRef.current!,
-          state: "complete",
-          segmentCount: count,
-          summary: result.summary,
+        const refreshed = await api.call<{ session: RecordingSession }>({
+          action: "get",
+          id: session.id,
         });
+        setSession(refreshed.session);
         setSummary(result.summary);
-        setReview(summaryText(result.summary));
+        if (!reviewDirty.current) setReview(summaryText(result.summary));
+        else setReviewNeedsRefresh(true);
         setNotice(
           "Sammanfattningen är ett förslag. Kontrollera överenskommelser och citat innan du sparar.",
         );
@@ -660,6 +760,8 @@ function RecorderWorkspace({ user }: { user: User }) {
       setReview(
         result.session.summary ? summaryText(result.session.summary) : "",
       );
+      reviewDirty.current = false;
+      setReviewNeedsRefresh(false);
       setNotice(
         result.pendingIndices.length
           ? `${result.pendingIndices.length} sparade ljuddelar väntar på transkribering.`
@@ -730,12 +832,28 @@ function RecorderWorkspace({ user }: { user: User }) {
       setBusy(false);
     }
   }
+  async function reviewedSession() {
+    const selected = await persistDetails(),
+      result = await api.call<{ session: RecordingSession }>({
+        action: "get",
+        id: selected.id,
+      });
+    if (
+      result.session.state !== "complete" ||
+      result.session.summaryStale ||
+      (result.session.summaryRevision ?? 0) !== (selected.summaryRevision ?? 0)
+    )
+      throw new Error(
+        "Sammanfattningen har ändrats. Läs in och granska den senaste versionen före sparning.",
+      );
+    return { ...result.session, context: selected.context };
+  }
   async function saveSummary() {
     if (!currentRef.current) return;
     setBusy(true);
     setError("");
     try {
-      const session = await persistDetails();
+      const session = await reviewedSession();
       const transport = cloudTransport(user.id),
         latest = await transport.load();
       if (!latest)
@@ -763,7 +881,7 @@ function RecorderWorkspace({ user }: { user: User }) {
     items: CareerAction[],
     segments: RecordingSegment[],
   ) {
-    const session = await persistDetails(),
+    const session = await reviewedSession(),
       transport = cloudTransport(user.id),
       latest = await transport.load();
     if (!latest)
@@ -779,6 +897,91 @@ function RecorderWorkspace({ user }: { user: User }) {
       setDocument(saved);
       setNotice(
         "Valda nästa steg är sparade. Öppna Nästa steg under Jobb & nätverk för att boka tid.",
+      );
+    }
+  }
+  function previewBooking(action: CareerAction, segments: RecordingSegment[]) {
+    if (!document || !currentRef.current) return;
+    try {
+      const session = { ...currentRef.current, context: context() };
+      const proposed = importRecordingActions(
+        document.data,
+        session,
+        segments,
+        [action],
+      );
+      setBooking({
+        action: proposed.careerActions!.find((a) => a.id === action.id)!,
+        segments,
+        data: proposed,
+        session,
+      });
+    } catch (e) {
+      setError(message(e));
+    }
+  }
+  async function saveBooking(slot: {
+    date: string;
+    start: number;
+    minutes: number;
+  }) {
+    if (!booking) return;
+    const session = await persistDetails();
+    if (session.id !== booking.session.id)
+      throw new Error(
+        "Inspelningen har ändrats. Öppna bokningsförslaget igen.",
+      );
+    const fresh = await api.call<{ session: RecordingSession }>({
+      action: "get",
+      id: session.id,
+    });
+    if (
+      fresh.session.summaryStale ||
+      (fresh.session.summaryRevision ?? 0) !==
+        (booking.session.summaryRevision ?? 0)
+    )
+      throw new Error(
+        "Transkriptionen har ändrats. Granska sammanfattningen igen före bokning.",
+      );
+    const transport = cloudTransport(user.id),
+      latest = await transport.load();
+    if (!latest) throw new Error("Molnarbetsytan saknas.");
+    const proposed = importRecordingActions(
+      latest.data,
+      { ...fresh.session, context: session.context },
+      booking.segments,
+      [booking.action],
+    );
+    const result = bookCareerAction(
+      proposed,
+      booking.action.id,
+      slot.date,
+      slot.start,
+      slot.minutes,
+    );
+    if (result.errors.length) throw new Error(result.errors.join(" "));
+    const saved = await transport.save(result.data, latest.revision);
+    if (live.current) {
+      setDocument(saved);
+      setNotice("Åtgärden och kalenderbokningen är sparade.");
+    }
+  }
+  async function saveAgreement(
+    id: string,
+    input: Parameters<typeof reviewCareerAgreement>[2],
+  ) {
+    const transport = cloudTransport(user.id),
+      latest = await transport.load();
+    if (!latest) throw new Error("Molnarbetsytan saknas.");
+    const next = reviewCareerAgreement(latest.data, id, input),
+      saved =
+        next === latest.data
+          ? latest
+          : await transport.save(next, latest.revision);
+    if (live.current) {
+      setDocument(saved);
+      setNotice(
+        "Uppföljningen är sparad med historik. Kalenderbokningar har bevarats.",
       );
     }
   }
@@ -811,6 +1014,14 @@ function RecorderWorkspace({ user }: { user: User }) {
   }
   return (
     <div className="recording-workspace stack">
+      {booking && (
+        <RecordingBooking
+          data={booking.data}
+          action={booking.action}
+          onSave={saveBooking}
+          onClose={() => setBooking(null)}
+        />
+      )}
       <ol className="recording-steps" aria-label="Inspelningens steg">
         {["Spela in", "Koppla", "Granska"].map((label, index) => {
           const step = !active && current ? (summary ? 2 : 1) : 0;
@@ -822,6 +1033,14 @@ function RecorderWorkspace({ user }: { user: User }) {
           );
         })}
       </ol>
+      {document && !active && (
+        <RecordingFollowUp
+          data={document.data}
+          context={context()}
+          recordingId={current?.id}
+          onSave={saveAgreement}
+        />
+      )}
       <div className="recording-capture-layout">
         <div className="recording-capture">
           <section
@@ -920,6 +1139,41 @@ function RecorderWorkspace({ user }: { user: User }) {
             <span>Kontrollpanel</span>
             <h2>Ljud & bearbetning</h2>
           </div>
+          {serverQueueReady && (
+            <p>
+              Verifierat ljud bearbetas på servern även när sidan är stängd.
+            </p>
+          )}
+          {current?.job?.state === "blocked" && (
+            <div className="recording-error" role="status">
+              <p>
+                {current.job.error ||
+                  "Bearbetningen behöver en åtgärd innan den kan fortsätta."}
+              </p>
+              <button
+                className="button secondary"
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  setError("");
+                  try {
+                    await api.call({
+                      action: "retry-processing",
+                      id: current.id,
+                    });
+                    await refreshSessions();
+                    setNotice("Ett nytt bearbetningsförsök är köat.");
+                  } catch (e) {
+                    setError(message(e));
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                Försök bearbeta på servern igen
+              </button>
+            </div>
+          )}
           <dl className="recording-status-list">
             <div>
               <dt>Väntar på uppladdning</dt>
@@ -938,7 +1192,18 @@ function RecorderWorkspace({ user }: { user: User }) {
             <div>
               <dt>Pågående bearbetning</dt>
               <dd>
-                {finishing.length}
+                {
+                  new Set([
+                    ...finishing,
+                    ...sessions
+                      .filter(
+                        (s) =>
+                          serverQueueReady &&
+                          ["queued", "processing"].includes(s.job?.state ?? ""),
+                      )
+                      .map((s) => s.id),
+                  ]).size
+                }
                 <span> samtal</span>
               </dd>
             </div>
@@ -1119,7 +1384,9 @@ function RecorderWorkspace({ user }: { user: User }) {
               disabled={busy || finishing.includes(current.id)}
               onClick={() => void finishSaved()}
             >
-              Avsluta och sammanfatta sparat ljud
+              {current.summaryStale
+                ? "Uppdatera sammanfattningen"
+                : "Avsluta och sammanfatta sparat ljud"}
             </button>
           )}
         </section>
@@ -1165,6 +1432,34 @@ function RecorderWorkspace({ user }: { user: User }) {
           </div>
         </details>
       )}
+      {current && !active && (
+        <RecordingTranscript
+          key={`transcript-${current.id}`}
+          api={api}
+          session={current}
+          editable={transcriptEditing}
+          onEvidence={setEvidenceIndex}
+          onChange={(s, corrected) => {
+            const old = currentRef.current;
+            setSession(s);
+            if (corrected)
+              setNotice(
+                "Rättelsen är sparad. Den tidigare sammanfattningen är bevarad och behöver uppdateras.",
+              );
+            if (
+              s.state === "complete" &&
+              !s.summaryStale &&
+              s.summary &&
+              old?.summaryRevision !== s.summaryRevision
+            ) {
+              setSummary(s.summary);
+              if (!reviewDirty.current) setReview(summaryText(s.summary));
+              else setReviewNeedsRefresh(true);
+            }
+            void refreshSessions();
+          }}
+        />
+      )}
       {current && evidenceIndex !== null && !active && (
         <RecordingEvidence
           key={`${current.id}-${evidenceIndex}`}
@@ -1173,16 +1468,22 @@ function RecorderWorkspace({ user }: { user: User }) {
           index={evidenceIndex}
         />
       )}
-      {summary && current && document && !active && (
-        <RecordingActionReview
-          key={current.id}
-          session={{ ...current, context: context() }}
-          data={document.data}
-          api={api}
-          onSave={saveActions}
-          onEvidence={setEvidenceIndex}
-        />
-      )}
+      {summary &&
+        current &&
+        document &&
+        !active &&
+        !current.summaryStale &&
+        current.state === "complete" && (
+          <RecordingActionReview
+            key={`actions-${current.id}`}
+            session={{ ...current, context: context() }}
+            data={document.data}
+            api={api}
+            onSave={saveActions}
+            onEvidence={setEvidenceIndex}
+            onBook={previewBooking}
+          />
+        )}
       {summary && !active && (
         <section
           className="recording-summary-review recording-paper-panel stack"
@@ -1190,6 +1491,39 @@ function RecorderWorkspace({ user }: { user: User }) {
         >
           <span className="recording-section-label">03 / Granska texten</span>
           <h2>Granska sammanfattningen</h2>
+          {current?.summaryStale && (
+            <p role="status">
+              Transkriptionen är rättad. Detta är den tidigare sammanfattningen;
+              sparning väntar tills den uppdaterade versionen är klar.
+            </p>
+          )}
+          {reviewNeedsRefresh && (
+            <div className="stack">
+              <p role="status">
+                En ny AI-version finns. Din egen text har bevarats.
+              </p>
+              <details>
+                <summary>Visa den nya AI-texten</summary>
+                <p className="career-notes">{summaryText(summary)}</p>
+              </details>
+              <button
+                className="button secondary"
+                onClick={() => {
+                  setReview(summaryText(summary));
+                  reviewDirty.current = false;
+                  setReviewNeedsRefresh(false);
+                }}
+              >
+                Använd den nya AI-texten
+              </button>
+              <button
+                className="button secondary"
+                onClick={() => setReviewNeedsRefresh(false)}
+              >
+                Behåll min text och markera den som granskad
+              </button>
+            </div>
+          )}
           <p>
             Överenskommelser, förslag och osäkra uppgifter hålls isär.
             Kontrollera texten mot citaten och rätta eventuella fel innan du
@@ -1212,7 +1546,10 @@ function RecorderWorkspace({ user }: { user: User }) {
             <textarea
               rows={8}
               value={review}
-              onChange={(e) => setReview(e.target.value)}
+              onChange={(e) => {
+                reviewDirty.current = true;
+                setReview(e.target.value);
+              }}
             />
           </label>
           <p>
@@ -1229,6 +1566,8 @@ function RecorderWorkspace({ user }: { user: User }) {
             className="button primary"
             disabled={
               busy ||
+              current?.summaryStale ||
+              reviewNeedsRefresh ||
               !review.trim() ||
               review.length > 4000 ||
               (!applicationId && !contactId)

@@ -2,6 +2,8 @@ import {
   checkedSummary,
   combineSummaries,
   SUMMARY_BATCH_SIZE,
+  RecordingRevisionConflict,
+  RecordingLeaseConflict,
   wavDuration,
   type RecordingContext,
   type RecordingSegment,
@@ -10,6 +12,18 @@ import {
 } from "./recording-schema.ts";
 import { recordingAIError } from "./recording-ai.ts";
 export type RecordingStore = {
+  features?: () => Promise<{
+    transcriptEditing: boolean;
+    durableQueue: boolean;
+  }>;
+  retryProcessing?: (user: string, id: string) => Promise<void>;
+  correctTranscript?: (
+    user: string,
+    id: string,
+    index: number,
+    text: string,
+    revision: number,
+  ) => Promise<void>;
   list(user: string): Promise<RecordingSession[]>;
   create(
     user: string,
@@ -40,27 +54,42 @@ export type RecordingStore = {
     index: number,
     hash: string,
     duration: number,
-  ): Promise<"claimed" | "ready" | "busy">;
+  ): Promise<
+    "claimed" | "ready" | "busy" | { state: "claimed"; token: string }
+  >;
   saveTranscript(
     user: string,
     id: string,
     index: number,
     transcript: string,
+    leaseToken?: string,
   ): Promise<void>;
-  failSegment(user: string, id: string, index: number): Promise<void>;
+  failSegment(
+    user: string,
+    id: string,
+    index: number,
+    leaseToken?: string,
+  ): Promise<void>;
   stop(user: string, id: string, count: number): Promise<void>;
   loadPart(
     user: string,
     id: string,
     index: number,
+    revision?: number,
   ): Promise<RecordingSummary | null>;
   savePart(
     user: string,
     id: string,
     index: number,
     summary: RecordingSummary,
+    revision?: number,
   ): Promise<void>;
-  complete(user: string, id: string, summary: RecordingSummary): Promise<void>;
+  complete(
+    user: string,
+    id: string,
+    summary: RecordingSummary,
+    revision?: number,
+  ): Promise<void>;
   remove(user: string, id: string): Promise<void>;
 };
 export function recordingHandler(deps: {
@@ -98,7 +127,7 @@ export function recordingHandler(deps: {
       if (!user)
         return reply({ error: "Logga in för att hantera inspelningar." }, 401);
       const text = await request.text();
-      if (text.length > 16000)
+      if (text.length > 128000)
         return reply({ error: "Begäran är för stor." }, 413);
       let body: Record<string, unknown>;
       try {
@@ -109,6 +138,8 @@ export function recordingHandler(deps: {
       if (!body || typeof body !== "object" || Array.isArray(body))
         return reply({ error: "Ogiltig begäran." }, 400);
       const action = body.action;
+      if (action !== "correct-transcript" && text.length > 16000)
+        return reply({ error: "Begäran är för stor." }, 413);
       if (action === "status") {
         await deps.store.list(user);
         return reply({
@@ -116,6 +147,7 @@ export function recordingHandler(deps: {
           aiReady: deps.configured,
           deferredCategorization: true,
           aiDiagnostics: Boolean(deps.checkAI),
+          ...(deps.store.features ? await deps.store.features() : {}),
         });
       }
       if (action === "check-ai") {
@@ -198,6 +230,47 @@ export function recordingHandler(deps: {
         );
         return reply({ session: await deps.store.load(user, id) });
       }
+      if (action === "correct-transcript") {
+        if (!deps.store.correctTranscript)
+          return reply(
+            {
+              error:
+                "Serverdelen behöver uppdateras för att rätta transkriptioner.",
+            },
+            503,
+          );
+        if (
+          !Number.isInteger(body.index) ||
+          Number(body.index) < 0 ||
+          Number(body.index) > 99999 ||
+          typeof body.text !== "string" ||
+          body.text.length > 20000 ||
+          !Number.isInteger(body.revision) ||
+          Number(body.revision) < 0 ||
+          session.state === "active"
+        )
+          return reply(
+            {
+              error:
+                "Kontrollera ljuddel och transkription. Stoppa inspelningen först.",
+            },
+            400,
+          );
+        await deps.store.correctTranscript(
+          user,
+          id,
+          Number(body.index),
+          body.text,
+          Number(body.revision),
+        );
+        return reply({ session: await deps.store.load(user, id) });
+      }
+      if (action === "retry-processing") {
+        if (!deps.store.retryProcessing)
+          return reply({ error: "Serverkön behöver installeras först." }, 503);
+        await deps.store.retryProcessing(user, id);
+        return reply({ session: await deps.store.load(user, id) });
+      }
       if (action === "get") {
         const segments = await deps.store.segments(user, id),
           pendingIndices = await deps.store.pending(user, id),
@@ -221,7 +294,13 @@ export function recordingHandler(deps: {
             : reply({ error: "Inspelningen är avslutad." }, 409);
         }
         if (action === "transcribe" && !deps.configured)
-          return reply({ error: "AI-bearbetningen är inte aktiverad." }, 503);
+          return reply(
+            {
+              error: "AI-bearbetningen är inte aktiverad.",
+              code: "ai_not_configured",
+            },
+            503,
+          );
         const index = body.index;
         if (
           !Number.isInteger(index) ||
@@ -274,9 +353,22 @@ export function recordingHandler(deps: {
           const transcript = await deps.transcribe(audio);
           if (typeof transcript !== "string" || transcript.length > 20000)
             throw new Error("Invalid transcript");
-          await deps.store.saveTranscript(user, id, Number(index), transcript);
+          await deps.store.saveTranscript(
+            user,
+            id,
+            Number(index),
+            transcript,
+            typeof claim === "object" ? claim.token : undefined,
+          );
         } catch (error) {
-          await deps.store.failSegment(user, id, Number(index));
+          if (error instanceof RecordingLeaseConflict)
+            return reply({ error: error.message, code: "segment_busy" }, 409);
+          await deps.store.failSegment(
+            user,
+            id,
+            Number(index),
+            typeof claim === "object" ? claim.token : undefined,
+          );
           return reply(
             recordingAIError(error) ?? {
               error:
@@ -321,7 +413,13 @@ export function recordingHandler(deps: {
         if (session.state === "complete" && session.summary)
           return reply({ done: true, summary: session.summary });
         if (!deps.configured)
-          return reply({ error: "AI-bearbetningen är inte aktiverad." }, 503);
+          return reply(
+            {
+              error: "AI-bearbetningen är inte aktiverad.",
+              code: "ai_not_configured",
+            },
+            503,
+          );
         const segments = await deps.store.segments(user, id);
         if (
           segments.length !== session.segmentCount ||
@@ -331,7 +429,12 @@ export function recordingHandler(deps: {
         const total = Math.ceil(segments.length / SUMMARY_BATCH_SIZE),
           parts: RecordingSummary[] = [];
         for (let i = 0; i < total; i++) {
-          const saved = await deps.store.loadPart(user, id, i);
+          const saved = await deps.store.loadPart(
+            user,
+            id,
+            i,
+            session.transcriptRevision ?? 0,
+          );
           if (saved) {
             parts.push(saved);
             continue;
@@ -347,7 +450,13 @@ export function recordingHandler(deps: {
                 nextSteps: [],
                 uncertainties: ["Ingen taltext identifierad i ljudavsnittet."],
               };
-          await deps.store.savePart(user, id, i, summary);
+          await deps.store.savePart(
+            user,
+            id,
+            i,
+            summary,
+            session.transcriptRevision ?? 0,
+          );
           return reply({
             done: false,
             completedParts: i + 1,
@@ -355,11 +464,22 @@ export function recordingHandler(deps: {
           });
         }
         const summary = combineSummaries(parts);
-        await deps.store.complete(user, id, summary);
-        return reply({ done: true, summary });
+        await deps.store.complete(
+          user,
+          id,
+          summary,
+          session.transcriptRevision ?? 0,
+        );
+        const final = await deps.store.load(user, id);
+        return reply({ done: true, summary: final?.summary ?? summary });
       }
       return reply({ error: "Okänd åtgärd." }, 400);
     } catch (error) {
+      if (error instanceof RecordingRevisionConflict)
+        return reply(
+          { error: error.message, code: "transcript_revision_changed" },
+          409,
+        );
       return reply(
         recordingAIError(error) ?? {
           error:

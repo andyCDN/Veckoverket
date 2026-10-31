@@ -10,6 +10,7 @@ import type {
 } from "../../supabase/functions/_shared/recording-schema";
 import { pcmWav } from "../lib/recording-audio";
 import { RecordingAIError } from "../../supabase/functions/_shared/recording-ai";
+import { RecordingLeaseConflict } from "../../supabase/functions/_shared/recording-schema";
 const id = "33333333-3333-4333-8333-333333333333";
 function fixture() {
   const records = new Map<
@@ -136,6 +137,7 @@ function fixture() {
     return { status: response.status, data: await response.json() };
   };
   return {
+    store,
     request,
     records,
     segments,
@@ -156,6 +158,74 @@ function fixture() {
   };
 }
 describe("privat inspelningstjänst", () => {
+  it("låter inte ett gammalt segmentjobb återställa en konkurrerande arbetares status", async () => {
+    const f = fixture();
+    await f.request({ action: "create", title: "Samtal", context: {} });
+    f.store.claim = async () => ({ state: "claimed", token: "old-lease" });
+    f.store.saveTranscript = async (_user, _id, _index, _text, token) => {
+      expect(token).toBe("old-lease");
+      throw new RecordingLeaseConflict();
+    };
+    let failed = false;
+    f.store.failSegment = async () => {
+      failed = true;
+    };
+    const reply = await f.request({ action: "transcribe", id, index: 0 });
+    expect(reply.status).toBe(409);
+    expect(reply.data.code).toBe("segment_busy");
+    expect(failed).toBe(false);
+  });
+  it("kontrollerar ägarskap, textlängd och revision innan en transkription rättas", async () => {
+    const f = fixture();
+    await f.request({ action: "create", title: "Samtal", context: {} });
+    f.records.get(id)!.session.state = "complete";
+    let writes = 0;
+    f.store.correctTranscript = async (user, key, index, text, revision) => {
+      expect(user).toBe("a");
+      expect(key).toBe(id);
+      expect(index).toBe(0);
+      expect(revision).toBe(0);
+      expect(text).toHaveLength(19000);
+      writes++;
+    };
+    expect(
+      (
+        await f.request(
+          {
+            action: "correct-transcript",
+            id,
+            index: 0,
+            text: "x".repeat(19000),
+            revision: 0,
+          },
+          "b",
+        )
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await f.request({
+          action: "correct-transcript",
+          id,
+          index: 0,
+          text: "x".repeat(20001),
+          revision: 0,
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await f.request({
+          action: "correct-transcript",
+          id,
+          index: 0,
+          text: "x".repeat(19000),
+          revision: 0,
+        })
+      ).status,
+    ).toBe(200);
+    expect(writes).toBe(1);
+  });
   it("kräver inloggning för AI-kontroll och visar kreditfel även när en nyckel är konfigurerad", async () => {
     const f = fixture();
     expect((await f.request({ action: "check-ai" }, "anonymous")).status).toBe(

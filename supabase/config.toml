@@ -7,3 +7,7 @@ import_map = "./functions/deno.json"
 [functions.recording]
 verify_jwt = false
 import_map = "./functions/deno.json"
+
+[functions.recording-worker]
+verify_jwt = false
+import_map = "./functions/deno.json"

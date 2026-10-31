@@ -7,7 +7,7 @@ export function saveReviewedRecording(
   text: string,
   now = new Date(),
 ): AppData {
-  if (session.state !== "complete")
+  if (session.state !== "complete" || session.summaryStale)
     throw new Error(
       "Sammanfatta inspelningen innan du sparar den i historiken.",
     );
@@ -31,7 +31,7 @@ export function saveReviewedRecording(
     throw new Error(
       "Den kopplade ansökan, intervjun eller kontakten finns inte kvar. Kopiera texten manuellt till rätt post.",
     );
-  const id = `recording-${session.id}`,
+  const id = `recording-${session.id}${session.summaryRevision ? `-v${session.summaryRevision}` : ""}`,
     date = planningBoundary(new Date(session.startedAt)).date;
   const appDone = !app || app.history?.some((e) => e.id === id),
     contactDone = !contact || contact.entries.some((e) => e.id === id);

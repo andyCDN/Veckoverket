@@ -15,6 +15,7 @@ export function RecordingActionReview({
   api,
   onSave,
   onEvidence,
+  onBook,
 }: {
   session: RecordingSession;
   data: AppData;
@@ -24,6 +25,7 @@ export function RecordingActionReview({
     segments: RecordingSegment[],
   ) => Promise<void>;
   onEvidence: (index: number) => void;
+  onBook: (item: CareerAction, segments: RecordingSegment[]) => void;
 }) {
   const [segments, setSegments] = useState<RecordingSegment[]>([]),
     [drafts, setDrafts] = useState<CareerAction[]>([]),
@@ -40,7 +42,11 @@ export function RecordingActionReview({
       .then((items) => {
         if (live) {
           setSegments(items);
-          setDrafts(recordingActionProposals(session, items));
+          setDrafts(
+            recordingActionProposals(session, items).map(
+              (a) => data.careerActions?.find((v) => v.id === a.id) ?? a,
+            ),
+          );
           setError("");
           setLoaded(true);
         }
@@ -54,7 +60,7 @@ export function RecordingActionReview({
     return () => {
       live = false;
     };
-  }, [api, session.id, retry]); // A different context must not erase the user's review edits.
+  }, [api, session.id, session.summaryRevision, retry]); // A different context must not erase the user's review edits.
   const patch = (id: string, change: Partial<CareerAction>) =>
     setDrafts((items) =>
       items.map((a) => (a.id === id ? { ...a, ...change } : a)),
@@ -69,7 +75,7 @@ export function RecordingActionReview({
       <p>
         Välj åtgärderna som ska sparas. Kontrollera ansvarig och datum mot
         citatet. Datumförslag utgår från samtalets datum; otydliga datum lämnas
-        tomma. Bokning görs separat i Veckoverket.
+        tomma. Kalenderbokningen förhandsvisas innan du sparar.
       </p>
       {!loaded && !error && <p role="status">Hämtar citatens ljuddelar…</p>}
       {error && (
@@ -140,6 +146,19 @@ export function RecordingActionReview({
                 onChange={(e) => patch(a.id, { title: e.target.value })}
               />
             </label>
+            <label className="recording-action-kind">
+              Typ av nästa steg
+              <select
+                disabled={imported || busy}
+                value={a.kind ?? "task"}
+                onChange={(e) =>
+                  patch(a.id, { kind: e.target.value as "task" | "waiting" })
+                }
+              >
+                <option value="task">Egen uppgift</option>
+                <option value="waiting">Väntar på annan</option>
+              </select>
+            </label>
             <label>
               Ansvarig för förslag {i + 1}
               <input
@@ -167,6 +186,25 @@ export function RecordingActionReview({
                 onChange={(e) => patch(a.id, { reason: e.target.value })}
               />
             </label>
+            <button
+              className="button secondary recording-booking-proposal"
+              disabled={
+                busy ||
+                !indexes.length ||
+                (!session.context.applicationId &&
+                  !session.context.contactId) ||
+                data.careerActions?.find((v) => v.id === a.id)?.status ===
+                  "done"
+              }
+              onClick={() =>
+                onBook(
+                  data.careerActions?.find((v) => v.id === a.id) ?? a,
+                  segments,
+                )
+              }
+            >
+              Föreslå kalenderbokning
+            </button>
           </fieldset>
         );
       })}

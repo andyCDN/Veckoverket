@@ -428,6 +428,8 @@ export function validateCareerData(d: AppData) {
       !text(a.nextAction) ||
       (a.nextActionReason !== undefined && !text(a.nextActionReason)) ||
       (a.nextActionOwner !== undefined && !text(a.nextActionOwner, 200)) ||
+      (a.nextActionKind !== undefined &&
+        !["task", "waiting"].includes(a.nextActionKind)) ||
       (a.nextActionId !== undefined &&
         (!text(a.nextActionId, 200) || !a.nextActionId.trim())) ||
       !text(a.notes)
@@ -526,6 +528,8 @@ export function validateCareerData(d: AppData) {
       !text(c.nextAction) ||
       (c.nextActionReason !== undefined && !text(c.nextActionReason)) ||
       (c.nextActionOwner !== undefined && !text(c.nextActionOwner, 200)) ||
+      (c.nextActionKind !== undefined &&
+        !["task", "waiting"].includes(c.nextActionKind)) ||
       (c.nextActionId !== undefined &&
         (!text(c.nextActionId, 200) || !c.nextActionId.trim())) ||
       !date(c.followUpDate)

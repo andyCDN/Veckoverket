@@ -27,6 +27,7 @@
   "exclude": [
     "node_modules",
     "supabase/functions/calendar-ical/index.ts",
-    "supabase/functions/recording/index.ts"
+    "supabase/functions/recording/index.ts",
+    "supabase/functions/recording-worker/index.ts"
   ]
 }

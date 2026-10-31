@@ -14,9 +14,245 @@ test.use({
   },
   viewport: { width: 390, height: 844 },
 });
-async function setup(page: Page) {
+test("rättar och söker transkription, bevarar original och kräver ny granskning utan att skriva över egna anteckningar", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  const f = await setup(page, { enhanced: true, freeCalendar: true });
+  await page.getByRole("button", { name: "Spela in", exact: true }).click();
+  await capturePart(page);
+  await page
+    .getByRole("button", { name: "Stoppa och sammanfatta", exact: true })
+    .click();
+  const review = page.getByRole("textbox", {
+    name: "Granskad sammanfattning",
+    exact: true,
+  });
+  await expect(review).toBeVisible({ timeout: 15000 });
+  await page
+    .getByRole("button", {
+      name: "Spara granskad sammanfattning i historiken",
+      exact: true,
+    })
+    .click();
+  await expect
+    .poll(() => f.f.documents.get(userA)!.data.applications![0].history?.length)
+    .toBe(1);
+  const originalNotes =
+    f.f.documents.get(userA)!.data.applications![0].history![0].notes;
+  await review.fill("Mina egna formuleringar bevaras.");
+  await page
+    .getByText("Transkription · sök, lyssna och rätta", { exact: true })
+    .click();
+  const transcript = page.getByRole("region", { name: "Sökbar transkription" });
+  await transcript.getByLabel("Sök i transkriptionen").fill("fredag");
+  await expect(transcript).toContainText("1 av 1 ljuddelar");
+  await transcript
+    .getByRole("button", { name: "Rätta ljuddel 1", exact: true })
+    .click();
+  await transcript
+    .getByLabel("Rättad text för ljuddel 1")
+    .fill("Kim: Jag skickar länken på måndag.");
+  await transcript
+    .getByRole("button", { name: "Spara rättelse", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", {
+      name: "Spara granskad sammanfattning i historiken",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  await expect(review).toHaveValue("Mina egna formuleringar bevaras.");
+  await transcript.getByLabel("Sök i transkriptionen").fill("måndag");
+  await expect(transcript).toContainText("Kim: Jag skickar länken på måndag.");
+  await transcript.getByText("Ursprunglig taltext", { exact: true }).click();
+  await expect(transcript).toContainText("Kim: Jag skickar länken på fredag.");
+  await transcript
+    .getByText("Tidigare sammanfattningar", { exact: true })
+    .click();
+  await expect(transcript).toContainText("Version 1");
+  await page
+    .getByRole("button", { name: "Uppdatera sammanfattningen", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", {
+      name: "Behåll min text och markera den som granskad",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", {
+      name: "Behåll min text och markera den som granskad",
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole("button", {
+      name: "Spara granskad sammanfattning i historiken",
+      exact: true,
+    })
+    .click();
+  await expect
+    .poll(() => f.f.documents.get(userA)!.data.applications![0].history?.length)
+    .toBe(2);
+  const saved = f.f.documents.get(userA)!.data;
+  expect(saved.applications![0].history![0].notes).toBe(originalNotes);
+  expect(saved.applications![0].history![1].notes).toContain(
+    "Mina egna formuleringar bevaras.",
+  );
+  expect(saved.weeks).toEqual(f.original.weeks);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  expect(f.f.errors).toEqual([]);
+});
+test("förhandsvisar en bevakningsbokning och följer ett ändrat åtagande genom nästa samtal med bevarad kalender", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  const f = await setup(page, { enhanced: true, freeCalendar: true });
+  await page.getByRole("button", { name: "Spela in", exact: true }).click();
+  await capturePart(page);
+  await page
+    .getByRole("button", { name: "Stoppa och sammanfatta", exact: true })
+    .click();
+  const actions = page.getByRole("region", { name: "Åtgärder från samtalet" });
+  await expect(actions).toBeVisible();
+  await actions
+    .getByRole("combobox", { name: "Typ av nästa steg", exact: true })
+    .selectOption("waiting");
+  await actions
+    .getByRole("button", { name: "Föreslå kalenderbokning", exact: true })
+    .click();
+  const modal = page.getByRole("dialog");
+  await expect(modal).toContainText("En bevakning av Kim bokas");
+  expect(f.f.documents.get(userA)!.data.careerActions).toBeUndefined();
+  expect(f.f.documents.get(userA)!.data.weeks).toEqual(f.original.weeks);
+  await modal.getByRole("radio").first().check();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await modal.screenshot({ path: "/tmp/veckoverket-recording-booking.png" });
+  await modal
+    .getByRole("button", {
+      name: "Spara åtgärd och kalenderbokning",
+      exact: true,
+    })
+    .click();
+  await expect(modal).toHaveCount(0);
+  const first = structuredClone(f.f.documents.get(userA)!.data),
+    action = first.careerActions![0];
+  expect(action.kind).toBe("waiting");
+  const pass = Object.values(first.weeks)
+    .flatMap((w) => w.activities)
+    .find((a) => a.careerActionId === action.id)!;
+  expect(pass.title).toBe("Följ upp: Länken skickas på fredag.");
+  expect(pass.date).toBe("2026-10-30");
+  expect(first.applications![0].nextAction).toBe("Behåll nästa steg");
+  await page.getByRole("button", { name: "Spela in", exact: true }).click();
+  await capturePart(page);
+  await page
+    .getByRole("button", { name: "Stoppa och sammanfatta", exact: true })
+    .click();
+  await expect(actions).toBeVisible();
+  await page.locator(".recording-follow-up > summary").click();
+  const agreement = page.locator(".recording-agreement").filter({
+    has: page.getByRole("heading", {
+      name: "Länken skickas på fredag.",
+      exact: true,
+    }),
+  });
+  await agreement
+    .getByRole("button", { name: "Följ upp överenskommelsen", exact: true })
+    .click();
+  await agreement
+    .getByLabel("Utfall för överenskommelsen")
+    .selectOption("changed");
+  await agreement.getByLabel("Ändrat åtagande").fill("Kim skickar en ny länk");
+  await agreement.getByLabel("Nytt datum").fill("2026-11-02");
+  await agreement
+    .getByLabel("Anteckning om uppföljningen")
+    .fill("Den första länken fungerade inte");
+  await agreement
+    .getByRole("button", {
+      name: "Spara uppföljning av överenskommelsen",
+      exact: true,
+    })
+    .click();
+  await expect
+    .poll(() => f.f.documents.get(userA)!.data.careerActions![0].title)
+    .toBe("Kim skickar en ny länk");
+  expect(f.f.documents.get(userA)!.data.weeks).toEqual(first.weeks);
+  expect(
+    f.f.documents.get(userA)!.data.careerActions![0].updates![0].previous
+      ?.title,
+  ).toBe("Länken skickas på fredag.");
+  const changed = page.locator(".recording-agreement").filter({
+    has: page.getByRole("heading", {
+      name: "Kim skickar en ny länk",
+      exact: true,
+    }),
+  });
+  await changed
+    .getByRole("button", { name: "Följ upp överenskommelsen", exact: true })
+    .click();
+  await changed
+    .getByLabel("Utfall för överenskommelsen")
+    .selectOption("fulfilled");
+  await changed
+    .getByLabel("Anteckning om uppföljningen")
+    .fill("Länken har kommit");
+  await changed
+    .getByRole("button", {
+      name: "Spara uppföljning av överenskommelsen",
+      exact: true,
+    })
+    .click();
+  await expect
+    .poll(() => f.f.documents.get(userA)!.data.careerActions![0].status)
+    .toBe("done");
+  expect(f.f.documents.get(userA)!.data.weeks).toEqual(first.weeks);
+  expect(f.f.errors).toEqual([]);
+});
+test("lämnar verifierat ljud i serverkön och återläser resultatet efter att inspelningssidan stängts", async ({
+  page,
+}) => {
+  const f = await setup(page, { enhanced: true, serverQueue: true });
+  await page.getByRole("button", { name: "Spela in", exact: true }).click();
+  await capturePart(page);
+  await page
+    .getByRole("button", { name: "Stoppa och sammanfatta", exact: true })
+    .click();
+  await expect(
+    page.getByText(
+      "Alla ljuddelar är verifierade i molnet. Servern fortsätter bearbetningen även om du stänger sidan.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  expect(f.aiCalls).toBe(0);
+  const id = [...f.sessions.keys()][0];
+  await page.goto("./");
+  f.completeOnServer(id);
+  expect(f.sessions.get(id)!.summary).toBeDefined();
+  await page.goto(`./inspelning/?recordingId=${id}`);
+  await expect(
+    page.getByRole("textbox", { name: "Granskad sammanfattning", exact: true }),
+  ).toHaveValue(/Länken skickas på fredag/);
+  expect(f.aiCalls).toBe(0);
+  expect(f.f.documents.get(userA)!.data.weeks).toEqual(f.original.weeks);
+  expect(f.f.errors).toEqual([]);
+});
+async function setup(
+  page: Page,
+  options: {
+    enhanced?: boolean;
+    serverQueue?: boolean;
+    freeCalendar?: boolean;
+  } = {},
+) {
   const original = plan("Molnplan");
   original.weeks[week].activities[0].status = "done";
+  if (options.freeCalendar)
+    original.weeks[week].activities = original.weeks[week].activities.slice(
+      0,
+      1,
+    );
   original.applications = [
     {
       id: "application",
@@ -43,6 +279,25 @@ async function setup(page: Page) {
   const sessions = new Map<string, RecordingSession>(),
     received = new Map<string, Set<number>>(),
     transcribed = new Map<string, Set<number>>();
+  const texts = new Map<string, Map<number, string>>(),
+    versions = new Map<
+      string,
+      { revision: number; summary: unknown; created_at: string }[]
+    >();
+  const summaryFor = (s: RecordingSession) =>
+    s.transcriptRevision
+      ? {
+          ...summary,
+          agreements: [
+            {
+              ...summary.agreements[0],
+              text: "Länken skickas på måndag.",
+              when: "Måndag",
+              evidence: "Jag skickar länken på måndag.",
+            },
+          ],
+        }
+      : summary;
   let seq = 0,
     offline = false,
     blockAI = false,
@@ -104,6 +359,8 @@ async function setup(page: Page) {
         aiReady: true,
         deferredCategorization: true,
         aiDiagnostics,
+        transcriptEditing: options.enhanced === true,
+        durableQueue: options.serverQueue === true,
       });
     if (b.action === "check-ai")
       return reply(
@@ -119,12 +376,17 @@ async function setup(page: Page) {
         title: b.title,
         context: b.context,
         state: "active",
-        startedAt: new Date().toISOString(),
+        startedAt: "2026-10-29T09:00:00Z",
         segmentCount: 0,
+        ...(options.enhanced
+          ? { transcriptRevision: 0, summaryRevision: 0, summaryStale: false }
+          : {}),
       };
       sessions.set(id, session);
       received.set(id, new Set());
       transcribed.set(id, new Set());
+      texts.set(id, new Map());
+      versions.set(id, []);
       return reply({ session });
     }
     if (!s) return reply({ error: "Saknas" });
@@ -146,6 +408,8 @@ async function setup(page: Page) {
           releaseAI = r;
         });
       transcribed.get(b.id)!.add(b.index);
+      if (!texts.get(b.id)!.has(b.index))
+        texts.get(b.id)!.set(b.index, "Kim: Jag skickar länken på fredag.");
       return reply({ ready: true });
     }
     if (b.action === "get")
@@ -160,6 +424,12 @@ async function setup(page: Page) {
       expect(received.get(b.id)!.size).toBe(b.count);
       s.state = "stopped";
       s.segmentCount = b.count;
+      if (options.serverQueue)
+        s.job = {
+          state: "queued",
+          attempts: 0,
+          nextAttemptAt: new Date().toISOString(),
+        };
       return reply({ stopped: true });
     }
     if (b.action === "summarize") {
@@ -167,8 +437,26 @@ async function setup(page: Page) {
       if (failSummary)
         return reply({ error: "Sammanfattning tillfälligt fördröjd." });
       s.state = "complete";
-      s.summary = summary;
-      return reply({ done: true, summary });
+      s.summary = summaryFor(s);
+      s.summaryRevision = s.transcriptRevision ?? 0;
+      s.summaryStale = false;
+      return reply({ done: true, summary: s.summary });
+    }
+    if (b.action === "correct-transcript") {
+      expect(options.enhanced).toBe(true);
+      if (b.revision !== (s.transcriptRevision ?? 0))
+        return reply({ error: "Transkriptionen har ändrats." });
+      if (s.summary)
+        versions.get(b.id)!.push({
+          revision: s.summaryRevision ?? 0,
+          summary: structuredClone(s.summary),
+          created_at: new Date().toISOString(),
+        });
+      texts.get(b.id)!.set(b.index, b.text);
+      s.transcriptRevision = (s.transcriptRevision ?? 0) + 1;
+      s.summaryStale = true;
+      s.state = "stopped";
+      return reply({ session: s });
     }
     if (b.action === "delete") {
       sessions.delete(b.id);
@@ -184,12 +472,29 @@ async function setup(page: Page) {
     return route.fulfill({
       json: [...(transcribed.get(id) ?? [])].map((index) => ({
         segment_index: index,
-        transcript: "Kim: Jag skickar länken på fredag.",
+        transcript:
+          texts.get(id)?.get(index) ?? "Kim: Jag skickar länken på fredag.",
+        original_transcript: "Kim: Jag skickar länken på fredag.",
+        transcript_revision: sessions.get(id)?.transcriptRevision ?? 0,
         duration_ms: 20000,
       })),
       headers: { "access-control-allow-origin": "*" },
     });
   });
+  await page.route(
+    "**/rest/v1/recording_summary_versions?**",
+    async (route) => {
+      if (route.request().method() === "OPTIONS") return route.fallback();
+      const params = new URL(route.request().url()).searchParams;
+      expect(params.get("user_id")).toBe(`eq.${userA}`);
+      return route.fulfill({
+        json:
+          versions.get(params.get("session_id")?.replace(/^eq\./, "") ?? "") ??
+          [],
+        headers: { "access-control-allow-origin": "*" },
+      });
+    },
+  );
   await page.route(
     "**/storage/v1/object/authenticated/interview-recordings/**",
     async (route) => {
@@ -215,6 +520,22 @@ async function setup(page: Page) {
     f,
     original,
     sessions,
+    completeOnServer(id: string) {
+      const s = sessions.get(id)!;
+      for (const i of received.get(id)!) {
+        transcribed.get(id)!.add(i);
+        texts.get(id)!.set(i, "Kim: Jag skickar länken på fredag.");
+      }
+      s.state = "complete";
+      s.summary = summaryFor(s);
+      s.summaryRevision = s.transcriptRevision ?? 0;
+      s.summaryStale = false;
+      s.job = {
+        state: "complete",
+        attempts: 0,
+        nextAttemptAt: new Date().toISOString(),
+      };
+    },
     get summaryCalls() {
       return summaryCalls;
     },

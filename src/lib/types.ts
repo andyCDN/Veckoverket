@@ -166,6 +166,7 @@ export type JobApplication = {
   nextActionReason?: string;
   nextActionOwner?: string;
   nextActionId?: string;
+  nextActionKind?: "task" | "waiting";
   followUpDate: string;
   notes: string;
 };
@@ -177,6 +178,7 @@ export type NetworkContact = {
   nextActionReason?: string;
   nextActionOwner?: string;
   nextActionId?: string;
+  nextActionKind?: "task" | "waiting";
   followUpDate: string;
   entries: { id: string; date: string; channel: string; notes: string }[];
 };
@@ -187,6 +189,15 @@ export type CareerAction = {
   owner: string;
   reason: string;
   status: "open" | "done";
+  kind?: "task" | "waiting";
+  updates?: {
+    id: string;
+    date: string;
+    kind: "fulfilled" | "changed" | "open";
+    note: string;
+    recordingId?: string;
+    previous?: { title: string; date: string; owner: string; reason: string };
+  }[];
   applicationId?: string;
   contactId?: string;
   interviewId?: string;

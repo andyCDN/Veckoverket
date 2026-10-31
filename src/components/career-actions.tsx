@@ -43,7 +43,9 @@ export function CareerActions({
           (period === "overdue" && a.date && a.date < date) ||
           (period === "today" && a.date === date) ||
           (period === "week" && a.date > date && a.date <= addDays(date, 7)) ||
-          (period === "undated" && !a.date)),
+          (period === "undated" && !a.date) ||
+          (period === "mine" && (a.kind ?? "task") === "task") ||
+          (period === "waiting" && a.kind === "waiting")),
   );
   return (
     <section className="stack" aria-label="Gemensamma nästa steg">
@@ -64,6 +66,8 @@ export function CareerActions({
             <option value="today">Idag</option>
             <option value="week">Kommande sju dagar</option>
             <option value="undated">Utan datum</option>
+            <option value="mine">Egna uppgifter</option>
+            <option value="waiting">Väntar på andra</option>
             <option value="done">Avklarade</option>
           </select>
         </label>
@@ -98,6 +102,11 @@ export function CareerActions({
           return (
             <article className="career-card stack" key={a.id}>
               <h2>{a.title}</h2>
+              <p>
+                {a.kind === "waiting"
+                  ? "Bevakning · väntar på annan"
+                  : "Egen uppgift"}
+              </p>
               <p>
                 {app
                   ? `${app.role} · ${app.organization}`
@@ -137,6 +146,41 @@ export function CareerActions({
               {booked.map((v) => (
                 <p key={v.id}>Bokat: {v.date}</p>
               ))}
+              {!!a.updates?.length && (
+                <details>
+                  <summary>Överenskommelsens historik</summary>
+                  <ol>
+                    {a.updates.map((u) => (
+                      <li key={u.id}>
+                        <strong>
+                          {u.date} ·{" "}
+                          {u.kind === "fulfilled"
+                            ? "Uppfylld"
+                            : u.kind === "changed"
+                              ? "Ändrad"
+                              : "Fortfarande öppen"}
+                        </strong>
+                        <p>{u.note}</p>
+                        {u.previous && (
+                          <p>
+                            Tidigare: {u.previous.title} ·{" "}
+                            {u.previous.date || "Utan datum"}
+                          </p>
+                        )}
+                        {u.recordingId && (
+                          <a
+                            href={recordingHref({ recordingId: u.recordingId })}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Öppna uppföljningssamtalet
+                          </a>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                </details>
+              )}
               {a.status === "open" && (
                 <div className="career-actions">
                   <button className="button secondary" onClick={() => edit(a)}>
@@ -264,6 +308,21 @@ export function CareerActions({
                 value={draft.owner}
                 onChange={(e) => setDraft({ ...draft, owner: e.target.value })}
               />
+            </label>
+            <label>
+              Typ av nästa steg
+              <select
+                value={draft.kind ?? "task"}
+                onChange={(e) =>
+                  setDraft({
+                    ...draft,
+                    kind: e.target.value as "task" | "waiting",
+                  })
+                }
+              >
+                <option value="task">Egen uppgift</option>
+                <option value="waiting">Väntar på annan</option>
+              </select>
             </label>
             <label>
               Varför behövs steget?

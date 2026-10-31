@@ -335,7 +335,7 @@ export function InterviewNotesForm({
                         {e.id.startsWith("recording-") && (
                           <a
                             href={recordingHref({
-                              recordingId: e.id.slice(10),
+                              recordingId: e.id.slice(10, 46),
                             })}
                             target="_blank"
                             rel="noopener noreferrer"
@@ -359,7 +359,9 @@ export function InterviewNotesForm({
                     <p className="career-notes">{e.notes}</p>
                     {e.id.startsWith("recording-") && (
                       <a
-                        href={recordingHref({ recordingId: e.id.slice(10) })}
+                        href={recordingHref({
+                          recordingId: e.id.slice(10, 46),
+                        })}
                         target="_blank"
                         rel="noopener noreferrer"
                       >

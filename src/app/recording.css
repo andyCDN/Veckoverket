@@ -283,7 +283,9 @@
 }
 .recording-proposal > label:nth-of-type(1),
 .recording-proposal > label:nth-of-type(2),
-.recording-proposal > label:nth-of-type(5),
+.recording-proposal > label:nth-of-type(6),
+.recording-proposal > .recording-action-kind,
+.recording-proposal > .recording-booking-proposal,
 .recording-proposal > blockquote,
 .recording-proposal > div,
 .recording-proposal > p {
@@ -351,6 +353,40 @@
 }
 .recording-about {
   padding-top: 4px;
+}
+.recording-transcript > summary,
+.recording-follow-up > summary {
+  font:
+    700 20px/1.3 var(--font-masthead),
+    sans-serif;
+  cursor: pointer;
+}
+.recording-transcript > section,
+.recording-follow-up > section {
+  margin-top: 18px;
+}
+.recording-transcript-part,
+.recording-agreement {
+  border-top: 1px solid var(--recording-line);
+  padding-top: 16px;
+}
+.recording-transcript-part h3,
+.recording-agreement h3 {
+  font:
+    700 19px/1.3 var(--font-masthead),
+    sans-serif;
+  margin: 0;
+}
+.recording-transcript .career-notes,
+.recording-follow-up .career-notes {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.recording-page input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+  flex-shrink: 0;
 }
 @media (min-width: 800px) {
   .recording-masthead h1 span {

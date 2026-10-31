@@ -76,7 +76,8 @@ export function recordingActionProposals(
   session: RecordingSession,
   segments: RecordingSegment[],
 ): CareerAction[] {
-  if (session.state !== "complete" || !session.summary) return [];
+  if (session.state !== "complete" || !session.summary || session.summaryStale)
+    return [];
   const items = [...session.summary.agreements, ...session.summary.nextSteps];
   return [
     ...new Map(
@@ -89,6 +90,7 @@ export function recordingActionProposals(
           owner: item.owner,
           reason: `Från samtalet ”${session.title}”. Tidpunkt i samtalet: ${item.when}.`,
           status: "open",
+          kind: "task",
           applicationId: session.context.applicationId,
           contactId: session.context.contactId,
           interviewId: session.context.interviewId,

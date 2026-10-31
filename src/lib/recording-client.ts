@@ -9,7 +9,7 @@ export function recordingClient(client: SupabaseClient, userId: string) {
       for (let offset = 0; offset < 100000; offset += 500) {
         const { data, error } = await client
           .from("recording_segments")
-          .select("segment_index,transcript,duration_ms")
+          .select("*")
           .eq("user_id", userId)
           .eq("session_id", sessionId)
           .eq("state", "ready")
@@ -23,11 +23,30 @@ export function recordingClient(client: SupabaseClient, userId: string) {
             index: r.segment_index,
             transcript: r.transcript,
             durationMs: r.duration_ms,
+            originalTranscript: r.original_transcript ?? r.transcript,
+            revision: r.transcript_revision ?? 0,
           })),
         );
         if (!data || data.length < 500) return output;
       }
       return output;
+    },
+    async summaryVersions(sessionId: string) {
+      const { data, error } = await client
+        .from("recording_summary_versions")
+        .select("revision,summary,created_at")
+        .eq("user_id", userId)
+        .eq("session_id", sessionId)
+        .order("revision", { ascending: false })
+        .limit(20)
+        .abortSignal(AbortSignal.timeout(15000));
+      if (error)
+        throw new Error("Tidigare sammanfattningar kunde inte hämtas.");
+      return data as {
+        revision: number;
+        summary: import("../../supabase/functions/_shared/recording-schema").RecordingSummary;
+        created_at: string;
+      }[];
     },
     async audio(sessionId: string, index: number) {
       const { data, error } = await client.storage
