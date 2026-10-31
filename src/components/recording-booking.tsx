@@ -27,7 +27,7 @@ export function RecordingBooking({
     selected = options.find((v) => `${v.date}:${v.start}` === slot);
   return (
     <Modal
-      title="Granska kalenderbokning"
+      title="Granska bokning"
       description={action.title}
       onClose={onClose}
     >
