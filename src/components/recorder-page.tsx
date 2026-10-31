@@ -75,12 +75,18 @@ export function RecorderPage() {
   }, []);
   return (
     <main className="recording-page">
-      <a className="text-button" href={appPath("/")}>
-        ← Till Veckoverket
-      </a>
-      <h1 aria-label="Samtalsinspelning">
-        Samtals<span>inspelning</span>
-      </h1>
+      <header className="recording-masthead">
+        <div className="recording-masthead-top">
+          <a href={appPath("/")} aria-label="Till Veckoverket">
+            ← Veckoverket
+          </a>
+          <span>Privat ljudarkiv</span>
+        </div>
+        <h1 aria-label="Samtalsinspelning">
+          Samtals<span>inspelning</span>
+        </h1>
+        <p>Spela in först. Koppla och granska efteråt.</p>
+      </header>
       {!loaded ? (
         <p role="status">Läser in kontot…</p>
       ) : !user ? (
@@ -804,163 +810,225 @@ function RecorderWorkspace({ user }: { user: User }) {
     }
   }
   return (
-    <div className="stack">
-      <section
-        className={`recording-deck is-${mode}`}
-        aria-label="Inspelningskontroller"
-      >
-        <div className="recording-deck-top">
-          <span>Ljud / 01</span>
-          <span aria-hidden="true">＋</span>
-        </div>
-        <strong className="recording-state" role="status">
-          {mode === "recording"
-            ? "● Inspelning pågår"
-            : mode === "paused"
-              ? "Inspelning pausad"
-              : "Mikrofonen är avstängd"}
-        </strong>
-        <button
-          className="recording-trigger"
-          aria-label={
-            mode === "recording"
-              ? "Stoppa och sammanfatta"
-              : mode === "paused"
-                ? "Fortsätt"
-                : "Starta inspelning"
-          }
-          disabled={busy || (mode === "idle" && (!ready || !queueReady))}
-          aria-busy={busy}
-          onClick={() =>
-            void (mode === "recording"
-              ? stop()
-              : mode === "paused"
-                ? resume()
-                : start())
-          }
-        >
-          <span className="recording-target" aria-hidden="true">
-            <span />
-          </span>
-          <span className="recording-trigger-label">
-            {busy
-              ? "Vänta…"
-              : mode === "recording"
-                ? "Stoppa"
+    <div className="recording-workspace stack">
+      <ol className="recording-steps" aria-label="Inspelningens steg">
+        {["Spela in", "Koppla", "Granska"].map((label, index) => {
+          const step = !active && current ? (summary ? 2 : 1) : 0;
+          return (
+            <li key={label} aria-current={step === index ? "step" : undefined}>
+              <span aria-hidden="true">0{index + 1}</span>
+              {label}
+            </li>
+          );
+        })}
+      </ol>
+      <div className="recording-capture-layout">
+        <div className="recording-capture">
+          <section
+            className={`recording-deck is-${mode}`}
+            id="recording-controls"
+            aria-label="Inspelningskontroller"
+          >
+            <div className="recording-deck-top">
+              <span>01 / Spela in</span>
+              <span aria-hidden="true">＋</span>
+            </div>
+            <strong className="recording-state" role="status">
+              {mode === "recording"
+                ? "● Inspelning pågår"
                 : mode === "paused"
-                  ? "Fortsätt"
-                  : "Spela in"}
-          </span>
-          <span className="recording-trigger-meta">
-            {mode === "idle"
-              ? "Kategorisera efteråt"
-              : mode === "paused"
-                ? "Återuppta samtalet"
-                : "Sparar ljud löpande"}
-          </span>
-        </button>
-        <div className="recording-deck-bottom">
-          <span aria-label="Inspelad tid">
-            {Math.floor(seconds / 60)
-              .toString()
-              .padStart(2, "0")}
-            :{(seconds % 60).toString().padStart(2, "0")}
-          </span>
-          <span aria-hidden="true">● REC</span>
-        </div>
-        {active && (
-          <button
-            className="button secondary recording-secondary"
-            disabled={busy}
-            onClick={() =>
-              void (mode === "recording" ? pauseCapture() : stop())
-            }
-          >
-            {mode === "recording" ? "Pausa" : "Stoppa och sammanfatta"}
-          </button>
-        )}
-      </section>
-      <p className="recording-instruction">
-        Håll sidan öppen och synlig under samtalet.
-      </p>
-      {!ready && (
-        <p>
-          Serverdelen behöver vara aktiverad.{" "}
-          <a href={setupGuide} target="_blank" rel="noopener noreferrer">
-            Installationsguide för inspelning
-          </a>
-        </p>
-      )}
-      {ready && !aiReady && (
-        <p>
-          AI-bearbetningen är inte aktiverad. Inspelning och ljudlagring
-          fungerar; sammanfattningar väntar tills servernyckeln är konfigurerad.
-        </p>
-      )}
-      {ready && (
-        <details className="recording-diagnostics">
-          <summary>Felsök AI-analysen</summary>
-          <p>
-            Kontrollen provar transkribering och sammanfattning med ett kort
-            test utan ditt inspelade material. Vanlig API-kostnad tillkommer.
-          </p>
-          <button
-            className="button secondary"
-            disabled={aiChecking}
-            onClick={() => void checkAI()}
-          >
-            {aiChecking
-              ? "Kontrollerar AI-anslutningen…"
-              : "Kontrollera AI-anslutningen"}
-          </button>
-          {aiCheckResult && <p role="status">{aiCheckResult}</p>}
-          <p>
-            <a
-              href="https://platform.openai.com/settings/organization/billing/overview"
-              target="_blank"
-              rel="noopener noreferrer"
+                  ? "Inspelning pausad"
+                  : "Mikrofonen är avstängd"}
+            </strong>
+            <button
+              className="recording-trigger"
+              aria-label={
+                busy
+                  ? "Vänta…"
+                  : mode === "recording"
+                    ? "Stoppa och sammanfatta"
+                    : mode === "paused"
+                      ? "Fortsätt"
+                      : "Spela in"
+              }
+              disabled={busy || (mode === "idle" && (!ready || !queueReady))}
+              aria-busy={busy}
+              onClick={() =>
+                void (mode === "recording"
+                  ? stop()
+                  : mode === "paused"
+                    ? resume()
+                    : start())
+              }
             >
-              OpenAI API-fakturering
-            </a>
-            {" · "}
-            <a href={setupGuide} target="_blank" rel="noopener noreferrer">
-              Installationsguide för inspelning
-            </a>
+              <span className="recording-target" aria-hidden="true">
+                <span />
+              </span>
+              <span className="recording-trigger-label">
+                {busy
+                  ? "Vänta…"
+                  : mode === "recording"
+                    ? "Stoppa"
+                    : mode === "paused"
+                      ? "Fortsätt"
+                      : "Spela in"}
+              </span>
+            </button>
+            <p className="recording-trigger-meta">
+              {mode === "idle"
+                ? "Kategorisera efteråt"
+                : mode === "paused"
+                  ? "Återuppta samtalet"
+                  : "Sparar ljud löpande"}
+            </p>
+            <div className="recording-deck-bottom">
+              <span aria-label="Inspelad tid">
+                {Math.floor(seconds / 60)
+                  .toString()
+                  .padStart(2, "0")}
+                :{(seconds % 60).toString().padStart(2, "0")}
+              </span>
+              <span aria-hidden="true">
+                {mode === "recording"
+                  ? "● REC"
+                  : mode === "paused"
+                    ? "Ⅱ PAUS"
+                    : "● LJUD"}
+              </span>
+            </div>
+            {active && (
+              <button
+                className="button secondary recording-secondary"
+                disabled={busy}
+                onClick={() =>
+                  void (mode === "recording" ? pauseCapture() : stop())
+                }
+              >
+                {mode === "recording" ? "Pausa" : "Stoppa och sammanfatta"}
+              </button>
+            )}
+          </section>
+          <p className="recording-instruction">
+            Håll sidan öppen och synlig under samtalet.
           </p>
-        </details>
-      )}
-      {uploadIssue && <p role="status">{uploadIssue}</p>}
-      {aiIssue && <p role="status">{aiIssue}</p>}
-      {error && (
-        <p className="recording-error" role="alert">
-          {error}
-        </p>
-      )}
-      {notice && <p role="status">{notice}</p>}
+        </div>
+        <aside
+          className="recording-processing"
+          aria-label="Ljud och bearbetning"
+        >
+          <div className="recording-processing-title">
+            <span>Kontrollpanel</span>
+            <h2>Ljud & bearbetning</h2>
+          </div>
+          <dl className="recording-status-list">
+            <div>
+              <dt>Väntar på uppladdning</dt>
+              <dd>
+                {queue.filter((q) => !q.uploaded).length + failedLocal.length}
+                <span> ljuddelar</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Väntar på transkribering</dt>
+              <dd>
+                {queue.filter((q) => q.uploaded).length}
+                <span> ljuddelar på denna enhet</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Pågående bearbetning</dt>
+              <dd>
+                {finishing.length}
+                <span> samtal</span>
+              </dd>
+            </div>
+          </dl>
+          {current && (
+            <div className="recording-current">
+              <span>Aktuellt samtal</span>
+              <strong>{current.title}</strong>
+              <span>
+                {current.state === "complete"
+                  ? "Sammanfattning klar"
+                  : active
+                    ? "Inspelning öppen"
+                    : "Sammanfattning återstår"}
+              </span>
+            </div>
+          )}
+          {!ready && (
+            <p>
+              Serverdelen behöver vara aktiverad.{" "}
+              <a href={setupGuide} target="_blank" rel="noopener noreferrer">
+                Installationsguide för inspelning
+              </a>
+            </p>
+          )}
+          {ready && !aiReady && (
+            <p>
+              AI-bearbetningen är inte aktiverad. Inspelning och ljudlagring
+              fungerar; sammanfattningar väntar tills servernyckeln är
+              konfigurerad.
+            </p>
+          )}
+          {ready && (
+            <details className="recording-diagnostics">
+              <summary>Felsök AI-analysen</summary>
+              <p>
+                Kontrollen provar transkribering och sammanfattning med ett kort
+                test utan ditt inspelade material. Vanlig API-kostnad
+                tillkommer.
+              </p>
+              <button
+                className="button secondary"
+                disabled={aiChecking}
+                onClick={() => void checkAI()}
+              >
+                {aiChecking
+                  ? "Kontrollerar AI-anslutningen…"
+                  : "Kontrollera AI-anslutningen"}
+              </button>
+              {aiCheckResult && <p role="status">{aiCheckResult}</p>}
+              <p>
+                <a
+                  href="https://platform.openai.com/settings/organization/billing/overview"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  OpenAI API-fakturering
+                </a>
+                {" · "}
+                <a href={setupGuide} target="_blank" rel="noopener noreferrer">
+                  Installationsguide för inspelning
+                </a>
+              </p>
+            </details>
+          )}
+          {uploadIssue && <p role="status">{uploadIssue}</p>}
+          {aiIssue && <p role="status">{aiIssue}</p>}
+          {error && (
+            <p className="recording-error" role="alert">
+              {error}
+            </p>
+          )}
+          {notice && <p role="status">{notice}</p>}
 
-      {busy && <p role="status">Bearbetar… Låt sidan vara öppen.</p>}
-      {(queue.length > 0 || active) && (
-        <p className="recording-queue-status">
-          {queue.filter((q) => !q.uploaded).length} ljuddelar väntar på
-          uppladdning. {queue.filter((q) => q.uploaded).length} väntar på
-          transkribering.
-        </p>
-      )}
-      {finishing.length > 0 && (
-        <p role="status">
-          {finishing.length} samtal bearbetas i bakgrunden. Du kan starta nästa
-          inspelning.
-        </p>
-      )}
+          {busy && <p role="status">Bearbetar… Låt sidan vara öppen.</p>}
+          {finishing.length > 0 && (
+            <p role="status">
+              {finishing.length} samtal bearbetas i bakgrunden. Du kan starta
+              nästa inspelning.
+            </p>
+          )}
+        </aside>
+      </div>
       {current && !active && (
         <section
           className="recording-classification stack"
           ref={classification}
           aria-label="Kategorisera inspelningen"
         >
-          <span className="recording-section-label">
-            Efter inspelningen / 02
-          </span>
+          <span className="recording-section-label">02 / Koppla samtalet</span>
           <h2>Kategorisera</h2>
           <p>
             Välj kategori och lägg vid behov till en ansökan, intervju eller
@@ -1116,7 +1184,11 @@ function RecorderWorkspace({ user }: { user: User }) {
         />
       )}
       {summary && !active && (
-        <section className="stack" aria-label="Granska sammanfattning">
+        <section
+          className="recording-summary-review recording-paper-panel stack"
+          aria-label="Granska sammanfattning"
+        >
+          <span className="recording-section-label">03 / Granska texten</span>
           <h2>Granska sammanfattningen</h2>
           <p>
             Överenskommelser, förslag och osäkra uppgifter hålls isär.
@@ -1138,7 +1210,7 @@ function RecorderWorkspace({ user }: { user: User }) {
           <label>
             Granskad sammanfattning
             <textarea
-              rows={16}
+              rows={8}
               value={review}
               onChange={(e) => setReview(e.target.value)}
             />

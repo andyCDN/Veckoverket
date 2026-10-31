@@ -222,7 +222,12 @@ test("en uppdaterad service worker väntar och lämnar ett öppet formulär orö
   page,
 }) => {
   await ready(page);
-  await page.locator(".day-shell.is-selected .calendar-block").first().click();
+  await page
+    .locator(
+      '.day-shell.is-selected .calendar-block[aria-label$="Redigera aktivitet"]',
+    )
+    .first()
+    .click();
   await page.getByLabel("Namn", { exact: true }).fill("Pågående redigering");
   const scope = new URL(page.url()).pathname;
   await page.evaluate(async (path) => {

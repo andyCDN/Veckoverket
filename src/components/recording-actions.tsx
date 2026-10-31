@@ -60,7 +60,11 @@ export function RecordingActionReview({
       items.map((a) => (a.id === id ? { ...a, ...change } : a)),
     );
   return (
-    <section className="stack" aria-label="Åtgärder från samtalet">
+    <section
+      className="recording-action-review recording-paper-panel stack"
+      aria-label="Åtgärder från samtalet"
+    >
+      <span className="recording-section-label">03 / Granska åtgärder</span>
       <h2>Från samtal till nästa steg</h2>
       <p>
         Välj åtgärderna som ska sparas. Kontrollera ansvarig och datum mot
@@ -84,12 +88,16 @@ export function RecordingActionReview({
         const imported = data.careerActions?.some((v) => v.id === a.id),
           indexes = a.source!.segmentIndexes;
         return (
-          <fieldset className="stack" key={a.id}>
+          <fieldset
+            className="recording-proposal"
+            data-selected={selected.includes(a.id) && !imported}
+            key={a.id}
+          >
             <legend>
               Förslag {i + 1}
               {imported ? " · Redan sparat" : ""}
             </legend>
-            <label>
+            <label className="recording-choice">
               <input
                 type="checkbox"
                 disabled={imported || !indexes.length || busy}

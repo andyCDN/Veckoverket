@@ -1,0 +1,394 @@
+/* Inspelningssidan: röd tryckplåt, tydliga reglage och separata arbetssteg. */
+.recording-page {
+  --recording-line: #19191833;
+  max-width: 1120px;
+  padding-top: max(18px, env(safe-area-inset-top));
+}
+.recording-masthead {
+  border-bottom: 3px solid var(--ink);
+  padding-bottom: 18px;
+  margin-bottom: 20px;
+}
+.recording-masthead-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 22px;
+  font: 700 10px/1.4 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.recording-masthead-top a {
+  color: var(--ink);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  padding: 8px 0;
+}
+.recording-masthead h1 {
+  margin: 0;
+  font:
+    900 clamp(54px, 9.5vw, 100px)/0.86 var(--font-masthead),
+    sans-serif;
+  text-transform: uppercase;
+  letter-spacing: -0.025em;
+  text-shadow: none;
+}
+.recording-masthead h1 span {
+  display: block;
+  color: var(--blue);
+}
+.recording-masthead > p {
+  margin: 16px 0 0;
+  font-size: 14px;
+}
+.recording-workspace {
+  gap: 24px;
+}
+.recording-steps {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--ink);
+}
+.recording-steps li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 10px;
+  font: 700 11px/1.3 var(--mono);
+  border-right: 1px solid var(--ink);
+}
+.recording-steps li:last-child {
+  border-right: 0;
+}
+.recording-steps li > span {
+  font-weight: 400;
+}
+.recording-steps [aria-current="step"] {
+  background: var(--blue);
+  color: var(--paper-light);
+}
+.recording-capture-layout {
+  display: grid;
+  gap: 24px;
+  align-items: start;
+}
+.recording-capture {
+  min-width: 0;
+}
+.recording-deck {
+  box-shadow: 5px 5px 0 var(--ink);
+  border-width: 2px;
+}
+.recording-deck-top {
+  background: var(--ink);
+  color: var(--paper-light);
+  border-bottom: 0;
+  padding: 12px 16px;
+  font-size: 10px;
+}
+.recording-state {
+  background: var(--paper-light);
+  padding: 12px 16px;
+  font-size: 11px;
+}
+.recording-page .recording-trigger {
+  display: flex;
+  flex-direction: column;
+  gap: 17px;
+  padding: 30px 16px 25px;
+  text-align: center;
+  background-size: 6px 6px;
+  background-image: radial-gradient(#19191844 0.6px, transparent 0.8px);
+}
+.recording-page .recording-target {
+  width: clamp(156px, 48vw, 216px);
+  border-width: 4px;
+  box-shadow: 5px 5px 0 var(--ink);
+  background: var(--paper-light);
+  grid-row: auto;
+}
+.recording-page .recording-target > span {
+  background: var(--red);
+  border: 3px solid var(--ink);
+}
+.recording-target::before,
+.recording-target::after {
+  display: none;
+}
+.recording-page .recording-trigger-label {
+  align-self: center;
+  font:
+    900 clamp(42px, 12vw, 68px)/0.95 var(--font-masthead),
+    sans-serif;
+  letter-spacing: -0.025em;
+}
+.recording-page .recording-trigger-meta {
+  display: block;
+  padding: 8px 12px;
+  margin: 0;
+  background: var(--red);
+  border-bottom: 2px solid var(--ink);
+  text-align: center;
+  font-size: 10px;
+}
+.recording-trigger:not(:disabled):hover .recording-target {
+  background: var(--paper-light);
+}
+.recording-trigger:not(:disabled):hover .recording-target > span {
+  background: var(--ink);
+}
+.recording-trigger:focus-visible {
+  outline: 4px solid var(--ink);
+  outline-offset: -8px;
+}
+.recording-deck-bottom {
+  background: var(--paper-light);
+  padding: 12px 16px;
+}
+.recording-deck-bottom > span:first-child {
+  font: 700 28px/1 var(--mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.06em;
+}
+.recording-deck-bottom > span:last-child {
+  font-size: 10px;
+}
+.recording-deck.is-recording .recording-state {
+  background: var(--ink);
+  color: var(--paper-light);
+  border-top: 1px solid #ffffff55;
+}
+.recording-instruction {
+  margin: 16px 0 0;
+  font-size: 11px;
+}
+.recording-processing {
+  min-width: 0;
+  border: 1px solid var(--ink);
+  padding: 18px;
+  background: var(--paper-light);
+  font-size: 13px;
+}
+.recording-processing-title > span,
+.recording-current > span:first-child {
+  font: 700 10px/1.5 var(--mono);
+  text-transform: uppercase;
+  color: var(--blue);
+}
+.recording-processing h2 {
+  font:
+    700 25px/1.1 var(--font-masthead),
+    sans-serif;
+  margin: 5px 0 18px;
+  letter-spacing: 0;
+}
+.recording-status-list {
+  margin: 0;
+}
+.recording-status-list > div {
+  border-top: 1px solid var(--recording-line);
+  padding: 12px 0;
+}
+.recording-status-list dt {
+  font-size: 12px;
+}
+.recording-status-list dd {
+  margin: 3px 0 0;
+  font: 700 22px/1.3 var(--mono);
+}
+.recording-status-list dd > span {
+  font: 12px/1.4 var(--body);
+}
+.recording-current {
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--ink);
+  border-left-width: 4px;
+  padding: 12px;
+  margin-top: 10px;
+}
+.recording-current > strong {
+  font-size: 14px;
+}
+.recording-diagnostics {
+  margin: 18px 0 0;
+  padding-top: 14px;
+  font-size: 12px;
+}
+.recording-processing > p {
+  margin: 14px 0 0;
+}
+.recording-processing .recording-error {
+  background: #fff1d6;
+  color: var(--ink);
+}
+.recording-page .recording-paper-panel,
+.recording-page .recording-classification {
+  border: 1px solid var(--ink);
+  border-top: 5px solid var(--blue);
+  padding: 22px;
+  background: var(--paper-light);
+  gap: 16px;
+}
+.recording-page .recording-classification {
+  border-top-color: var(--red);
+}
+.recording-page .recording-paper-panel > h2,
+.recording-page .recording-classification > h2 {
+  font:
+    800 clamp(28px, 5vw, 38px)/1.05 var(--font-masthead),
+    sans-serif;
+  margin: 0;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+.recording-paper-panel > p,
+.recording-classification > p {
+  margin: 0;
+  font-size: 14px;
+}
+.recording-classification fieldset {
+  border: 0;
+  padding: 0;
+}
+.recording-classification legend {
+  padding: 0 0 12px;
+  font-size: 12px;
+}
+.recording-page label {
+  font: 600 12px/1.5 var(--body);
+  letter-spacing: 0;
+}
+.recording-page input,
+.recording-page select,
+.recording-page textarea {
+  background-color: var(--paper);
+  border-width: 1px;
+}
+.recording-page .recording-proposal {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--ink);
+  border-left: 4px solid var(--ink);
+}
+.recording-proposal > legend {
+  padding: 0 8px;
+  font: 700 11px/1.5 var(--mono);
+}
+.recording-proposal > label:nth-of-type(1),
+.recording-proposal > label:nth-of-type(2),
+.recording-proposal > label:nth-of-type(5),
+.recording-proposal > blockquote,
+.recording-proposal > div,
+.recording-proposal > p {
+  grid-column: 1/-1;
+}
+.recording-proposal[data-selected="true"] {
+  border-left-color: var(--blue);
+  background: #ebedf6;
+}
+.recording-page .recording-choice {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  font-size: 13px;
+}
+.recording-choice input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+  flex-shrink: 0;
+  margin: 0;
+  accent-color: var(--blue);
+}
+.recording-page blockquote {
+  font: 15px/1.5 var(--body);
+  padding: 10px 14px;
+  background: var(--paper);
+  margin: 0;
+}
+.recording-summary-review textarea {
+  min-height: 180px;
+}
+.recording-page audio {
+  width: 100%;
+}
+.recording-archive {
+  border-top-width: 3px;
+  padding-top: 20px;
+}
+.recording-archive > summary {
+  font:
+    800 25px/1.2 var(--font-masthead),
+    sans-serif;
+}
+.recording-session {
+  border: 1px solid var(--recording-line);
+  padding: 16px;
+  background: var(--paper-light);
+  gap: 12px;
+}
+.recording-session h3 {
+  font:
+    700 19px/1.2 var(--font-masthead),
+    sans-serif;
+  margin: 0;
+}
+.recording-session > p {
+  font-size: 12px;
+  margin: 0;
+}
+.recording-page .button {
+  font-size: 11px;
+}
+.recording-about {
+  padding-top: 4px;
+}
+@media (min-width: 800px) {
+  .recording-masthead h1 span {
+    display: inline;
+    margin-left: 0.2em;
+  }
+  .recording-masthead h1 {
+    font-size: clamp(64px, 8vw, 92px);
+  }
+  .recording-capture-layout {
+    grid-template-columns: minmax(0, 1.35fr) minmax(280px, 1fr);
+    gap: 30px;
+  }
+  .recording-classification fieldset {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .recording-classification fieldset > button,
+  .recording-classification fieldset > label:last-of-type {
+    grid-column: 1/-1;
+  }
+}
+@media (max-width: 440px) {
+  .recording-page {
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+  .recording-page .recording-paper-panel,
+  .recording-page .recording-classification {
+    padding: 16px;
+  }
+  .recording-page .recording-proposal {
+    padding: 12px;
+    gap: 12px;
+  }
+  .recording-steps li {
+    padding: 11px 8px;
+    font-size: 10px;
+    gap: 6px;
+  }
+}

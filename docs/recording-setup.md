@@ -2,6 +2,8 @@
 
 Mobilwebbsidan finns på `/Veckoverket/inspelning/`. Öppna den direkt eller från en ansökan, intervju eller kontakt. Startvyn har en stor inspelningsknapp; ingen kategori, rubrik eller koppling behöver väljas i förväg. Logga in med samma Supabase-konto som i Veckoverket. Håll sidan öppen och synlig under samtalet. Start och stopp styrs av användaren; mikrofonen arbetar kontinuerligt mellan dessa åtgärder.
 
+Gränssnittet visar stegen **Spela in → Koppla → Granska**. På dator ligger inspelningskontrollen och panelen **Ljud & bearbetning** bredvid varandra; på mobil följer statuspanelen efter den stora inspelningsknappen. Panelen visar väntande uppladdningar, enhetens transkriberingskö och pågående bearbetning. Kategorisering, åtgärdsgranskning och sammanfattning har egna avsnitt efter stopp. Utseendet ändrar inte inspelningsformat, lagring eller sparade uppgifter.
+
 Efter stopp visas **Kategorisera**. Välj valfri kategori, ändra rubrik och koppla vid behov en ansökan, intervju eller kontakt. **Spara kategorisering** sparar dessa uppgifter även om sammanfattningen ännu inte är klar. Du kan också lämna inspelningen okategoriserad och öppna den från **Tidigare inspelningar** senare. En länk från en ansökan eller kontakt föreslår kopplingen i efterhand; den sparas först när du väljer att spara.
 
 ## Egen appikon på hemskärmen

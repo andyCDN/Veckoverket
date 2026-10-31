@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 import { mock, plan, row, login, status, userA, week } from "./helpers";
 import type { RecordingSession } from "../supabase/functions/_shared/recording-schema";
 test.use({
@@ -208,7 +209,7 @@ async function setup(page: Page) {
   await status(page, "Sparat i molnet");
   await page.goto("./inspelning/?applicationId=application&contactId=contact");
   await expect(
-    page.getByRole("button", { name: "Starta inspelning", exact: true }),
+    page.getByRole("button", { name: "Spela in", exact: true }),
   ).toBeEnabled();
   return {
     f,
@@ -248,9 +249,7 @@ test("granskar åtgärder med ljudhänvisning, importerar en gång och bevarar b
   page,
 }) => {
   const f = await setup(page);
-  await page
-    .getByRole("button", { name: "Starta inspelning", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Spela in", exact: true }).click();
   await capturePart(page);
   await page
     .getByRole("button", { name: "Stoppa och sammanfatta", exact: true })
@@ -302,6 +301,11 @@ test("granskar åtgärder med ljudhänvisning, importerar en gång och bevarar b
     owner: "Jag",
     source: { recordingId: sessionId, segmentIndexes: [0] },
   });
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.screenshot({
+    path: "/tmp/veckoverket-recorder-review-v2.png",
+    fullPage: true,
+  });
   await page.goto(`./inspelning/?recordingId=${sessionId}&segment=0`);
   await expect(
     page.getByRole("region", { name: "Ljuddel 1", exact: true }),
@@ -336,9 +340,7 @@ test("visar AI-felets orsak, behåller ljudet och återupptar analysen efter ett
   const f = await setup(page);
   f.aiFailure =
     "OpenAI-projektets API-kredit eller budget är slut. Kontrollera API-faktureringen.";
-  await page
-    .getByRole("button", { name: "Starta inspelning", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Spela in", exact: true }).click();
   await capturePart(page);
   await expect.poll(() => localAudio(page)).toEqual({ raw: 0, uploaded: 1 });
   await expect(page.getByText(/API-kredit eller budget är slut/)).toBeVisible();
@@ -380,7 +382,7 @@ test("förklarar när en äldre serverfunktion behöver uppdateras för AI-diagn
     page.locator(".recording-diagnostics [role=status]"),
   ).toContainText("serverfunktion behöver uppdateras");
   await expect(
-    page.getByRole("button", { name: "Starta inspelning", exact: true }),
+    page.getByRole("button", { name: "Spela in", exact: true }),
   ).toBeEnabled();
 });
 async function capturePart(page: Page) {
@@ -417,9 +419,7 @@ test("fortsätter spela in och ladda upp medan AI står still och låter nästa 
   const f = await setup(page);
   f.blockAI = true;
   f.failSummary = true;
-  await page
-    .getByRole("button", { name: "Starta inspelning", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Spela in", exact: true }).click();
   await capturePart(page);
   await expect.poll(() => f.aiCalls).toBe(1);
   await expect.poll(() => localAudio(page)).toEqual({ raw: 0, uploaded: 1 });
@@ -431,11 +431,9 @@ test("fortsätter spela in och ladda upp medan AI står still och låter nästa 
     .getByRole("button", { name: "Stoppa och sammanfatta", exact: true })
     .click();
   await expect(
-    page.getByRole("button", { name: "Starta inspelning", exact: true }),
+    page.getByRole("button", { name: "Spela in", exact: true }),
   ).toBeEnabled();
-  await page
-    .getByRole("button", { name: "Starta inspelning", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Spela in", exact: true }).click();
   f.unblock();
   await expect.poll(() => f.summaryCalls).toBe(1);
   f.failSummary = false;
@@ -462,9 +460,7 @@ test("återhämtar lokalt ljud efter nätfel och omladdning och sparar granskad 
   test.setTimeout(45000);
   const f = await setup(page);
   f.offline = true;
-  await page
-    .getByRole("button", { name: "Starta inspelning", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Spela in", exact: true }).click();
   await capturePart(page);
   await expect.poll(() => localAudio(page)).toEqual({ raw: 1, uploaded: 0 });
   await page.getByRole("button", { name: "Fortsätt", exact: true }).click();
@@ -555,9 +551,7 @@ test("behåller ljud som inte kan skrivas lokalt och erbjuder nedladdning före 
       IDBObjectStore.prototype.add = original;
     };
   });
-  await page
-    .getByRole("button", { name: "Starta inspelning", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Spela in", exact: true }).click();
   await capturePart(page);
   await expect(page.locator("main").getByRole("alert")).toContainText(
     "kunde inte sparas lokalt",
@@ -598,13 +592,18 @@ test("behåller ljud som inte kan skrivas lokalt och erbjuder nedladdning före 
 test("stor inspelningsknapp startar utan kategori och kategorisering sker efter stopp", async ({
   page,
 }) => {
+  test.setTimeout(45000);
   const f = await setup(page);
   await page.goto("./inspelning/");
   const start = page.getByRole("button", {
-    name: "Starta inspelning",
+    name: "Spela in",
     exact: true,
   });
   await expect(start).toBeEnabled();
+  await expect(
+    page.locator('.recording-steps [aria-current="step"]'),
+  ).toContainText("Spela in");
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await expect(page.getByRole("combobox")).toHaveCount(0);
   await expect(page.getByRole("textbox")).toHaveCount(0);
   const box = await start.boundingBox();
