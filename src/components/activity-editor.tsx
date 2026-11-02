@@ -32,6 +32,7 @@ export function ActivityEditor({
   activities,
   date,
   initialStart,
+  initialEnd,
   followUp,
   onSave,
   onDelete,
@@ -45,6 +46,7 @@ export function ActivityEditor({
   activities: Activity[];
   date: string;
   initialStart?: number;
+  initialEnd?: number;
   followUp?: { source: Activity; week: string; minutes: number };
   onSave: (
     a: Activity,
@@ -78,11 +80,16 @@ export function ActivityEditor({
       categoryId: followUp?.source.categoryId ?? "career",
       date,
       start: initialStart ?? data.settings.start,
-      end: Math.min(
-        data.settings.end,
-        (initialStart ?? data.settings.start) + (followUp?.minutes ?? 60),
-      ),
-      estimatedMinutes: followUp?.minutes ?? 60,
+      end:
+        initialEnd ??
+        Math.min(
+          data.settings.end,
+          (initialStart ?? data.settings.start) + (followUp?.minutes ?? 60),
+        ),
+      estimatedMinutes:
+        initialEnd !== undefined && initialStart !== undefined
+          ? initialEnd - initialStart
+          : (followUp?.minutes ?? 60),
       blockType: "flexible",
       priority: 3,
       status: "planned",

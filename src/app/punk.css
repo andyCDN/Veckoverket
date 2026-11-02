@@ -2240,7 +2240,7 @@ body {
 /* Phone agenda: one full-width day with compact date navigation. */
 @media screen {
   :root[data-layout="daily"] .toolbar-week-controls {
-    display: none;
+    display: block;
   }
   :root[data-layout="daily"] .planner-header {
     min-height: 52px;
@@ -2285,7 +2285,10 @@ body {
     font-size: 18px;
   }
   :root[data-layout="daily"] .week-title > span {
-    display: none;
+    display: block;
+  }
+  :root[data-layout="daily"] .week-title .app-week-number {
+    font-size: 16px;
   }
   :root[data-layout="daily"] .week-actions {
     width: 100%;

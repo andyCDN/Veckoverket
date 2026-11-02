@@ -175,6 +175,7 @@ export function Workspace() {
       activity?: Activity;
       date: string;
       start?: number;
+      end?: number;
       followUp?: { source: Activity; week: string; minutes: number };
     } | null>(null),
     [newGoal, setNewGoal] = useState(false),
@@ -1212,7 +1213,6 @@ export function Workspace() {
                               ? "Dölj filter"
                               : "Filtrera aktiviteter"}
                           </button>
-                          {weekControls}
                           {calendarTools}
                           <AppInstallButton className="text-button" />
                         </div>
@@ -1305,10 +1305,11 @@ export function Workspace() {
                           ),
                         })
                       }
-                      onCreate={(date, start) =>
+                      onCreate={(date, start, end) =>
                         setEditor({
                           date,
                           start: start ?? weekData.settings.start,
+                          end,
                         })
                       }
                     />
@@ -1743,6 +1744,7 @@ export function Workspace() {
         <ActivityEditor
           activity={editor.activity}
           initialStart={editor.start}
+          initialEnd={editor.end}
           followUp={editor.followUp}
           data={weekData}
           activities={activities}

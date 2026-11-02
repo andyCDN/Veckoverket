@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { TimeRangePicker } from "./time-range-picker";
 import {
   DndContext,
   useDraggable,
@@ -265,7 +266,7 @@ export function Calendar({
   onEdit: (a: Activity) => void;
   onMove: (a: Activity, date: string, start: number) => void;
   onSwap: (a: Activity, target: Activity) => void;
-  onCreate: (date: string, start?: number) => void;
+  onCreate: (date: string, start?: number, end?: number) => void;
   onStatusChange: (activity: Activity, status: Activity["status"]) => void;
   activeDay: number;
   onSelectDay: (day: number) => void;
@@ -287,9 +288,24 @@ export function Calendar({
   const viewport = useRef<HTMLDivElement>(null);
   const activeDate = addDays(week, activeDay);
   const currentDate = today();
-  const [clock, setClock] = useState(planningBoundary);
+  const readClock = () => {
+    const now = new Date();
+    now.setSeconds(0, 0);
+    return planningBoundary(now);
+  };
+  const [clock, setClock] = useState(readClock);
+  const [hideFinished, setHideFinished] = useState(false);
+  const displayActivities = hideFinished
+    ? activities.filter(
+        (activity) =>
+          activity.status !== "done" &&
+          (activity.date > clock.date ||
+            (activity.date === clock.date && activity.end > clock.minute)),
+      )
+    : activities;
+  const hiddenCount = activities.length - displayActivities.length;
   useEffect(() => {
-    const timer = setInterval(() => setClock(planningBoundary()), 60000);
+    const timer = setInterval(() => setClock(readClock()), 60000);
     return () => clearInterval(timer);
   }, []);
   const dayTone = (date: string) =>
@@ -349,6 +365,41 @@ export function Calendar({
         { "--timeline-height": `${timeline.height}px` } as React.CSSProperties
       }
     >
+      <div className="calendar-display-filter">
+        <label>
+          <input
+            type="checkbox"
+            checked={hideFinished}
+            onChange={(event) => setHideFinished(event.target.checked)}
+          />
+          Dölj avklarade och passerade pass
+        </label>
+        {hideFinished && (
+          <span role="status">
+            {hiddenCount} pass dolda · Planer och statistik bevaras
+          </span>
+        )}
+      </div>
+      {mobile && (
+        <TimeRangePicker
+          key={activeDate}
+          date={activeDate}
+          start={Math.min(
+            data.settings.start,
+            ...activities
+              .filter((a) => a.date === activeDate)
+              .map((a) => a.start),
+          )}
+          end={Math.max(
+            data.settings.end,
+            ...activities
+              .filter((a) => a.date === activeDate)
+              .map((a) => a.end),
+          )}
+          activities={activities}
+          onCreate={onCreate}
+        />
+      )}
       <DndContext
         sensors={sensors}
         onDragEnd={dragEnd}
@@ -513,7 +564,7 @@ export function Calendar({
                         <span key={minute} style={{ top }} />
                       ))}
                     </div>
-                    {activities
+                    {displayActivities
                       .filter((a) => a.date === date)
                       .sort(
                         (a, b) => a.start - b.start || a.id.localeCompare(b.id),
@@ -546,16 +597,24 @@ export function Calendar({
                           onStatusChange={(status) => onStatusChange(a, status)}
                         />
                       ))}
-                    {!activities.some(
+                    {!displayActivities.some(
                       (a) =>
                         a.date === date &&
                         (categoryFilter === "all" ||
                           a.categoryId === categoryFilter),
                     ) && (
                       <p className="day-empty">
-                        {categoryFilter === "all"
-                          ? "Inga pass denna dag"
-                          : "Inga pass i vald kategori"}
+                        {hideFinished &&
+                        activities.some(
+                          (a) =>
+                            a.date === date &&
+                            (categoryFilter === "all" ||
+                              a.categoryId === categoryFilter),
+                        )
+                          ? "Pass dolda av visningsfiltret"
+                          : categoryFilter === "all"
+                            ? "Inga pass denna dag"
+                            : "Inga pass i vald kategori"}
                       </p>
                     )}
                     <button
