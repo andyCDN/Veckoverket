@@ -18,6 +18,32 @@ export const DEFAULT_SETTINGS: Settings = {
   musicMovable: false,
   timezone: "Europe/Stockholm",
 };
+export const CITY_HALL_CATEGORY: Category = {
+  id: "stadshuset",
+  name: "Stadshuset",
+  color: "#347f87",
+  targetMinutes: 0,
+  priority: 3,
+  minBlock: 30,
+  allowSplit: true,
+  movable: true,
+};
+
+export function ensureCityHallCategory(data: AppData): AppData {
+  if (
+    data.categories.some(
+      (category) =>
+        category.id === CITY_HALL_CATEGORY.id ||
+        category.name.trim().toLocaleLowerCase("sv-SE") === "stadshuset",
+    )
+  )
+    return data;
+  return {
+    ...data,
+    categories: [...data.categories, { ...CITY_HALL_CATEGORY }],
+  };
+}
+
 export const DEFAULT_CATEGORIES: Category[] = [
   {
     id: "career",
@@ -81,6 +107,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
     movable: true,
   },
   ROUTINE_CATEGORY,
+  CITY_HALL_CATEGORY,
 ];
 export function createData(): AppData {
   const week = monday(today());

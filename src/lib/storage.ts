@@ -3,7 +3,7 @@ import { validateCareerData } from "./career-planning";
 import type { AppData } from "./types";
 import { googleEventUrl, isGoogleEventKey } from "./external-calendar";
 import { isLocalDate } from "./google-time";
-import { refreshDemoCopy } from "./defaults";
+import { ensureCityHallCategory, refreshDemoCopy } from "./defaults";
 export const STORAGE_KEY = "veckoverket.workspace.v1";
 export interface StorageLike {
   getItem(key: string): string | null;
@@ -294,7 +294,9 @@ export function decodeData(raw: string): AppData {
       throw new Error("Google-kalenderns importinställningar är ogiltiga.");
   }
   validateCareerData(d as AppData);
-  return separateJobCategories(refreshDemoCopy(d as AppData));
+  return ensureCityHallCategory(
+    separateJobCategories(refreshDemoCopy(d as AppData)),
+  );
 }
 export function loadLocal(
   storage: StorageLike,
