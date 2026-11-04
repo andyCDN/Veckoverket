@@ -641,7 +641,7 @@ test("granskar åtgärder med ljudhänvisning, importerar en gång och bevarar b
   await status(page, "Sparat i molnet");
   await page
     .getByRole("navigation", { name: "Huvudnavigation" })
-    .getByRole("button", { name: "Jobb & nätverk", exact: true })
+    .getByRole("button", { name: "Jobb", exact: true })
     .click();
   await page.getByRole("button", { name: "Nästa steg", exact: true }).click();
   await expect(

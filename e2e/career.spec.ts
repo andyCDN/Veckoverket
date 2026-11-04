@@ -58,7 +58,7 @@ async function setup(page: Page) {
   await page.goto("./");
   await page
     .getByRole("navigation", { name: "Huvudnavigation" })
-    .getByRole("button", { name: "Jobb & nätverk", exact: true })
+    .getByRole("button", { name: "Jobb", exact: true })
     .click();
 }
 async function openApplicationFilters(page: Page) {
@@ -149,7 +149,7 @@ test("ansökan, kalenderuppföljning och bakåtplanering bevaras vid omladdning"
   await page.reload();
   await page
     .getByRole("navigation", { name: "Huvudnavigation" })
-    .getByRole("button", { name: "Jobb & nätverk", exact: true })
+    .getByRole("button", { name: "Jobb", exact: true })
     .click();
   await expect(
     page.getByRole("heading", { name: "Utvecklare · Exempelbolaget" }),
@@ -210,7 +210,7 @@ test("kontaktlogg går att redigera på mobil utan att kalender eller planer rad
   await expect(page.getByText("Samtal bokat.", { exact: true })).toBeVisible();
   expect((await stored(page)).weeks).toEqual(before.weeks);
   const results = await new AxeBuilder({ page })
-    .include('[aria-label="Jobb och nätverk"]')
+    .include('[aria-label="Nätverk och kontakter"]')
     .analyze();
   expect(results.violations).toEqual([]);
   expect(
@@ -501,7 +501,7 @@ test("dokumentversioner och intervjuflöde sparas med kalender och historik", as
   await page.reload();
   await page
     .getByRole("navigation", { name: "Huvudnavigation" })
-    .getByRole("button", { name: "Jobb & nätverk", exact: true })
+    .getByRole("button", { name: "Jobb", exact: true })
     .click();
   await openApplicationDetails(page);
   await page
@@ -539,7 +539,7 @@ test("ansökningsdeadline får arbetstid vid sparning och visas i dagsplaneringe
   );
   await page
     .getByRole("navigation", { name: "Huvudnavigation" })
-    .getByRole("button", { name: "Veckoplanerare", exact: true })
+    .getByRole("button", { name: "Veckovy", exact: true })
     .click();
   await page
     .getByRole("button", { name: "Välj nästa dag", exact: true })
@@ -594,7 +594,7 @@ test("äldre deadlines kan bokas i dagsvyn och platsbrist lämnar kalendern ofö
   await setup(page);
   await page
     .getByRole("navigation", { name: "Huvudnavigation" })
-    .getByRole("button", { name: "Veckoplanerare", exact: true })
+    .getByRole("button", { name: "Veckovy", exact: true })
     .click();
   await page.locator(".deadline-planning > summary").click();
   await page
@@ -614,7 +614,7 @@ test("äldre deadlines kan bokas i dagsvyn och platsbrist lämnar kalendern ofö
   await page.clock.setFixedTime(new Date("2026-10-30T14:15:00+01:00"));
   await page
     .getByRole("navigation", { name: "Huvudnavigation" })
-    .getByRole("button", { name: "Jobb & nätverk", exact: true })
+    .getByRole("button", { name: "Jobb", exact: true })
     .click();
   await page.getByRole("button", { name: "Deadlines", exact: true }).click();
   await page.getByRole("button", { name: "Ny deadline", exact: true }).click();

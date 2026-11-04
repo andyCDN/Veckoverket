@@ -15,6 +15,7 @@ import {
   Target,
   X,
   BookOpen,
+  Users,
   AlertCircle,
   ShieldCheck,
   Printer,
@@ -97,22 +98,30 @@ import { saveInterviewNotes } from "@/lib/application-interviews";
 import { FollowUpPanel } from "./follow-up";
 import { followUps, type FollowUp } from "@/lib/follow-up";
 type View =
-  "dashboard" | "planner" | "goals" | "reflection" | "settings" | "career";
+  | "dashboard"
+  | "planner"
+  | "goals"
+  | "reflection"
+  | "settings"
+  | "career"
+  | "network";
 const NAV = [
+  { id: "planner", label: "Veckovy", icon: CalendarDays },
+  { id: "career", label: "Jobb", icon: BookOpen },
+  { id: "network", label: "Nätverk", icon: Users },
   { id: "dashboard", label: "Min vecka", icon: LayoutDashboard },
-  { id: "planner", label: "Veckoplanerare", icon: CalendarDays },
   { id: "goals", label: "Mål & aktiviteter", icon: Target },
-  { id: "career", label: "Jobb & nätverk", icon: BookOpen },
   { id: "reflection", label: "Veckoreflektion", icon: BookOpen },
   { id: "settings", label: "Inställningar", icon: Settings2 },
 ] as const;
 const APP_NAV_LABELS: Record<View, string> = {
   dashboard: "Idag",
-  planner: "Planera",
+  planner: "Veckovy",
   goals: "Mål",
   reflection: "Reflektion",
   settings: "Inställningar",
   career: "Jobb",
+  network: "Nätverk",
 };
 function linkedPlan(plan: WeekPlan, goals: Goal[], preserved: Activity[] = []) {
   return {
@@ -1042,34 +1051,59 @@ export function Workspace() {
     );
     return errors;
   }
+  const navigationItem = ({ id, label, icon: Icon }: (typeof NAV)[number]) => (
+    <button
+      key={id}
+      aria-label={standalone && mobile ? APP_NAV_LABELS[id] : label}
+      className={`nav-item ${view === id ? "active" : ""}`}
+      data-primary={
+        ["planner", "career", "network"].includes(id) ? "true" : undefined
+      }
+      aria-current={view === id ? "page" : undefined}
+      onClick={(event) => {
+        const menu = event.currentTarget.closest("details");
+        if (menu) menu.open = false;
+        navigate(id);
+        if (standalone && mobile) {
+          if (id === "dashboard") changeWeek(monday(today()));
+          requestAnimationFrame(() =>
+            window.scrollTo({ top: 0, behavior: "instant" }),
+          );
+        }
+      }}
+    >
+      <span className="nav-index" aria-hidden="true">
+        0{NAV.findIndex((item) => item.id === id) + 1}
+      </span>
+      <Icon size={15} />
+      <span className="nav-label">
+        {mobile && (standalone || id === "reflection" || id === "goals")
+          ? APP_NAV_LABELS[id]
+          : label}
+      </span>
+    </button>
+  );
   const navigationBar = (
     <div className="navigation-bar">
       <nav className="workspace-navigation" aria-label="Huvudnavigation">
-        {NAV.map(({ id, label, icon: Icon }, index) => (
-          <button
-            key={id}
-            aria-label={standalone && mobile ? APP_NAV_LABELS[id] : label}
-            className={`nav-item ${view === id ? "active" : ""}`}
-            aria-current={view === id ? "page" : undefined}
-            onClick={() => {
-              navigate(id);
-              if (standalone && mobile) {
-                if (id === "dashboard") changeWeek(monday(today()));
-                requestAnimationFrame(() =>
-                  window.scrollTo({ top: 0, behavior: "instant" }),
-                );
-              }
-            }}
-          >
-            <span className="nav-index" aria-hidden="true">
-              0{index + 1}
-            </span>
-            <Icon size={15} />
-            <span className="nav-label">
-              {standalone && mobile ? APP_NAV_LABELS[id] : label}
-            </span>
-          </button>
-        ))}
+        {NAV.filter(
+          (item) =>
+            !(standalone && mobile) ||
+            ["planner", "career", "network"].includes(item.id),
+        ).map(navigationItem)}
+        {standalone && mobile && (
+          <details className="navigation-more">
+            <summary className="nav-item">
+              <MoreHorizontal size={20} />
+              <span>Mer</span>
+            </summary>
+            <div className="navigation-more-options">
+              {NAV.filter(
+                (item) => !["planner", "career", "network"].includes(item.id),
+              ).map(navigationItem)}
+            </div>
+          </details>
+        )}
       </nav>
       {!mobile && storageStatus}
       <WorkspaceTools
@@ -1104,7 +1138,7 @@ export function Workspace() {
           0,
         )}
       />
-      {(mobile || !isCalendar) && navigationBar}
+      {navigationBar}
       <div className="main-shell">
         <main id="main-content" tabIndex={-1}>
           <div
@@ -1362,7 +1396,6 @@ export function Workspace() {
               </section>
               {!mobile && (
                 <div className="calendar-secondary-controls">
-                  {navigationBar}
                   <div className="calendar-secondary-tools">
                     {calendarTools}
                     {calendarMode === "week" && dayFocus}
@@ -1479,9 +1512,13 @@ export function Workspace() {
               )}
             </>
           )}
-          {view === "career" && (
+          {(view === "career" || view === "network") && (
             <CareerView
-              key={`career-${user?.id ?? "local"}-${undoVersion}`}
+              key={`${view}-${user?.id ?? "local"}-${undoVersion}`}
+              section={view === "network" ? "network" : "jobs"}
+              onSectionChange={(section) =>
+                navigate(section === "network" ? "network" : "career")
+              }
               data={data}
               onEditing={setCareerEditing}
               onChange={(next, base) => {
@@ -1502,7 +1539,12 @@ export function Workspace() {
                 );
               }}
               onOpen={(activity) => {
+                navigate("planner");
                 changeWeek(monday(activity.date));
+                setDaySelection({
+                  week: monday(activity.date),
+                  day: weekday(activity.date),
+                });
                 setEditor({ activity, date: activity.date });
               }}
             />

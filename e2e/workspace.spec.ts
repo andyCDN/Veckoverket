@@ -299,7 +299,7 @@ test("tillgänglighet i huvudvyer och aktivitetsdialog", async ({ page }) => {
     "Mål & aktiviteter",
     "Veckoreflektion",
     "Inställningar",
-    "Veckoplanerare",
+    "Veckovy",
   ]) {
     await nav(page, name);
     const scan = await new AxeBuilder({ page })

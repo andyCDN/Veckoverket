@@ -42,7 +42,7 @@ for (const mobile of [false, true]) {
     await page.goto("./");
     await page
       .getByRole("navigation", { name: "Huvudnavigation" })
-      .getByRole("button", { name: "Jobb & nätverk", exact: true })
+      .getByRole("button", { name: "Jobb", exact: true })
       .click();
     const cards = page.locator(".career-cards > article");
     await expect(cards).toHaveCount(3);

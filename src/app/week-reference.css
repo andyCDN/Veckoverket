@@ -890,6 +890,89 @@
     justify-content: end;
   }
 }
+.mockup-workspace[data-view] .workspace-navigation {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+.mockup-workspace[data-view]
+  .workspace-navigation
+  .nav-item[data-primary="true"] {
+  min-height: 44px;
+  font-weight: 700;
+}
+.mockup-workspace[data-view]
+  .workspace-navigation
+  .nav-item[aria-current="page"] {
+  box-shadow: inset 0 -3px 0 currentColor;
+}
+@media (max-width: 700px) {
+  .mockup-workspace[data-view] .workspace-navigation {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    width: 100%;
+    gap: 4px;
+    padding: 0;
+  }
+  .mockup-workspace[data-view] .workspace-navigation .nav-item {
+    grid-column: span 3;
+    justify-content: center;
+    min-width: 0;
+    min-height: 44px;
+    padding: 8px 3px;
+    white-space: normal;
+    text-align: center;
+    font-size: 9px;
+  }
+  .mockup-workspace[data-view] .workspace-navigation .nav-label {
+    max-width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .mockup-workspace[data-view]
+    .workspace-navigation
+    .nav-item[data-primary="true"] {
+    grid-column: span 4;
+    font-size: 12px;
+  }
+}
+@media screen {
+  :root[data-app-mode="standalone"][data-layout="daily"] {
+    --app-tabbar-height: 64px;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"]
+    .mockup-workspace[data-view]
+    .workspace-navigation {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"]
+    .mockup-workspace[data-view]
+    .workspace-navigation
+    .nav-item {
+    grid-column: span 1;
+    min-height: 56px;
+    font-size: 10px;
+  }
+}
+.navigation-more > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.navigation-more > summary::-webkit-details-marker {
+  display: none;
+}
+.navigation-more-options {
+  position: absolute;
+  right: max(8px, var(--app-safe-right));
+  bottom: calc(100% + 6px);
+  width: min(260px, calc(100vw - 24px));
+  padding: 8px;
+  border: 2px solid var(--ink);
+  background: var(--paper-light);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.navigation-more-options .nav-item {
+  width: 100%;
+}
 .application-overview {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

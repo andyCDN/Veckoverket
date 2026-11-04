@@ -59,13 +59,22 @@ import {
 
 const statuses = APPLICATION_STATUSES;
 type Props = {
+  section: "jobs" | "network";
+  onSectionChange: (section: "jobs" | "network") => void;
   data: AppData;
   onChange: (next: AppData, base: AppData) => void;
   onOpen: (activity: Activity) => void;
   onEditing: (editing: boolean) => void;
 };
 
-export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
+export function CareerView({
+  data,
+  onChange,
+  onOpen,
+  onEditing,
+  section,
+  onSectionChange,
+}: Props) {
   const [materialsId, setMaterialsId] = useState<string | null>(null);
   const [actionEditing, setActionEditing] = useState(false);
   const [interviewBookingId, setInterviewBookingId] = useState<string | null>(
@@ -77,7 +86,9 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
   } | null>(null);
   const [historyId, setHistoryId] = useState<string | null>(null);
   const [period, setPeriod] = useState<ActionPeriod>("all");
-  const [tab, setTab] = useState("applications");
+  const [tab, setTab] = useState(
+    section === "network" ? "contacts" : "applications",
+  );
   const [application, setApplication] = useState<JobApplication | null>(null);
   const [contact, setContact] = useState<NetworkContact | null>(null);
   const [deadline, setDeadline] = useState<Deadline | null>(null);
@@ -174,10 +185,16 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
     setPeriod("all");
   };
   return (
-    <section className="career-view stack" aria-label="Jobb och nätverk">
+    <section
+      className="career-view stack"
+      aria-label={
+        section === "network" ? "Nätverk och kontakter" : "Jobbsökande"
+      }
+    >
       <p>
-        Samla dina ansökningar, välj nästa steg och boka tid för att komma
-        vidare.
+        {section === "network"
+          ? "Dina kontakter, samtal och uppföljningar. Öppna Jobb för att arbeta med ansökningar."
+          : "Dina ansökningar och nästa steg. Öppna Nätverk för kontakter och samtalslogg."}
       </p>
       <div className="career-tabs" role="group" aria-label="Visa jobböversikt">
         {[
@@ -191,6 +208,14 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
             key={id}
             aria-pressed={tab === id}
             onClick={() => {
+              if (id === "contacts" && section !== "network") {
+                onSectionChange("network");
+                return;
+              }
+              if (id === "applications" && section !== "jobs") {
+                onSectionChange("jobs");
+                return;
+              }
               setTab(id);
               setMessage("");
             }}

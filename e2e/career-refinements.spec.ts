@@ -95,7 +95,7 @@ async function setup(page: Page, data = fixture()) {
 async function nav(page: Page) {
   await page
     .getByRole("navigation", { name: "Huvudnavigation" })
-    .getByRole("button", { name: "Jobb & nätverk", exact: true })
+    .getByRole("button", { name: "Jobb", exact: true })
     .click();
 }
 const stored = (page: Page): Promise<AppData> =>
@@ -256,7 +256,7 @@ test("intervjuunderlaget samlar dokument, kontaktlogg, punkter och återkoppling
     .click();
   await page
     .getByRole("navigation", { name: "Huvudnavigation" })
-    .getByRole("button", { name: "Veckoplanerare", exact: true })
+    .getByRole("button", { name: "Veckovy", exact: true })
     .click();
   await page.locator('[data-activity-id="meeting"]').click();
   await dialog

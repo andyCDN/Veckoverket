@@ -44,6 +44,7 @@ for (const platform of ["ios", "chromium"] as const) {
         "data-layout",
         "daily",
       );
+      await nav.getByText("Mer", { exact: true }).click();
       await nav.getByRole("button", { name: "Idag", exact: true }).click();
       await expect(page.locator(".day-shell:visible")).toHaveCount(1);
       const bar = (await page.locator(".navigation-bar").boundingBox())!;
@@ -63,6 +64,10 @@ for (const platform of ["ios", "chromium"] as const) {
           .locator(".calendar-viewport")
           .evaluate((el) => el.scrollWidth <= el.clientWidth),
       ).toBe(true);
+      await page
+        .locator(".day-shell.is-selected .calendar-entry")
+        .first()
+        .evaluate((el) => el.scrollIntoView({ block: "center" }));
       const first = (await page
         .locator(".day-shell.is-selected .calendar-entry")
         .first()
@@ -85,6 +90,7 @@ for (const platform of ["ios", "chromium"] as const) {
       await add.evaluate((el) => el.scrollIntoView({ block: "center" }));
       const target = (await add.boundingBox())!;
       expect(target.y + target.height).toBeLessThanOrEqual(bar.y + 1);
+      await nav.getByText("Mer", { exact: true }).click();
       await nav
         .getByRole("button", { name: "Inställningar", exact: true })
         .click();
@@ -102,11 +108,13 @@ for (const platform of ["ios", "chromium"] as const) {
         })),
       ).toEqual([]);
     }
+    await nav.getByText("Mer", { exact: true }).click();
     await nav.getByRole("button", { name: "Idag", exact: true }).click();
     for (let i = 0; i < 3; i++)
       await page
         .getByRole("button", { name: "Välj föregående dag", exact: true })
         .click();
+    await nav.getByText("Mer", { exact: true }).click();
     await nav.getByRole("button", { name: "Idag", exact: true }).click();
     await expect(page.locator(".day-focus-name")).toContainText(
       "Torsdag29 oktober 2026",

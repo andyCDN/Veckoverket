@@ -23,7 +23,7 @@ test("ansökningar och kontaktlogg molnsparas, återläses och hålls åtskilda 
   const nav = () =>
     page
       .getByRole("navigation", { name: "Huvudnavigation" })
-      .getByRole("button", { name: "Jobb & nätverk", exact: true })
+      .getByRole("button", { name: "Jobb", exact: true })
       .click();
   await nav();
   await page.getByRole("button", { name: "Ny ansökan", exact: true }).click();
@@ -120,7 +120,7 @@ test("dokument och intervjuanteckningar återläses från molnet med bevarade av
   await status(page, "Sparat i molnet");
   await page
     .getByRole("navigation", { name: "Huvudnavigation" })
-    .getByRole("button", { name: "Jobb & nätverk", exact: true })
+    .getByRole("button", { name: "Jobb", exact: true })
     .click();
   const dialog = page.getByRole("dialog");
   await page
@@ -210,7 +210,7 @@ test("deadlinebokning molnsparas och återläses med bevarade avklarade och impo
   await status(page, "Sparat i molnet");
   await page
     .getByRole("navigation", { name: "Huvudnavigation" })
-    .getByRole("button", { name: "Jobb & nätverk", exact: true })
+    .getByRole("button", { name: "Jobb", exact: true })
     .click();
   await page.getByRole("button", { name: "Ny ansökan", exact: true }).click();
   const dialog = page.getByRole("dialog");
@@ -231,7 +231,7 @@ test("deadlinebokning molnsparas och återläses med bevarade avklarade och impo
   await status(page, "Sparat i molnet");
   await page
     .getByRole("navigation", { name: "Huvudnavigation" })
-    .getByRole("button", { name: "Jobb & nätverk", exact: true })
+    .getByRole("button", { name: "Jobb", exact: true })
     .click();
   await page
     .getByRole("button", { name: "Redigera ansökan", exact: true })
