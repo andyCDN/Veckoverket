@@ -51,6 +51,11 @@ import { bookCareerAction, completeCareerAction } from "@/lib/career-actions";
 import { Modal } from "./modal";
 import { PlanningConsequences } from "./planning-consequences";
 import { trackedActionId } from "@/lib/planning-insights";
+import {
+  applicationAttention,
+  applicationOverview,
+  isClosedApplication,
+} from "@/lib/application-overview";
 
 const statuses = APPLICATION_STATUSES;
 type Props = {
@@ -105,6 +110,8 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
     return () => onEditing(false);
   }, [editing, onEditing]);
   const [filter, setFilter] = useState("all");
+  const [query, setQuery] = useState("");
+  const [scope, setScope] = useState<"active" | "closed" | "all">("active");
   const [message, setMessage] = useState("");
   const applications = data.applications ?? [],
     contacts = data.contacts ?? [],
@@ -155,11 +162,22 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
   );
   const historyApplication = applications.find((a) => a.id === historyId);
   const nextDate = (date: string) => (date && date >= today() ? date : today());
+  const visibleApplications = applicationOverview(applications, {
+    query,
+    scope,
+    status: filter,
+  }).filter((a) => matchesActionPeriod(a, period));
+  const resetFilters = () => {
+    setQuery("");
+    setScope("all");
+    setFilter("all");
+    setPeriod("all");
+  };
   return (
     <section className="career-view stack" aria-label="Jobb och nätverk">
       <p>
-        Ansökningar, kontakter och deadlines sparas med din arbetsyta.
-        Kalenderpassen använder befintliga bokningar och planeringsregler.
+        Samla dina ansökningar, välj nästa steg och boka tid för att komma
+        vidare.
       </p>
       <div className="career-tabs" role="group" aria-label="Visa jobböversikt">
         {[
@@ -200,6 +218,32 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
       )}
       {tab === "applications" && (
         <>
+          <div className="application-overview" aria-label="Ansökningsöversikt">
+            <div>
+              <strong>
+                {applications.filter((a) => !isClosedApplication(a)).length}
+              </strong>
+              <span>Aktiva ansökningar</span>
+            </div>
+            <div>
+              <strong>
+                {
+                  applications.filter(
+                    (a) =>
+                      matchesActionPeriod(a, "overdue") ||
+                      matchesActionPeriod(a, "today"),
+                  ).length
+                }
+              </strong>
+              <span>Att följa upp senast idag</span>
+            </div>
+            <div>
+              <strong>
+                {applications.filter((a) => a.status === "interview").length}
+              </strong>
+              <span>I intervjufasen</span>
+            </div>
+          </div>
           <div className="career-actions">
             <button
               className="button primary"
@@ -218,149 +262,152 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
             >
               Ny ansökan
             </button>
+          </div>
+          <div className="application-filters">
             <label>
-              Filtrera status
+              Sök ansökan
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Arbetsgivare, tjänst eller nästa steg"
+              />
+            </label>
+            <label>
+              Visa ansökningar
               <select
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
+                value={scope}
+                onChange={(event) => {
+                  setScope(event.target.value as typeof scope);
+                  setFilter("all");
+                }}
               >
-                <option value="all">Alla statusar</option>
-                {Object.entries(statuses).map(([id, label]) => (
-                  <option key={id} value={id}>
-                    {label}
-                  </option>
-                ))}
+                <option value="active">Aktiva</option>
+                <option value="closed">Avslutade och avslag</option>
+                <option value="all">Alla</option>
               </select>
             </label>
+            <details className="application-filter-options">
+              <summary>
+                Fler filter
+                {filter !== "all" || period !== "all" ? " · Aktiva filter" : ""}
+              </summary>
+              <div className="application-advanced-fields">
+                <label>
+                  Filtrera status
+                  <select
+                    value={filter}
+                    onChange={(e) => {
+                      setFilter(e.target.value);
+                      if (["closed", "rejected"].includes(e.target.value))
+                        setScope("closed");
+                      else if (e.target.value !== "all") setScope("active");
+                    }}
+                  >
+                    <option value="all">Alla statusar</option>
+                    {Object.entries(statuses).map(([id, label]) => (
+                      <option key={id} value={id}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Filtrera nästa steg
+                  <select
+                    value={period}
+                    onChange={(e) => setPeriod(e.target.value as ActionPeriod)}
+                  >
+                    {Object.entries(ACTION_PERIODS).map(([id, label]) => (
+                      <option value={id} key={id}>
+                        {label}
+                        {id !== "all"
+                          ? ` (${applications.filter((a) => matchesActionPeriod(a, id as ActionPeriod)).length})`
+                          : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </details>
           </div>
-          <label>
-            Filtrera nästa steg
-            <select
-              value={period}
-              onChange={(e) => setPeriod(e.target.value as ActionPeriod)}
-            >
-              {Object.entries(ACTION_PERIODS).map(([id, label]) => (
-                <option value={id} key={id}>
-                  {label}
-                  {id !== "all"
-                    ? ` (${applications.filter((a) => matchesActionPeriod(a, id as ActionPeriod)).length})`
-                    : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-          <p>
-            {applications.length} ansökningar ·{" "}
-            {applications.filter((a) => a.status === "sent").length} skickade ·{" "}
-            {applications.filter((a) => a.status === "interview").length}{" "}
-            intervjuer
+          <p role="status">
+            Visar {visibleApplications.length} av {applications.length}{" "}
+            ansökningar · Nästa datum först
           </p>
-          {!applications.length && <p>Inga ansökningar registrerade.</p>}
-          {!!applications.length &&
-            !applications.some(
-              (a) =>
-                (filter === "all" || a.status === filter) &&
-                matchesActionPeriod(a, period),
-            ) && <p>Inga ansökningar matchar filtren.</p>}
+          {!applications.length && (
+            <p>
+              Inga ansökningar registrerade. Börja med Ny ansökan, ange
+              arbetsgivare och tjänst och välj sedan nästa steg.
+            </p>
+          )}
+          {!!applications.length && !visibleApplications.length && (
+            <div className="application-empty">
+              <p>Inga ansökningar matchar filtren.</p>
+              <button className="button secondary" onClick={resetFilters}>
+                Visa alla ansökningar
+              </button>
+            </div>
+          )}
           <div className="career-cards">
-            {applications
-              .filter(
-                (a) =>
-                  (filter === "all" || a.status === filter) &&
-                  matchesActionPeriod(a, period),
-              )
-              .sort((a, b) =>
-                (a.followUpDate || a.deadline || "9999").localeCompare(
-                  b.followUpDate || b.deadline || "9999",
-                ),
-              )
-              .map((a) => (
-                <article className="career-card stack" key={a.id}>
-                  <h2>
-                    {a.role} · {a.organization}
-                  </h2>
-                  <p>{statuses[a.status]}</p>
-                  {a.deadline && <p>Deadline: {a.deadline}</p>}
-                  {a.followUpDate && (
-                    <p>
-                      Uppföljning: {a.followUpDate}
-                      {a.followUpDate < today() && " · Datum passerat"}
-                    </p>
-                  )}
-                  {a.nextAction && <p>Nästa steg: {a.nextAction}</p>}
+            {visibleApplications.map((a) => (
+              <article className="career-card stack" key={a.id}>
+                <h2>
+                  {a.role} · {a.organization}
+                </h2>
+                <div className="application-status">
+                  <span>{statuses[a.status]}</span>
+                  <span>{applicationAttention(a)}</span>
+                </div>
+                {a.deadline && <p>Deadline: {a.deadline}</p>}
+                {a.followUpDate && (
+                  <p>
+                    Uppföljning: {a.followUpDate}
+                    {a.followUpDate < today() && " · Datum passerat"}
+                  </p>
+                )}
+                <div className="application-next-step">
+                  <h3>Nästa steg</h3>
+                  <p>
+                    {a.nextAction ||
+                      (isClosedApplication(a)
+                        ? "Processen är avslutad."
+                        : "Välj vad du vill göra härnäst.")}
+                  </p>
                   {a.nextAction && (
                     <p>
                       Ansvarig: {a.nextActionOwner || "Jag"}
                       {a.nextActionReason ? ` · ${a.nextActionReason}` : ""}
                     </p>
                   )}
-                  {!!data.careerActions?.filter(
-                    (v) => v.applicationId === a.id && v.status === "open",
-                  ).length && (
-                    <button
-                      className="text-button"
-                      onClick={() => setTab("actions")}
-                    >
-                      Visa kopplade nästa steg (
-                      {
-                        data.careerActions.filter(
-                          (v) =>
-                            v.applicationId === a.id && v.status === "open",
-                        ).length
-                      }
-                      )
-                    </button>
-                  )}
-                  {!!a.contactIds?.length && (
-                    <div className="stack" aria-label="Kopplade kontakter">
-                      {a.contactIds.map((id) => {
-                        const c = contacts.find((c) => c.id === id);
-                        return c ? (
-                          <button
-                            className="text-button"
-                            key={id}
-                            onClick={() => setContact(c)}
-                          >
-                            {c.name}
-                            {c.organization && ` · ${c.organization}`}
-                          </button>
-                        ) : (
-                          <span key={id}>Borttagen kontakt</span>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {a.notes && <p className="career-notes">{a.notes}</p>}
                   <div className="career-actions">
-                    <a
-                      className="button secondary"
-                      href={recordingHref({ applicationId: a.id })}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Spela in samtal
-                    </a>
                     <button
                       className="button secondary"
-                      onClick={() => setMaterialsId(a.id)}
+                      onClick={() => setApplication(a)}
                     >
-                      Dokumentunderlag
+                      Redigera ansökan
                     </button>
-                    <button
-                      className="button secondary"
-                      onClick={() => setInterviewBookingId(a.id)}
-                    >
-                      Boka intervju
-                    </button>
-                    <button
-                      className="button secondary"
-                      onClick={() => setHistoryId(a.id)}
-                    >
-                      Visa historik
-                    </button>
-                    {a.nextAction.trim() && (
+                    {!isClosedApplication(a) && (
                       <button
-                        className="button secondary"
+                        className="button primary"
+                        onClick={() =>
+                          a.nextAction.trim()
+                            ? setBooking({
+                                title: a.nextAction,
+                                date: nextDate(a.followUpDate),
+                                applicationId: a.id,
+                              })
+                            : setApplication(a)
+                        }
+                      >
+                        {a.nextAction.trim()
+                          ? "Boka uppföljning"
+                          : "Lägg till nästa steg"}
+                      </button>
+                    )}
+                    {a.nextAction.trim() && !isClosedApplication(a) && (
+                      <button
+                        className="text-button"
                         onClick={() =>
                           onChange(
                             completeCareerAction(
@@ -374,186 +421,237 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
                         Markera nästa steg klart
                       </button>
                     )}
-                    <button
-                      className="button secondary"
-                      onClick={() => setApplication(a)}
-                    >
-                      Redigera ansökan
-                    </button>
-                    <button
-                      className="button secondary"
-                      onClick={() =>
-                        setBooking({
-                          title:
-                            a.nextAction ||
-                            `Följ upp ${a.role} · ${a.organization}`,
-                          date: nextDate(a.followUpDate),
-                          applicationId: a.id,
-                        })
-                      }
-                    >
-                      Boka uppföljning
-                    </button>
-                    <button
-                      className="button secondary"
-                      onClick={() =>
-                        setDeadline({
-                          id: uid(),
-                          title: `${a.role} · ${a.organization}`,
-                          date: nextDate(a.deadline),
-                          minute: data.settings.end,
-                          categoryId: data.categories.some(
-                            (c) => c.id === "career",
-                          )
-                            ? "career"
-                            : data.categories[0].id,
-                          applicationId: a.id,
-                          steps: [],
-                        })
-                      }
-                    >
-                      Planera från deadline
-                    </button>
                   </div>
-                  {!!a.interviews?.length && (
-                    <section
-                      className="stack"
-                      aria-label={`Intervjuer för ${a.role}`}
-                    >
-                      <h3>Intervjuer</h3>
-                      {a.interviews.map((i) => {
-                        const meeting = interviewActivity(
-                          data,
-                          i.meetingActivityId,
-                        )?.activity;
-                        const prep = interviewActivity(
-                          data,
-                          i.preparationActivityId,
-                        )?.activity;
-                        const date = meeting?.date ?? i.date,
-                          start = meeting?.start ?? i.start,
-                          end = meeting?.end ?? i.end;
-                        const late =
-                          meeting &&
-                          prep &&
-                          (prep.date > meeting.date ||
-                            (prep.date === meeting.date &&
-                              prep.end > meeting.start));
-                        return (
-                          <div className="career-interview stack" key={i.id}>
-                            <h4>{i.title}</h4>
-                            <a
+                </div>
+                <details className="application-details">
+                  <summary>Dokument, intervjuer och historik</summary>
+                  <div className="stack">
+                    {!!data.careerActions?.filter(
+                      (v) => v.applicationId === a.id && v.status === "open",
+                    ).length && (
+                      <button
+                        className="text-button"
+                        onClick={() => setTab("actions")}
+                      >
+                        Visa kopplade nästa steg (
+                        {
+                          data.careerActions.filter(
+                            (v) =>
+                              v.applicationId === a.id && v.status === "open",
+                          ).length
+                        }
+                        )
+                      </button>
+                    )}
+                    {!!a.contactIds?.length && (
+                      <div className="stack" aria-label="Kopplade kontakter">
+                        {a.contactIds.map((id) => {
+                          const c = contacts.find((c) => c.id === id);
+                          return c ? (
+                            <button
                               className="text-button"
-                              href={recordingHref({
-                                applicationId: a.id,
-                                interviewId: i.id,
-                                ...(i.contactId
-                                  ? { contactId: i.contactId }
-                                  : {}),
-                              })}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                              key={id}
+                              onClick={() => setContact(c)}
                             >
-                              Spela in intervju
-                            </a>
-                            <p>
-                              {date} · {time(start)}–{time(end)} ·{" "}
-                              {meeting
-                                ? meeting.status === "done"
-                                  ? "Genomförd"
-                                  : meeting.status === "skipped"
-                                    ? "Blev inte av"
-                                    : "Planerad"
-                                : "Kalenderpass saknas"}
-                            </p>
-                            {i.location && (
-                              <p className="career-notes">
-                                {i.location}
-                                {documentUrl(i.location) && (
-                                  <>
-                                    {" "}
-                                    ·{" "}
-                                    <a
-                                      href={documentUrl(i.location)}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                    >
-                                      Öppna möteslänk
-                                    </a>
-                                  </>
-                                )}
-                              </p>
-                            )}
-                            {i.contactId && (
-                              <p>
-                                Kontakt:{" "}
-                                {contacts.find((c) => c.id === i.contactId)
-                                  ?.name ?? "Borttagen kontakt"}
-                              </p>
-                            )}
-                            {prep && (
-                              <p>
-                                Förberedelse: {prep.date} {time(prep.start)}–
-                                {time(prep.end)}
-                              </p>
-                            )}
-                            {i.preparationActivityId && !prep && (
-                              <p>Förberedelsepasset saknas i kalendern.</p>
-                            )}
-                            {late && (
-                              <p role="status">
-                                Förberedelsepasset ligger inte före intervjun.
-                                Kontrollera tiderna i kalendern.
-                              </p>
-                            )}
-                            <div className="career-actions">
-                              <button
-                                className="button secondary"
-                                onClick={() =>
-                                  setInterviewNotes({
-                                    applicationId: a.id,
-                                    interviewId: i.id,
-                                  })
-                                }
+                              {c.name}
+                              {c.organization && ` · ${c.organization}`}
+                            </button>
+                          ) : (
+                            <span key={id}>Borttagen kontakt</span>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {a.notes && <p className="career-notes">{a.notes}</p>}
+                    <div className="career-actions">
+                      <a
+                        className="button secondary"
+                        href={recordingHref({ applicationId: a.id })}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Spela in samtal
+                      </a>
+                      <button
+                        className="button secondary"
+                        onClick={() => setMaterialsId(a.id)}
+                      >
+                        Dokumentunderlag
+                      </button>
+                      <button
+                        className="button secondary"
+                        onClick={() => setInterviewBookingId(a.id)}
+                      >
+                        Boka intervju
+                      </button>
+                      <button
+                        className="button secondary"
+                        onClick={() => setHistoryId(a.id)}
+                      >
+                        Visa historik
+                      </button>
+                      <button
+                        className="button secondary"
+                        onClick={() =>
+                          setDeadline({
+                            id: uid(),
+                            title: `${a.role} · ${a.organization}`,
+                            date: nextDate(a.deadline),
+                            minute: data.settings.end,
+                            categoryId: data.categories.some(
+                              (c) => c.id === "career",
+                            )
+                              ? "career"
+                              : data.categories[0].id,
+                            applicationId: a.id,
+                            steps: [],
+                          })
+                        }
+                      >
+                        Planera från deadline
+                      </button>
+                    </div>
+                    {!!a.interviews?.length && (
+                      <section
+                        className="stack"
+                        aria-label={`Intervjuer för ${a.role}`}
+                      >
+                        <h3>Intervjuer</h3>
+                        {a.interviews.map((i) => {
+                          const meeting = interviewActivity(
+                            data,
+                            i.meetingActivityId,
+                          )?.activity;
+                          const prep = interviewActivity(
+                            data,
+                            i.preparationActivityId,
+                          )?.activity;
+                          const date = meeting?.date ?? i.date,
+                            start = meeting?.start ?? i.start,
+                            end = meeting?.end ?? i.end;
+                          const late =
+                            meeting &&
+                            prep &&
+                            (prep.date > meeting.date ||
+                              (prep.date === meeting.date &&
+                                prep.end > meeting.start));
+                          return (
+                            <div className="career-interview stack" key={i.id}>
+                              <h4>{i.title}</h4>
+                              <a
+                                className="text-button"
+                                href={recordingHref({
+                                  applicationId: a.id,
+                                  interviewId: i.id,
+                                  ...(i.contactId
+                                    ? { contactId: i.contactId }
+                                    : {}),
+                                })}
+                                target="_blank"
+                                rel="noopener noreferrer"
                               >
-                                Intervjuanteckningar
-                              </button>
-                              <button
-                                className="button secondary"
-                                onClick={() =>
-                                  setInterviewNotes({
-                                    applicationId: a.id,
-                                    interviewId: i.id,
-                                  })
-                                }
-                              >
-                                Öppna intervjuunderlag
-                              </button>
-                              {meeting && (
-                                <button
-                                  className="button secondary"
-                                  onClick={() => onOpen(meeting)}
-                                >
-                                  Öppna intervjupass
-                                </button>
+                                Spela in intervju
+                              </a>
+                              <p>
+                                {date} · {time(start)}–{time(end)} ·{" "}
+                                {meeting
+                                  ? meeting.status === "done"
+                                    ? "Genomförd"
+                                    : meeting.status === "skipped"
+                                      ? "Blev inte av"
+                                      : "Planerad"
+                                  : "Kalenderpass saknas"}
+                              </p>
+                              {i.location && (
+                                <p className="career-notes">
+                                  {i.location}
+                                  {documentUrl(i.location) && (
+                                    <>
+                                      {" "}
+                                      ·{" "}
+                                      <a
+                                        href={documentUrl(i.location)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                      >
+                                        Öppna möteslänk
+                                      </a>
+                                    </>
+                                  )}
+                                </p>
+                              )}
+                              {i.contactId && (
+                                <p>
+                                  Kontakt:{" "}
+                                  {contacts.find((c) => c.id === i.contactId)
+                                    ?.name ?? "Borttagen kontakt"}
+                                </p>
                               )}
                               {prep && (
+                                <p>
+                                  Förberedelse: {prep.date} {time(prep.start)}–
+                                  {time(prep.end)}
+                                </p>
+                              )}
+                              {i.preparationActivityId && !prep && (
+                                <p>Förberedelsepasset saknas i kalendern.</p>
+                              )}
+                              {late && (
+                                <p role="status">
+                                  Förberedelsepasset ligger inte före intervjun.
+                                  Kontrollera tiderna i kalendern.
+                                </p>
+                              )}
+                              <div className="career-actions">
                                 <button
                                   className="button secondary"
-                                  onClick={() => onOpen(prep)}
+                                  onClick={() =>
+                                    setInterviewNotes({
+                                      applicationId: a.id,
+                                      interviewId: i.id,
+                                    })
+                                  }
                                 >
-                                  Öppna förberedelsepass
+                                  Intervjuanteckningar
                                 </button>
-                              )}
+                                <button
+                                  className="button secondary"
+                                  onClick={() =>
+                                    setInterviewNotes({
+                                      applicationId: a.id,
+                                      interviewId: i.id,
+                                    })
+                                  }
+                                >
+                                  Öppna intervjuunderlag
+                                </button>
+                                {meeting && (
+                                  <button
+                                    className="button secondary"
+                                    onClick={() => onOpen(meeting)}
+                                  >
+                                    Öppna intervjupass
+                                  </button>
+                                )}
+                                {prep && (
+                                  <button
+                                    className="button secondary"
+                                    onClick={() => onOpen(prep)}
+                                  >
+                                    Öppna förberedelsepass
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </section>
-                  )}
-                  {passes(linked("applicationId", a.id))}
-                </article>
-              ))}
+                          );
+                        })}
+                      </section>
+                    )}
+                    {passes(linked("applicationId", a.id))}
+                  </div>
+                </details>
+              </article>
+            ))}
           </div>
         </>
       )}
@@ -849,6 +947,7 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
       {application && (
         <ApplicationForm
           value={application}
+          existing={applications.some((a) => a.id === application.id)}
           contacts={contacts}
           onClose={() => setApplication(null)}
           onSave={(a) => {
@@ -870,6 +969,16 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
               : { data: next, activities: [], errors: [] };
             onChange(result.data, data);
             setApplication(null);
+            if (
+              !applicationOverview([a], { query, scope, status: filter })
+                .length ||
+              !matchesActionPeriod(a, period)
+            ) {
+              setQuery("");
+              setScope(isClosedApplication(a) ? "closed" : "active");
+              setFilter("all");
+              setPeriod("all");
+            }
             setMessage(
               result.errors.length
                 ? `Ansökan är sparad. Arbetstid kunde inte bokas: ${result.errors.join(" ")}`
@@ -1056,12 +1165,14 @@ export function CareerView({ data, onChange, onOpen, onEditing }: Props) {
 
 function ApplicationForm({
   value,
+  existing,
   contacts,
   onSave,
   onClose,
   onDelete,
 }: {
   value: JobApplication;
+  existing: boolean;
   contacts: NetworkContact[];
   onSave: (v: JobApplication) => void;
   onClose: () => void;
@@ -1091,7 +1202,10 @@ function ApplicationForm({
     </label>
   );
   return (
-    <Modal title="Ansökan" onClose={onClose}>
+    <Modal
+      title={existing ? "Redigera ansökan" : "Ny ansökan"}
+      onClose={onClose}
+    >
       <form
         className="stack"
         onSubmit={(e) => {
@@ -1104,76 +1218,107 @@ function ApplicationForm({
             });
         }}
       >
-        {field("organization", "Organisation")}
-        {field("role", "Tjänst")}
-        <label>
-          Status
-          <select
-            value={v.status}
-            onChange={(e) =>
-              set({ ...v, status: e.target.value as JobApplication["status"] })
-            }
-          >
-            {Object.entries(statuses).map(([id, label]) => (
-              <option key={id} value={id}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="form-row">
-          {field("deadline", "Ansökningsdeadline", "date")}
+        <fieldset className="stack application-form-section">
+          <legend>1. Tjänsten och ansökan</legend>
+          <p className="help">
+            Arbetsgivare och tjänst behövs. Övriga uppgifter kan fyllas i
+            senare.
+          </p>
+          {field("organization", "Organisation")}
+          {field("role", "Tjänst")}
+          <label>
+            Status
+            <select
+              value={v.status}
+              onChange={(e) =>
+                set({
+                  ...v,
+                  status: e.target.value as JobApplication["status"],
+                })
+              }
+            >
+              {Object.entries(statuses).map(([id, label]) => (
+                <option key={id} value={id}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="form-row">
+            {field("deadline", "Ansökningsdeadline", "date")}
+          </div>
+          <p className="help">
+            Utkast med deadline får en bokning före slutdagen om tiden räcker.
+            Utan egna delsteg är tidsbehovet 60 minuter. Egna delsteg anges
+            under Planera från deadline.
+          </p>
+        </fieldset>
+        <fieldset className="stack application-form-section">
+          <legend>2. Vad händer härnäst?</legend>
+          <p className="help">
+            Välj en konkret uppgift och när den ska följas upp. Du kan boka tid
+            efter att ansökan har sparats.
+          </p>
+          {field("nextAction", "Nästa steg")}
           {field("followUpDate", "Uppföljningsdatum", "date")}
-        </div>
-        <p className="help">
-          Utkast med deadline får en bokning före slutdagen om tiden räcker.
-          Utan egna delsteg är tidsbehovet 60 minuter. Egna delsteg anges under
-          Planera från deadline.
-        </p>
-        {field("nextAction", "Nästa steg")}
-        <label>
-          Ansvarig för nästa steg
-          <input
-            maxLength={200}
-            value={v.nextActionOwner ?? "Jag"}
-            onChange={(e) => set({ ...v, nextActionOwner: e.target.value })}
-          />
-        </label>
-        <label>
-          Varför behövs nästa steg?
-          <textarea
-            maxLength={4000}
-            value={v.nextActionReason ?? ""}
-            onChange={(e) => set({ ...v, nextActionReason: e.target.value })}
-          />
-        </label>
-        {field("notes", "Anteckningar")}
-        <fieldset className="stack">
-          <legend>Koppla kontakter</legend>
-          {!contacts.length && <p>Skapa först en kontakt under Kontaktlogg.</p>}
-          {contacts.map((c) => (
-            <label key={c.id}>
-              <input
-                type="checkbox"
-                checked={v.contactIds?.includes(c.id) ?? false}
-                onChange={(e) =>
-                  set({
-                    ...v,
-                    contactIds: e.target.checked
-                      ? [...(v.contactIds ?? []), c.id]
-                      : (v.contactIds ?? []).filter((id) => id !== c.id),
-                  })
-                }
-              />
-              {c.name}
-              {c.organization && ` · ${c.organization}`}
-            </label>
-          ))}
+          <label>
+            Ansvarig för nästa steg
+            <input
+              maxLength={200}
+              value={v.nextActionOwner ?? "Jag"}
+              onChange={(e) => set({ ...v, nextActionOwner: e.target.value })}
+            />
+          </label>
+          <label>
+            Varför behövs nästa steg?
+            <textarea
+              maxLength={4000}
+              value={v.nextActionReason ?? ""}
+              onChange={(e) => set({ ...v, nextActionReason: e.target.value })}
+            />
+          </label>
+        </fieldset>
+        <fieldset className="stack application-form-section">
+          <legend>3. Anteckningar och kontakter</legend>
+          <label>
+            Anteckningar
+            <textarea
+              maxLength={4000}
+              value={v.notes}
+              onChange={(event) => set({ ...v, notes: event.target.value })}
+            />
+          </label>
+          <fieldset className="stack">
+            <legend>Koppla kontakter</legend>
+            {!contacts.length && (
+              <p>Skapa först en kontakt under Kontaktlogg.</p>
+            )}
+            {contacts.map((c) => (
+              <label key={c.id}>
+                <input
+                  type="checkbox"
+                  checked={v.contactIds?.includes(c.id) ?? false}
+                  onChange={(e) =>
+                    set({
+                      ...v,
+                      contactIds: e.target.checked
+                        ? [...(v.contactIds ?? []), c.id]
+                        : (v.contactIds ?? []).filter((id) => id !== c.id),
+                    })
+                  }
+                />
+                {c.name}
+                {c.organization && ` · ${c.organization}`}
+              </label>
+            ))}
+          </fieldset>
         </fieldset>
         <button className="button primary">Spara ansökan</button>
-        <button className="button secondary" type="button" onClick={onDelete}>
-          Ta bort ansökan
-        </button>
+        {existing && (
+          <button className="button secondary" type="button" onClick={onDelete}>
+            Ta bort ansökan
+          </button>
+        )}
       </form>
     </Modal>
   );

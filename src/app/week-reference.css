@@ -890,6 +890,110 @@
     justify-content: end;
   }
 }
+.application-overview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.application-overview > div {
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  border: 1px solid var(--ink);
+  background: var(--paper-light);
+  gap: 5px;
+}
+.application-overview strong {
+  font: 400 32px/1 var(--display);
+}
+.application-overview span {
+  font-size: 12px;
+}
+.application-filters {
+  display: grid;
+  grid-template-columns: 2fr minmax(0, 1fr);
+  align-items: end;
+  gap: 12px;
+}
+.application-filters label {
+  min-width: 0;
+}
+.application-filter-options {
+  grid-column: 1 / -1;
+}
+.application-filter-options > summary {
+  min-height: 44px;
+  padding: 12px 0;
+  font-weight: 700;
+  cursor: pointer;
+}
+.application-advanced-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.application-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 12px;
+}
+.application-status > span:first-child {
+  background: var(--ink);
+  color: var(--paper-light);
+  padding: 3px 7px;
+}
+.application-next-step {
+  padding: 12px;
+  background: var(--paper-light);
+  border-left: 3px solid var(--blue);
+}
+.application-next-step h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+.application-next-step .career-actions {
+  margin-top: 12px;
+}
+.application-details {
+  border-top: 1px solid #19191833;
+}
+.application-details > summary {
+  min-height: 44px;
+  padding: 12px 0;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 13px;
+}
+.application-form-section {
+  padding: 16px;
+}
+.application-form-section legend {
+  padding-inline: 6px;
+  font-weight: 700;
+}
+@media (max-width: 950px) {
+  .application-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .application-filters {
+    grid-template-columns: 1fr;
+  }
+  .application-advanced-fields {
+    grid-template-columns: 1fr;
+  }
+  .application-overview {
+    gap: 6px;
+  }
+  .application-overview > div {
+    padding: 10px;
+  }
+  .application-overview span {
+    font-size: 11px;
+  }
+}
 .calendar-display-filter {
   display: flex;
   flex-wrap: wrap;

@@ -61,6 +61,16 @@ async function setup(page: Page) {
     .getByRole("button", { name: "Jobb & nätverk", exact: true })
     .click();
 }
+async function openApplicationFilters(page: Page) {
+  const summary = page.locator(
+    ".application-filter-options:not([open]) > summary",
+  );
+  if (await summary.count()) await summary.click();
+}
+async function openApplicationDetails(page: Page) {
+  const summary = page.locator(".application-details:not([open]) > summary");
+  if (await summary.count()) await summary.first().click();
+}
 const stored = (page: Page): Promise<AppData> =>
   page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), key);
 
@@ -94,11 +104,13 @@ test("ansökan, kalenderuppföljning och bakåtplanering bevaras vid omladdning"
   await dialog
     .getByRole("button", { name: "Spara kalenderpass", exact: true })
     .click();
+  await openApplicationDetails(page);
   await expect(
     page.getByRole("button", {
       name: /2026-10-30 09:00 · Kontakta rekryteraren/,
     }),
   ).toBeVisible();
+  await openApplicationDetails(page);
   await page
     .getByRole("button", { name: "Planera från deadline", exact: true })
     .click();
@@ -143,6 +155,7 @@ test("ansökan, kalenderuppföljning och bakåtplanering bevaras vid omladdning"
     page.getByRole("heading", { name: "Utvecklare · Exempelbolaget" }),
   ).toBeVisible();
   expect((await stored(page)).deadlines).toEqual(saved.deadlines);
+  await openApplicationFilters(page);
   await page
     .getByRole("combobox", { name: "Filtrera status" })
     .selectOption("rejected");
@@ -326,6 +339,7 @@ test("ansökans nästa steg, historik och kontaktkoppling fungerar på mobil och
   await dialog
     .getByRole("button", { name: "Spara ansökan", exact: true })
     .click();
+  await openApplicationFilters(page);
   await page
     .getByRole("combobox", { name: "Filtrera nästa steg" })
     .selectOption("today");
@@ -341,6 +355,7 @@ test("ansökans nästa steg, historik och kontaktkoppling fungerar på mobil och
   await dialog
     .getByRole("button", { name: "Spara ansökan", exact: true })
     .click();
+  await openApplicationDetails(page);
   await page
     .getByRole("button", { name: "Visa historik", exact: true })
     .click();
@@ -365,9 +380,11 @@ test("ansökans nästa steg, historik och kontaktkoppling fungerar på mobil och
   await expect(
     page.getByText("Inga ansökningar matchar filtren."),
   ).toBeVisible();
+  await openApplicationFilters(page);
   await page
     .getByRole("combobox", { name: "Filtrera nästa steg" })
     .selectOption("all");
+  await openApplicationDetails(page);
   await page
     .getByRole("button", { name: "Visa historik", exact: true })
     .click();
@@ -408,6 +425,7 @@ test("dokumentversioner och intervjuflöde sparas med kalender och historik", as
   await dialog
     .getByRole("button", { name: "Spara ansökan", exact: true })
     .click();
+  await openApplicationDetails(page);
   await page
     .getByRole("button", { name: "Dokumentunderlag", exact: true })
     .click();
@@ -430,6 +448,7 @@ test("dokumentversioner och intervjuflöde sparas med kalender och historik", as
   await dialog
     .getByRole("button", { name: "Spara dokumentunderlag", exact: true })
     .click();
+  await openApplicationDetails(page);
   await page
     .getByRole("button", { name: "Boka intervju", exact: true })
     .click();
@@ -484,6 +503,7 @@ test("dokumentversioner och intervjuflöde sparas med kalender och historik", as
     .getByRole("navigation", { name: "Huvudnavigation" })
     .getByRole("button", { name: "Jobb & nätverk", exact: true })
     .click();
+  await openApplicationDetails(page);
   await page
     .getByRole("button", { name: "Dokumentunderlag", exact: true })
     .click();

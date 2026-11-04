@@ -201,6 +201,9 @@ test("intervjuunderlaget samlar dokument, kontaktlogg, punkter och återkoppling
   );
   await setup(page, d);
   await page
+    .getByText("Dokument, intervjuer och historik", { exact: true })
+    .click();
+  await page
     .getByRole("button", { name: "Öppna intervjuunderlag", exact: true })
     .click();
   const dialog = page.getByRole("dialog");
@@ -233,6 +236,9 @@ test("intervjuunderlaget samlar dokument, kontaktlogg, punkter och återkoppling
   );
   await page.reload();
   await nav(page);
+  await page
+    .getByText("Dokument, intervjuer och historik", { exact: true })
+    .click();
   await page
     .getByRole("button", { name: "Öppna intervjuunderlag", exact: true })
     .click();
