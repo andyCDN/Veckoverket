@@ -1,0 +1,254 @@
+/* Two ink passes, coarse screens and deliberately imperfect registration. */
+@media screen {
+  .mockup-workspace[data-view] {
+    --print-black: #20251e;
+    --print-blue: #233e9c;
+    --print-red: #ee482e;
+    --print-yellow: #f5cc37;
+    --print-paper: #fff6d9;
+  }
+
+  .mockup-workspace[data-view] .planner-header {
+    isolation: isolate;
+    position: relative;
+    border: 3px solid var(--print-black);
+    border-bottom-width: 5px;
+    background-color: var(--print-red);
+    background-image:
+      radial-gradient(ellipse at 5% 80%, #ffd34955, transparent 65%),
+      linear-gradient(
+        105deg,
+        transparent 62%,
+        #a12f2966 62%,
+        #a12f2966 76%,
+        transparent 76%
+      );
+    box-shadow:
+      4px 4px 0 var(--print-blue),
+      8px 8px 0 var(--print-yellow);
+    margin-bottom: 18px;
+  }
+  .mockup-workspace[data-view] .planner-header::before {
+    inset: 0;
+    width: auto;
+    height: auto;
+    transform: none;
+    opacity: 0.38;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='100'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' seed='37' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Cpath fill='%23fff6d9' filter='url(%23grain)' d='M0 0h160v100H0z'/%3E%3C/svg%3E");
+    background-size: 160px 100px;
+    mix-blend-mode: soft-light;
+    pointer-events: none;
+  }
+  .mockup-workspace[data-view] .planner-header::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background-image: radial-gradient(
+      var(--print-blue) 1.1px,
+      transparent 1.4px
+    );
+    background-size: 5px 5px;
+    clip-path: polygon(62% 0, 100% 0, 100% 100%, 85% 100%);
+    opacity: 0.65;
+    pointer-events: none;
+  }
+  .mockup-workspace[data-view] .brand-home {
+    padding: 8px 5px 10px 2px;
+    transform: rotate(-0.8deg);
+  }
+  .mockup-workspace[data-view] .brand-title {
+    color: var(--print-paper);
+    text-shadow:
+      -3px -2px 0 var(--print-yellow),
+      5px 3px 0 var(--print-blue);
+    -webkit-text-stroke: 0.5px var(--print-paper);
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='130' height='90'%3E%3Cfilter id='wear'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.66' numOctaves='3' seed='12' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 1 0 0 0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='discrete' tableValues='1 1 1 .95 .7 .25 0'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Cpath filter='url(%23wear)' d='M0 0h130v90H0z'/%3E%3C/svg%3E");
+    mask-size: 130px 90px;
+    mask-repeat: repeat;
+  }
+  .mockup-workspace[data-view] .brand-title > span {
+    color: inherit;
+    text-shadow: inherit;
+    -webkit-text-stroke: inherit;
+  }
+  .mockup-workspace[data-view] .masthead-period {
+    color: var(--print-paper);
+    text-shadow: 2px 2px 0 var(--print-blue);
+    transform: rotate(1.5deg);
+  }
+  .mockup-workspace[data-view] .navigation-bar {
+    padding-block: 8px 14px;
+    border-bottom: 2px dashed #20251e66;
+  }
+  .mockup-workspace[data-view] .workspace-navigation {
+    gap: 14px;
+    padding: 4px 7px 5px 1px;
+  }
+  .mockup-workspace[data-view] .workspace-navigation > .nav-item,
+  .mockup-workspace[data-view]
+    .workspace-navigation
+    > .navigation-more
+    > summary {
+    --print-angle: -1deg;
+    position: relative;
+    isolation: isolate;
+    min-height: 48px;
+    padding: 12px 20px;
+    border: 3px solid var(--print-black);
+    border-radius: 0;
+    background-color: var(--print-yellow);
+    background-image: repeating-linear-gradient(
+      0deg,
+      transparent 0 3px,
+      #fff6d92b 3px 4px
+    );
+    color: var(--print-black);
+    box-shadow:
+      3px 3px 0 var(--print-red),
+      6px 6px 0 var(--print-blue);
+    transform: rotate(var(--print-angle));
+    font-family: var(--mono);
+    font-weight: 900;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-decoration: none;
+  }
+  .mockup-workspace[data-view] .workspace-navigation > .nav-item:nth-child(2) {
+    --print-angle: 0.9deg;
+    background-color: #a9c3af;
+  }
+  .mockup-workspace[data-view] .workspace-navigation > .nav-item:nth-child(3) {
+    --print-angle: -0.6deg;
+    background-color: #f19a79;
+  }
+  .mockup-workspace[data-view]
+    .workspace-navigation
+    > .navigation-more
+    > summary {
+    --print-angle: 1.2deg;
+    background-color: var(--print-paper);
+  }
+  .mockup-workspace[data-view] .workspace-navigation > .nav-item::before,
+  .mockup-workspace[data-view]
+    .workspace-navigation
+    > .navigation-more
+    > summary::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background-image: radial-gradient(currentColor 0.65px, transparent 0.9px);
+    background-size: 3px 3px;
+    clip-path: polygon(68% 0, 100% 0, 100% 100%, 88% 100%);
+    opacity: 0.38;
+    pointer-events: none;
+  }
+  .mockup-workspace[data-view] .workspace-navigation > .nav-item::after,
+  .mockup-workspace[data-view]
+    .workspace-navigation
+    > .navigation-more
+    > summary::after {
+    content: "";
+    position: absolute;
+    inset: 2px -3px -3px 2px;
+    border: 1px solid currentColor;
+    opacity: 0.45;
+    pointer-events: none;
+  }
+  .mockup-workspace[data-view]
+    .workspace-navigation
+    > .nav-item[aria-current="page"],
+  .mockup-workspace[data-view]
+    .workspace-navigation
+    > .navigation-more[open]
+    > summary,
+  .mockup-workspace[data-view]
+    .workspace-navigation
+    > .navigation-more:has([aria-current="page"])
+    > summary {
+    background-color: var(--print-blue);
+    border-color: var(--print-black);
+    color: var(--print-paper);
+    box-shadow:
+      3px 3px 0 var(--print-yellow),
+      6px 6px 0 var(--print-red);
+    text-shadow: 1px 1px 0 #112865;
+  }
+  .mockup-workspace[data-view] .workspace-navigation > .nav-item:focus-visible,
+  .mockup-workspace[data-view]
+    .workspace-navigation
+    > .navigation-more
+    > summary:focus-visible,
+  .mockup-workspace[data-view] .brand-home:focus-visible {
+    outline: 3px solid var(--print-blue);
+    outline-offset: 8px;
+  }
+  .mockup-workspace[data-view] .brand-home:focus-visible {
+    outline-color: var(--print-paper);
+  }
+  .mockup-workspace[data-view] .navigation-more-options {
+    border: 3px solid var(--print-black);
+    border-radius: 0;
+    background: var(--print-paper);
+    box-shadow:
+      4px 4px 0 var(--print-red),
+      7px 7px 0 var(--print-blue);
+  }
+}
+@media screen and (hover: hover) {
+  .mockup-workspace[data-view] .workspace-navigation > .nav-item:hover,
+  .mockup-workspace[data-view]
+    .workspace-navigation
+    > .navigation-more
+    > summary:hover {
+    transform: translate(-1px, -2px) rotate(var(--print-angle));
+    border-color: var(--print-black);
+  }
+}
+@media screen and (max-width: 700px) {
+  .mockup-workspace[data-view] .workspace-navigation {
+    gap: 8px;
+    padding-right: 6px;
+  }
+  .mockup-workspace[data-view] .workspace-navigation > .nav-item,
+  .mockup-workspace[data-view]
+    .workspace-navigation
+    > .navigation-more
+    > summary {
+    min-height: 44px;
+    padding: 10px 2px;
+    font-size: 11px;
+    letter-spacing: 0;
+  }
+  .mockup-workspace[data-view] .brand-title {
+    mask-image: none;
+    -webkit-text-stroke: 0;
+    text-shadow:
+      -2px -1px 0 var(--print-yellow),
+      3px 2px 0 var(--print-blue);
+  }
+}
+@media screen {
+  :root[data-app-mode="standalone"][data-layout="daily"]
+    .mockup-workspace[data-view]
+    .navigation-bar {
+    padding-top: 0;
+    padding-bottom: var(--app-safe-bottom);
+    border-top: 3px solid var(--print-black);
+    border-bottom: 0;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"]
+    .mockup-workspace[data-view]
+    .workspace-navigation {
+    padding: 2px 5px 5px 0;
+    gap: 7px;
+  }
+  :root[data-app-mode="standalone"][data-layout="daily"]
+    .mockup-workspace[data-view]
+    .workspace-navigation
+    .nav-item {
+    min-height: 52px;
+    padding: 4px 2px;
+  }
+}

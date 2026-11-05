@@ -7,6 +7,7 @@ import "./punk.css";
 import "@fontsource/anton/latin-400.css";
 import "./week-reference.css";
 import "./recording.css";
+import "./riso-print.css";
 const masthead = localFont({
   src: "./fonts/RobotoCondensed-Masthead.woff",
   variable: "--font-masthead",
