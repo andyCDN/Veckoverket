@@ -70,7 +70,10 @@ Utan ett konfigurerat molnprojekt sparas planen på den här enheten. Med Supaba
 
 Ansökningarnas nästa steg kan filtreras på **Idag**, **Kommande sju dagar**, **Passerat datum** och **Utan datum**, i kombination med statusfilter. Avslag och avslutade ansökningar ingår inte i åtgärdsfiltren. **Markera nästa steg klart** registrerar utfallet i historiken och tömmer åtgärden och dess uppföljningsdatum; kalenderpassens status ändras inte.
 
-Fliken **Nästa steg** samlar ansökningarnas och kontakternas uppföljningar samt egna åtgärder och granskade åtgärder från samtal. Filtrera på försenat, idag, kommande sju dagar och utan datum. Varje post har åtgärd, ansvarig, datum och orsak. **Saknar nästa steg** visar förslag utifrån ansökningsstatus; de sparas först efter granskning. **Boka nästa steg** skapar ett länkat kalenderpass inom befintliga planeringsregler och förhindrar en andra aktiv bokning av samma åtgärd. Genomfördmarkering bevarar kalenderutfall och loggar uppföljningen.
+**Vecka** börjar med dagens genomförda pass, pågående eller nästa bokade pass och obokade nästa steg med datum till och med idag. En uppföljning öppnar rätt post i **Jobb → Nästa steg** eller **Nätverk → Uppföljningar**. Kalenderns kategorier finns under **Filtrera pass** och den fullständiga passlistan under **Alla veckans pass**.
+
+Uppgifter och väntelägen har ett gemensamt kortflöde. **Egen uppgift** har ett klart-senast-datum och **Boka arbetstid**; **Väntar på annan** har ansvarig mottagare, bevakningsdatum och **Boka uppföljning** från det datumet. Väntan skapar ingen automatisk kalenderbokning. Bokning från ansökan, kontakt eller nästa-steg-lista använder samma åtgärds-id och förhindrar dubbelbokning. Äldre aktiva pass med samma koppling och rubrik känns igen utan att skrivas om. Ett bokat steg öppnar det befintliga passet; efter genomfört pass krävs fortfarande en uttrycklig markering av nästa steg som klart. Kalenderutfall och historik bevaras.
+
 
 **Dokumentunderlag** sparar annonslänk och annonstext samt flera dokumentversioner med typ, länk, versionsnamn och skickat datum. Länkar öppnas i ett nytt fönster; materialet sparas i samma arbetsyta och molnsynk som ansökan.
 
@@ -84,7 +87,8 @@ Inspelningssidan har sökbar transkription med ljudhänvisningar, rättelser med
 
 **Visa historik** visar registrering, statusändringar, ändrade nästa steg och egna daterade kontakt-, intervju- och återkopplingsanteckningar. Äldre ansökningar får ingen automatiskt konstruerad historik. Kontakter kopplas via ansökningsformuläret och kan öppnas från ansökan. Historik och kopplingar följer med i säkerhetskopior, ångra och kontoavgränsad molnsynk. Borttagna kontakter visas som borttagna utan att tidigare händelser raderas.
 
-Under **Jobb & nätverk** finns en ansökningsöversikt med statusfilter, organisation, tjänst, deadline, nästa steg och uppföljningsdatum. Kontaktloggen sparar daterade anteckningar, kontaktkanal och nästa uppföljning. **Boka uppföljning** och **Boka kontakt** skapar kopplade pass i den befintliga kalendern. Passen kan öppnas, redigeras och markeras som genomförda där.
+Under **Jobb** finns ansökningsöversikten med sökning och statusfilter. Varje ansökan lyfter fram ett nästa steg, dess bokning och en huvudåtgärd. Dokument, intervjuer och historik ligger under fler alternativ. **Nätverk** använder samma kortmönster för kontakter; daterade samtalsanteckningar och länkade pass ligger under **Samtalslogg och kalenderpass**. Alla pass kan öppnas och redigeras i Vecka.
+
 
 **Deadlines** tar delsteg i utförandeordning och placerar dem bakåt från sista datum och klockslag, högst ett år framåt. Förslaget respekterar sparade veckoregler, kalenderimport, lunch, familjetid och buffert. Befintliga planer ändras inte. Nya veckor förbereds med låsta reservationer, skyddade och återkommande pass samt veckorutiner. Om alla delsteg inte ryms sparas ingenting; frigör tid eller justera delstegen. Sparade kalenderpass uppdateras inte automatiskt när en deadline redigeras. Öppna dem i kalendern för att ändra eller ta bort dem innan en ny bakåtplanering.
 

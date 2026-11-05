@@ -15,7 +15,9 @@ test("svensk vecka, musikalternativ, överbelastning och beständig lagring", as
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("./");
-  await expect(page.getByRole("heading", { name: "Vecka", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Vecka", exact: true }),
+  ).toBeVisible();
   await page.screenshot({ path: "test-results/desktop.png", fullPage: true });
   let data = await stored(page),
     week = Object.keys(data.weeks)[0];
@@ -30,7 +32,9 @@ test("svensk vecka, musikalternativ, överbelastning och beständig lagring", as
     page.locator(".preview-row").filter({ hasText: "Jobbsök" }),
   ).toContainText("6,3 h");
   await page.getByRole("button", { name: "Spara och planera veckan" }).click();
-  await expect(page.getByRole("heading", { name: "Vecka", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Vecka", exact: true }),
+  ).toBeVisible();
   await page.reload();
   await page.locator(".info-drawer > summary").click();
   await expect(
@@ -340,6 +344,7 @@ test("kategorifilter ändrar bara visningen och utskrift visar hela veckan", asy
   const before = await stored(page),
     week = Object.keys(before.weeks)[0],
     total = before.weeks[week].activities.length;
+  await page.getByText("Filtrera pass", { exact: true }).click();
   const filters = page.getByRole("group", { name: "Filtrera aktiviteter" });
   await filters.getByRole("button", { name: "Musik", exact: true }).click();
   await expect(page.locator(".calendar-block:visible")).toHaveCount(2);
@@ -541,6 +546,13 @@ test("v2.5: aktiv dag, exakta datum, veckobyte och nytt pass på vald dag", asyn
       "aria-pressed",
       "true",
     );
+    await expect(
+      page.getByRole("region", { name: "Idag och nästa steg" }),
+    ).toBeVisible();
+    await page
+      .locator(".day-shell.is-selected .calendar-entry")
+      .first()
+      .evaluate((element) => element.scrollIntoView({ block: "center" }));
     const viewport = (await page.locator(".calendar-viewport").boundingBox())!;
     const active = (await selected.boundingBox())!;
     const first = (await page

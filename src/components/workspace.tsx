@@ -64,6 +64,7 @@ import { DeadlinePlanning } from "./deadline-planning";
 import { DayFocus } from "./day-focus";
 import { Calendar } from "./calendar";
 import { WeekSummary } from "./week-summary";
+import { WeekFocus } from "./week-focus";
 import { WeekExtras } from "./week-extras";
 import { swapActivities } from "@/lib/activity-swap";
 import { ActivityEditor } from "./activity-editor";
@@ -160,6 +161,10 @@ export function Workspace() {
     setBlockedSave,
   } = useWorkspaceStorage(newWorkspace);
   const [careerEditing, setCareerEditing] = useState(false);
+  const [careerEntry, setCareerEntry] = useState<{
+    id: string;
+    tab: "actions";
+  } | null>(null);
   const [calendarMode, setCalendarMode] = useState<"week" | "day">("week");
   const [weekendOpen, setWeekendOpen] = useState(false);
   const [week, setWeek] = useState(monday(today())),
@@ -1052,6 +1057,7 @@ export function Workspace() {
       }
       aria-current={view === id ? "page" : undefined}
       onClick={(event) => {
+        setCareerEntry(null);
         const menu = event.currentTarget.closest("details");
         if (menu) menu.open = false;
         navigate(id);
@@ -1172,6 +1178,19 @@ export function Workspace() {
           {view === "planner" && (
             <>
               <section className="week-section">
+                <WeekFocus
+                  data={data}
+                  week={week}
+                  activities={activities}
+                  onOpen={(activity) => {
+                    selectDay(weekday(activity.date));
+                    openActivity(activity);
+                  }}
+                  onAction={(action) => {
+                    setCareerEntry({ id: action.id, tab: "actions" });
+                    navigate(action.applicationId ? "career" : "network");
+                  }}
+                />
                 <div className="week-toolbar">
                   <div className="toolbar-week-controls">{weekControls}</div>
                   <button
@@ -1206,7 +1225,17 @@ export function Workspace() {
                   )}
                   {!mobile && (
                     <div className="toolbar-category-filters">
-                      {categoryFilters}
+                      <details className="calendar-filter-options">
+                        <summary>
+                          Filtrera pass
+                          {categoryFilter !== "all"
+                            ? ` · ${categoryLabel(data.categories.find((category) => category.id === categoryFilter))}`
+                            : ""}
+                        </summary>
+                        <div className="calendar-filter-options-panel">
+                          {categoryFilters}
+                        </div>
+                      </details>
                     </div>
                   )}
                   <div className="week-actions">
@@ -1461,7 +1490,8 @@ export function Workspace() {
                 )}
               </div>
               {view === "planner" && (
-                <section className="activity-list">
+                <details className="activity-list">
+                  <summary>Alla veckans pass</summary>
                   <h3>Veckans aktiviteter</h3>
                   <p className="muted">
                     Öppna en aktivitet för att ändra tid, status, mål eller
@@ -1501,13 +1531,15 @@ export function Workspace() {
                       </button>
                     ))}
                   </div>
-                </section>
+                </details>
               )}
             </>
           )}
           {(view === "career" || view === "network") && (
             <CareerView
-              key={`${view}-${user?.id ?? "local"}-${undoVersion}`}
+              key={`${view}-${user?.id ?? "local"}-${undoVersion}-${careerEntry?.id ?? ""}`}
+              initialTab={careerEntry?.tab}
+              initialActionId={careerEntry?.id}
               section={view === "network" ? "network" : "jobs"}
               data={data}
               onEditing={setCareerEditing}

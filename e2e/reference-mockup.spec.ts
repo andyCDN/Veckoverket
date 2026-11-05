@@ -99,7 +99,7 @@ test("den bifogade mockupen: masthead, kompakt kalender, helg och dagvy bevarar 
     color: getComputedStyle(el).color,
     family: getComputedStyle(el).fontFamily,
   }));
-  expect(logo.color).toBe("rgb(255, 247, 226)");
+  expect(logo.color).toBe("rgb(255, 246, 217)");
   expect(logo.family).toContain("masthead");
   await expect(page.locator(".day-shell:visible")).toHaveCount(5);
   await expect(page.locator(".weekend-summaries")).toContainText("Familj");

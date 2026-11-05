@@ -5,6 +5,7 @@ import { isLocalDate } from "./google-time";
 import { bookCareerActivity } from "./career-planning";
 import { trackedActionId } from "./planning-insights";
 import { generateWeek } from "./planner";
+import { actionBookings } from "./action-workflow";
 
 export type TrackedAction = CareerAction & {
   legacy?: "application" | "contact";
@@ -295,16 +296,20 @@ export function bookCareerAction(
     action.status === "done" ||
     date < boundary.date ||
     (date === boundary.date && start < boundary.minute) ||
-    Object.values(data.weeks).some((p) =>
-      p.activities.some(
-        (a) => a.careerActionId === actionId && a.status === "planned",
-      ),
-    )
+    (action && actionBookings(data, action).some((a) => a.status === "planned"))
   )
     return {
       data,
       activities: [],
       errors: ["Nästa steg är redan bokat, avklarat eller tiden har passerat."],
+    };
+  if (action.kind === "waiting" && (!action.date || date < action.date))
+    return {
+      data,
+      activities: [],
+      errors: [
+        "Välj ett bevakningsdatum och boka uppföljningen tidigast det datumet.",
+      ],
     };
   const activity: Activity = {
     id: uid(),

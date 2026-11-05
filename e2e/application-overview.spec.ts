@@ -47,11 +47,11 @@ for (const mobile of [false, true]) {
     const cards = page.locator(".career-cards > article");
     await expect(cards).toHaveCount(3);
     await expect(cards.first()).toContainText("Stadshuset");
-    await expect(cards.first()).toContainText("Följ upp idag");
+    await expect(cards.first()).toContainText("Att göra idag");
     await expect(
       cards
         .first()
-        .getByRole("button", { name: "Boka uppföljning", exact: true }),
+        .getByRole("button", { name: "Boka arbetstid", exact: true }),
     ).toBeVisible();
     await expect(
       cards

@@ -1,6 +1,7 @@
 "use client";
-import { useState } from "react";
-import type { AppData } from "@/lib/types";
+import { useEffect, useState } from "react";
+import type { Activity, AppData } from "@/lib/types";
+import { ActionControl, ActionKindSelector } from "./action-control";
 import {
   careerActions,
   careerSuggestions,
@@ -18,17 +19,27 @@ export function CareerActions({
   onBook,
   onEditing,
   scope,
+  onOpen,
+  initialActionId,
 }: {
   data: AppData;
   onChange: (next: AppData, base: AppData) => void;
   onBook: (action: TrackedAction) => void;
   onEditing: (editing: boolean) => void;
   scope: "jobs" | "network";
+  onOpen: (activity: Activity) => void;
+  initialActionId?: string;
 }) {
   const [period, setPeriod] = useState("open"),
     [draft, setDraft] = useState<TrackedAction | null>(null),
     [error, setError] = useState(""),
     [base, setBase] = useState(data);
+  useEffect(() => {
+    if (!initialActionId) return;
+    const card = document.getElementById(`action-${initialActionId}`);
+    card?.scrollIntoView({ block: "center", behavior: "instant" });
+    card?.focus({ preventScroll: true });
+  }, [initialActionId]);
   const inScope = (action: TrackedAction) =>
     scope === "jobs"
       ? Boolean(action.applicationId)
@@ -112,17 +123,14 @@ export function CareerActions({
         {items.map((a) => {
           const app = data.applications?.find((v) => v.id === a.applicationId),
             contact = data.contacts?.find((v) => v.id === a.contactId);
-          const booked = Object.values(data.weeks)
-            .flatMap((p) => p.activities)
-            .filter((v) => v.careerActionId === a.id && v.status === "planned");
           return (
-            <article className="career-card stack" key={a.id}>
+            <article
+              className="career-card stack"
+              key={a.id}
+              id={`action-${a.id}`}
+              tabIndex={-1}
+            >
               <h2>{a.title}</h2>
-              <p>
-                {a.kind === "waiting"
-                  ? "Bevakning · väntar på annan"
-                  : "Egen uppgift"}
-              </p>
               <p>
                 {app
                   ? `${app.role} · ${app.organization}`
@@ -132,13 +140,16 @@ export function CareerActions({
                 {a.applicationId && a.contactId ? " · " : ""}
                 {contact?.name ?? (a.contactId ? "Borttagen kontakt" : "")}
               </p>
-              <p>
-                {a.date || "Datum saknas"}
-                {a.date && a.date < date && a.status === "open"
-                  ? " · Försenad"
-                  : ""}{" "}
-                · Ansvarig: {a.owner || "Ej fastställt"}
-              </p>
+              <ActionControl
+                data={data}
+                action={a}
+                onOpen={onOpen}
+                onEdit={() => edit(a)}
+                onBook={() => onBook(a)}
+                onComplete={() =>
+                  onChange(completeCareerAction(data, a.id), data)
+                }
+              />
               <p className="career-notes">
                 Varför:{" "}
                 {a.reason ||
@@ -159,9 +170,6 @@ export function CareerActions({
                   </a>
                 </>
               )}
-              {booked.map((v) => (
-                <p key={v.id}>Bokat: {v.date}</p>
-              ))}
               {!!a.updates?.length && (
                 <details>
                   <summary>Överenskommelsens historik</summary>
@@ -196,28 +204,6 @@ export function CareerActions({
                     ))}
                   </ol>
                 </details>
-              )}
-              {a.status === "open" && (
-                <div className="career-actions">
-                  <button className="button secondary" onClick={() => edit(a)}>
-                    Redigera nästa steg
-                  </button>
-                  <button
-                    className="button secondary"
-                    disabled={!!booked.length}
-                    onClick={() => onBook(a)}
-                  >
-                    Boka nästa steg
-                  </button>
-                  <button
-                    className="button secondary"
-                    onClick={() =>
-                      onChange(completeCareerAction(data, a.id), data)
-                    }
-                  >
-                    Markera nästa steg klart
-                  </button>
-                </div>
               )}
             </article>
           );
@@ -300,6 +286,19 @@ export function CareerActions({
                 </select>
               </label>
             )}
+            <ActionKindSelector
+              value={draft.kind}
+              onChange={(kind) =>
+                setDraft({
+                  ...draft,
+                  kind,
+                  owner:
+                    kind === "waiting" && draft.owner === "Jag"
+                      ? ""
+                      : draft.owner,
+                })
+              }
+            />
             <label>
               Åtgärd
               <input
@@ -310,7 +309,7 @@ export function CareerActions({
               />
             </label>
             <label>
-              Datum för nästa steg
+              {draft.kind === "waiting" ? "Bevakningsdatum" : "Klart senast"}
               <input
                 type="date"
                 value={draft.date}
@@ -318,27 +317,12 @@ export function CareerActions({
               />
             </label>
             <label>
-              Ansvarig
+              {draft.kind === "waiting" ? "Väntar på" : "Ansvarig"}
               <input
                 maxLength={200}
                 value={draft.owner}
                 onChange={(e) => setDraft({ ...draft, owner: e.target.value })}
               />
-            </label>
-            <label>
-              Typ av nästa steg
-              <select
-                value={draft.kind ?? "task"}
-                onChange={(e) =>
-                  setDraft({
-                    ...draft,
-                    kind: e.target.value as "task" | "waiting",
-                  })
-                }
-              >
-                <option value="task">Egen uppgift</option>
-                <option value="waiting">Väntar på annan</option>
-              </select>
             </label>
             <label>
               Varför behövs steget?

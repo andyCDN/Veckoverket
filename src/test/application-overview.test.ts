@@ -5,6 +5,28 @@ import {
 } from "../lib/application-overview";
 import type { JobApplication } from "../lib/types";
 
+it("searches and sorts using linked steps without changing the original application", () => {
+  const application: JobApplication = {
+    id: "a",
+    organization: "Bolaget",
+    role: "Analytiker",
+    status: "sent",
+    nextAction: "",
+    followUpDate: "",
+    deadline: "",
+    notes: "Bevara",
+  };
+  const result = applicationOverview([application], {
+    query: "arbetsprov",
+    scope: "active",
+    status: "all",
+    nextStep: () => ({ title: "Skicka arbetsprov", date: "2026-11-05" }),
+  });
+  expect(result).toEqual([application]);
+  expect(result[0]).toBe(application);
+  expect(application.nextAction).toBe("");
+});
+
 const make = (
   id: string,
   patch: Partial<JobApplication> = {},

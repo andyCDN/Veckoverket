@@ -8,6 +8,7 @@ import "@fontsource/anton/latin-400.css";
 import "./week-reference.css";
 import "./recording.css";
 import "./riso-print.css";
+import "./workflow.css";
 const masthead = localFont({
   src: "./fonts/RobotoCondensed-Masthead.woff",
   variable: "--font-masthead",

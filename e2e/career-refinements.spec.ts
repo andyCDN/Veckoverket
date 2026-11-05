@@ -137,15 +137,15 @@ test("gemensamma nästa steg visar försenade kontakter, bokar utan dubbelboknin
     .getByRole("button", { name: "Spara nästa steg", exact: true })
     .click();
   await queue
-    .getByRole("button", { name: "Boka nästa steg", exact: true })
+    .getByRole("button", { name: "Boka arbetstid", exact: true })
     .click();
   await dialog.getByLabel("Starttid", { exact: true }).fill("10:30");
   await dialog
     .getByRole("button", { name: "Spara kalenderpass", exact: true })
     .click();
   await expect(
-    queue.getByRole("button", { name: "Boka nästa steg", exact: true }),
-  ).toBeDisabled();
+    queue.getByRole("button", { name: "Öppna bokat pass", exact: true }),
+  ).toBeVisible();
   const saved = await stored(page);
   expect(saved.applications![0].nextActionReason).toBe("Överenskommet med Kim");
   expect(saved.weeks[week].activities[0]).toEqual(d.weeks[week].activities[0]);

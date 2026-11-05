@@ -1,0 +1,178 @@
+.week-focus {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  margin: 0 0 20px;
+}
+.calendar-filter-options {
+  position: relative;
+}
+.calendar-filter-options > summary,
+.activity-list > summary {
+  min-height: 44px;
+  padding: 12px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+.calendar-filter-options-panel {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  top: calc(100% + 6px);
+  width: min(540px, calc(100vw - 40px));
+  padding: 12px;
+  border: 1px solid var(--ink);
+  background: var(--paper-light);
+}
+.calendar-filter-options-panel .category-filter {
+  flex-wrap: wrap;
+}
+.week-focus > article {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid #20251e55;
+  background: var(--paper-light);
+}
+.week-focus h2 {
+  margin: 8px 0 12px;
+  font: 700 17px/1.3 var(--body);
+}
+.week-focus p {
+  margin: 8px 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.week-focus-kicker {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  font: 700 11px/1.5 var(--mono);
+}
+.week-focus-kicker > span {
+  font-weight: 400;
+}
+.week-focus-title {
+  display: block;
+  font-size: 19px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.week-focus-next .primary {
+  margin-top: 8px;
+}
+.week-focus-followups h2 > span {
+  margin-left: 6px;
+  color: var(--blue);
+}
+.week-focus-followups ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.week-focus-followups li + li {
+  border-top: 1px solid #20251e22;
+}
+.week-focus-followups li > button {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  color: var(--ink);
+}
+.week-focus-followups li > button:hover {
+  color: var(--blue);
+}
+.week-focus-followups li strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.week-focus-followups li span {
+  font-size: 11px;
+}
+.action-control {
+  display: grid;
+  gap: 10px;
+  padding-top: 10px;
+}
+.action-control-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.action-control-meta > span {
+  padding: 3px 7px;
+  color: #fffbed;
+  background: #233e9c;
+}
+.action-control.is-waiting .action-control-meta > span {
+  color: #20251e;
+  background: #f5cc37;
+}
+.action-control p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.action-control .action-booking {
+  padding: 8px 10px;
+  border-left: 3px solid #596b42;
+  background: #596b4210;
+}
+.action-control-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+.action-control-buttons .button,
+.action-control-buttons .text-button {
+  min-height: 44px;
+  white-space: normal;
+}
+.action-control-buttons .primary {
+  flex: 0 1 auto;
+}
+.career-card:focus {
+  outline: 3px solid var(--blue);
+  outline-offset: 4px;
+}
+@media (max-width: 700px) {
+  .action-control-buttons .primary {
+    flex-basis: 100%;
+  }
+  .week-focus {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .week-focus > article {
+    padding: 14px;
+  }
+}
+.calendar-display-filter label {
+  flex-direction: row;
+  justify-content: flex-start;
+  font-family: var(--body);
+  font-size: 12px;
+  letter-spacing: normal;
+}
+@media print {
+  .week-focus,
+  .action-control-buttons {
+    display: none;
+  }
+  .calendar-filter-options,
+  .activity-list {
+    display: none;
+  }
+}

@@ -88,7 +88,7 @@ test("ansökan, kalenderuppföljning och bakåtplanering bevaras vid omladdning"
     .getByRole("combobox", { name: "Status", exact: true })
     .selectOption("sent");
   await dialog.getByLabel("Ansökningsdeadline").fill("2026-10-30");
-  await dialog.getByLabel("Uppföljningsdatum").fill("2026-10-30");
+  await dialog.getByLabel("Klart senast").fill("2026-10-30");
   await dialog
     .getByLabel("Nästa steg", { exact: true })
     .fill("Kontakta rekryteraren");
@@ -99,7 +99,7 @@ test("ansökan, kalenderuppföljning och bakåtplanering bevaras vid omladdning"
     page.getByRole("heading", { name: "Utvecklare · Exempelbolaget" }),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "Boka uppföljning", exact: true })
+    .getByRole("button", { name: "Boka arbetstid", exact: true })
     .click();
   await dialog
     .getByRole("button", { name: "Spara kalenderpass", exact: true })
@@ -175,7 +175,7 @@ test("kontaktlogg går att redigera på mobil utan att kalender eller planer rad
   await dialog.getByLabel("Namn", { exact: true }).fill("Kim Andersson");
   await dialog.getByLabel("Organisation", { exact: true }).fill("Nätverket");
   await dialog.getByLabel("Nästa steg", { exact: true }).fill("Boka samtal");
-  await dialog.getByLabel("Uppföljningsdatum").fill("2026-10-30");
+  await dialog.getByLabel("Klart senast").fill("2026-10-30");
   await dialog
     .getByRole("button", { name: "Lägg till kontaktanteckning" })
     .click();
@@ -186,10 +186,13 @@ test("kontaktlogg går att redigera på mobil utan att kalender eller planer rad
   await dialog
     .getByRole("button", { name: "Spara kontakt", exact: true })
     .click();
+  await page.getByText("Samtalslogg och kalenderpass", { exact: true }).click();
   await expect(
     page.getByText("Diskuterade rollen och nästa möte.", { exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Boka kontakt", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Boka arbetstid", exact: true })
+    .click();
   await dialog
     .getByRole("button", { name: "Spara kalenderpass", exact: true })
     .click();
@@ -338,7 +341,7 @@ test("ansökans nästa steg, historik och kontaktkoppling fungerar på mobil och
   await dialog.getByLabel("Organisation", { exact: true }).fill("Bolaget");
   await dialog.getByLabel("Tjänst", { exact: true }).fill("Analytiker");
   await dialog.getByLabel("Nästa steg", { exact: true }).fill("Ring Kim");
-  await dialog.getByLabel("Uppföljningsdatum").fill("2026-10-29");
+  await dialog.getByLabel("Klart senast").fill("2026-10-29");
   await dialog.getByRole("checkbox", { name: "Kim Rekryterare" }).check();
   await dialog
     .getByRole("button", { name: "Spara ansökan", exact: true })

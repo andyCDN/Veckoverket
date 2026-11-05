@@ -53,7 +53,27 @@ export function planningLimitError(
   others: Activity[],
 ) {
   const due = activityDeadline(data, a);
-  if (due && (a.date > due.date || (a.date === due.date && a.end > due.minute)))
+  const waiting =
+    a.careerActionId &&
+    (data.careerActions?.find((action) => action.id === a.careerActionId)
+      ?.kind === "waiting" ||
+      data.applications?.some(
+        (app) =>
+          trackedActionId("application", app) === a.careerActionId &&
+          app.nextActionKind === "waiting",
+      ) ||
+      data.contacts?.some(
+        (contact) =>
+          trackedActionId("contact", contact) === a.careerActionId &&
+          contact.nextActionKind === "waiting",
+      ));
+  if (due && waiting && a.date < due.date)
+    return "En bevakning kan bokas tidigast på bevakningsdatumet.";
+  if (
+    due &&
+    !waiting &&
+    (a.date > due.date || (a.date === due.date && a.end > due.minute))
+  )
     return "Passet skulle sluta efter deadline eller uppföljningsdatum.";
   const deadline = data.deadlines?.find((d) => d.id === a.deadlineId);
   if (deadline && a.deadlineStepId) {

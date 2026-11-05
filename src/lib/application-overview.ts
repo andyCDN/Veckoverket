@@ -29,6 +29,9 @@ export function applicationOverview(
     query: string;
     scope: "active" | "closed" | "all";
     status: string;
+    nextStep?: (
+      application: JobApplication,
+    ) => { title: string; date: string } | undefined;
   },
 ) {
   const terms = options.query
@@ -38,7 +41,8 @@ export function applicationOverview(
     .filter(Boolean);
   const nextDate = (a: JobApplication) =>
     [
-      a.nextAction.trim() ? a.followUpDate : "",
+      options.nextStep?.(a)?.date ||
+        (a.nextAction.trim() ? a.followUpDate : ""),
       a.status === "draft" ? a.deadline : "",
     ]
       .filter(Boolean)
@@ -49,7 +53,7 @@ export function applicationOverview(
       if (options.scope === "closed" && !isClosedApplication(a)) return false;
       if (options.status !== "all" && a.status !== options.status) return false;
       const text =
-        `${a.organization} ${a.role} ${a.nextAction}`.toLocaleLowerCase(
+        `${a.organization} ${a.role} ${a.nextAction} ${options.nextStep?.(a)?.title ?? ""}`.toLocaleLowerCase(
           "sv-SE",
         );
       return terms.every((term) => text.includes(term));

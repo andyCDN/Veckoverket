@@ -63,7 +63,7 @@ test("ansökningar och kontaktlogg molnsparas, återläses och hålls åtskilda 
   await dialog
     .getByLabel("Nästa steg", { exact: true })
     .fill("Förbered intervju");
-  await dialog.getByLabel("Uppföljningsdatum").fill("2026-10-30");
+  await dialog.getByLabel("Klart senast").fill("2026-10-30");
   await dialog.getByRole("checkbox", { name: "Kim", exact: true }).check();
   await dialog
     .getByRole("button", { name: "Spara ansökan", exact: true })
@@ -123,6 +123,9 @@ test("dokument och intervjuanteckningar återläses från molnet med bevarade av
     .getByRole("button", { name: "Jobb", exact: true })
     .click();
   const dialog = page.getByRole("dialog");
+  await page
+    .getByText("Dokument, intervjuer och historik", { exact: true })
+    .click();
   await page
     .getByRole("button", { name: "Dokumentunderlag", exact: true })
     .click();
