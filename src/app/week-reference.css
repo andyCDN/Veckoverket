@@ -1004,6 +1004,82 @@
     bottom: calc(100% + 6px);
   }
 }
+.mockup-workspace[data-view] .workspace-navigation {
+  gap: 8px;
+  align-items: stretch;
+}
+.mockup-workspace[data-view] .workspace-navigation > .nav-item,
+.mockup-workspace[data-view]
+  .workspace-navigation
+  > .navigation-more
+  > summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  background: var(--paper-light);
+  color: var(--ink);
+  box-shadow: none;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.mockup-workspace[data-view]
+  .workspace-navigation
+  > .navigation-more
+  > summary {
+  width: 100%;
+  height: 100%;
+}
+.mockup-workspace[data-view]
+  .workspace-navigation
+  > .nav-item[aria-current="page"],
+.mockup-workspace[data-view]
+  .workspace-navigation
+  > .navigation-more[open]
+  > summary,
+.mockup-workspace[data-view]
+  .workspace-navigation
+  > .navigation-more:has([aria-current="page"])
+  > summary {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: var(--paper-light);
+  box-shadow: none;
+}
+.mockup-workspace[data-view] .workspace-navigation > .nav-item:hover,
+.mockup-workspace[data-view]
+  .workspace-navigation
+  > .navigation-more
+  > summary:hover {
+  border-color: var(--blue);
+}
+.mockup-workspace[data-view] .workspace-navigation > .nav-item:focus-visible,
+.mockup-workspace[data-view]
+  .workspace-navigation
+  > .navigation-more
+  > summary:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 3px;
+}
+@media (max-width: 700px) {
+  .mockup-workspace[data-view] .workspace-navigation {
+    gap: 6px;
+  }
+  .mockup-workspace[data-view] .workspace-navigation > .nav-item,
+  .mockup-workspace[data-view]
+    .workspace-navigation
+    > .navigation-more
+    > summary {
+    padding: 10px 3px;
+    font-size: 11px;
+    gap: 3px;
+  }
+}
 .application-overview {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
