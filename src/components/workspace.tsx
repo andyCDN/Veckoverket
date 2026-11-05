@@ -65,13 +65,7 @@ import { DayFocus } from "./day-focus";
 import { Calendar } from "./calendar";
 import { WeekSummary } from "./week-summary";
 import { WeekFocus } from "./week-focus";
-import {
-  StudioHeader,
-  StudioTabBar,
-  StudioTaskForm,
-  StudioTasks,
-  StudioWeek,
-} from "./studio-week";
+import { StudioHeader, StudioTaskForm, StudioWeek } from "./studio-week";
 import { WeekExtras } from "./week-extras";
 import { swapActivities } from "@/lib/activity-swap";
 import { ActivityEditor } from "./activity-editor";
@@ -1073,6 +1067,7 @@ export function Workspace() {
         const menu = event.currentTarget.closest("details");
         if (menu) menu.open = false;
         navigate(id);
+        if (id === "planner" && mobile) setCalendarMode("week");
         if (standalone && mobile) {
           if (id === "planner") changeWeek(monday(today()));
           requestAnimationFrame(() =>
@@ -1183,7 +1178,6 @@ export function Workspace() {
           }}
           onSettings={() => navigate("settings")}
           onAccount={() => setAccount(true)}
-          onNavigate={navigate}
         />
       ) : (
         <PlannerMasthead
@@ -1205,43 +1199,14 @@ export function Workspace() {
           )}
         />
       )}
-      {!mobile && navigationBar}
-      {mobile && (
-        <StudioTabBar
-          active={
-            view === "planner"
-              ? calendarMode === "day"
-                ? "today"
-                : "week"
-              : view === "goals"
-                ? "tasks"
-                : "other"
-          }
-          onToday={() => {
-            const current = monday(today());
-            changeWeek(current);
-            setDaySelection({ week: current, day: weekday(today()) });
-            setCalendarMode("day");
-            navigate("planner");
-          }}
-          onWeek={() => {
-            setCalendarMode("week");
-            navigate("planner");
-          }}
-          onTasks={() => navigate("goals")}
-        />
-      )}
+      {navigationBar}
       <div className="main-shell">
         <main id="main-content" tabIndex={-1}>
           <div
             className={`main-heading ${view === "planner" ? "calendar-page-heading" : ""}`}
           >
             <div>
-              <h1>
-                {mobile && view === "goals"
-                  ? "Uppgifter"
-                  : NAV.find((n) => n.id === view)?.label}
-              </h1>
+              <h1>{NAV.find((n) => n.id === view)?.label}</h1>
             </div>
           </div>
           {mobile &&
@@ -1279,6 +1244,7 @@ export function Workspace() {
                   activities={activities}
                   activeDay={activeDay}
                   onSelectDay={selectDay}
+                  onDay={() => setCalendarMode("day")}
                   onWeek={changeWeek}
                   onOpen={openActivity}
                   onStatus={(activity, done) =>
@@ -1710,18 +1676,7 @@ export function Workspace() {
               }}
             />
           )}
-          {view === "goals" &&
-            (mobile ? (
-              <StudioTasks
-                data={data}
-                onToggle={toggleTask}
-                onNew={() => setStudioTaskDate(today())}
-              >
-                {goalsView}
-              </StudioTasks>
-            ) : (
-              goalsView
-            ))}
+          {view === "goals" && goalsView}
           {view === "reflection" && (
             <>
               <div className="reflection-week">

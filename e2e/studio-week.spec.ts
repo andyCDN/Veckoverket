@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { navigateTo } from "./navigation";
 import AxeBuilder from "@axe-core/playwright";
 import { createData } from "../src/lib/defaults";
 import { decodeData } from "../src/lib/storage";
@@ -110,7 +111,7 @@ function fixture() {
 }
 
 for (const width of [390, 320]) {
-  test(`professionell veckoöversikt med riktiga data och tre flikar vid ${width}px`, async ({
+  test(`professionell veckoöversikt med riktiga data och återställd navigation vid ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 844 });
@@ -144,7 +145,18 @@ for (const width of [390, 320]) {
     );
     await expect(overview).not.toContainText("Familj");
     const nav = page.getByRole("navigation", { name: "Huvudnavigation" });
-    await expect(nav.getByRole("button")).toHaveCount(3);
+    for (const name of ["Vecka", "Jobb", "Nätverk"]) {
+      await expect(
+        nav.getByRole("button", { name, exact: true }),
+      ).toBeInViewport();
+    }
+    await expect(nav.getByText("Mer", { exact: true })).toBeVisible();
+    await expect(
+      nav.getByRole("button", { name: "Idag", exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      nav.getByRole("button", { name: "Uppgifter", exact: true }),
+    ).toHaveCount(0);
     await expect(
       nav.getByRole("button", { name: "Vecka", exact: true }),
     ).toHaveAttribute("aria-current", "page");
@@ -177,11 +189,6 @@ for (const width of [390, 320]) {
         exact: true,
       })
       .check();
-    await nav.getByRole("button", { name: "Uppgifter", exact: true }).click();
-    await page.getByRole("button", { name: "Klara", exact: true }).click();
-    await expect(
-      page.getByRole("checkbox", { name: /Kontrollera leveranspaketet/ }),
-    ).toBeChecked();
     const saved = await page.evaluate(() =>
       JSON.parse(localStorage.getItem("veckoverket.workspace.v1")!),
     );
@@ -205,22 +212,18 @@ for (const width of [390, 320]) {
       .click();
     await expect(overview.locator(".studio-dateband")).toContainText("V.43");
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-    await nav.getByRole("button", { name: "Idag", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Visa dagplanering", exact: true })
+      .click();
     await expect(page.locator(".calendar-grid")).toBeVisible();
     await nav.getByRole("button", { name: "Vecka", exact: true }).click();
     for (const name of ["Jobb", "Nätverk"]) {
-      await page.getByLabel("Profil och fler vyer", { exact: true }).click();
-      await page
-        .getByRole("navigation", { name: "Fler vyer" })
-        .getByRole("button", { name, exact: true })
-        .click();
+      await navigateTo(page, name);
       await expect(
         page.getByRole("heading", { name, exact: true }),
       ).toBeVisible();
     }
-    await page
-      .getByRole("button", { name: "Inställningar", exact: true })
-      .click();
+    await navigateTo(page, "Inställningar");
     await expect(
       page.getByRole("heading", { name: "Tillgänglighet och tidsmål" }),
     ).toBeVisible();

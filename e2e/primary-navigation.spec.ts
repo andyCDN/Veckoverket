@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-for (const mobile of [false]) {
+for (const mobile of [false, true]) {
   test(`veckovy, jobb och nätverk är separata ingångar ${mobile ? "på mobil" : "på dator"}`, async ({
     page,
   }) => {
@@ -61,7 +61,9 @@ for (const mobile of [false]) {
       nav.getByRole("button", { name: "Nätverk", exact: true }),
     ).toHaveAttribute("aria-current", "page");
     await nav.getByRole("button", { name: "Vecka", exact: true }).click();
-    await expect(page.locator(".calendar-grid")).toBeVisible();
+    await expect(
+      page.locator(mobile ? ".studio-week" : ".calendar-grid"),
+    ).toBeVisible();
     await expect(page.locator(".week-balance-bar")).toHaveCount(0);
     await expect(
       nav.getByRole("button", { name: "Vecka", exact: true }),
@@ -79,10 +81,14 @@ for (const mobile of [false]) {
     await expect(
       page.getByRole("heading", { name: "Tillgänglighet och tidsmål" }),
     ).toBeVisible();
-    await page
-      .getByRole("link", { name: "Veckoverket – till startsidan" })
-      .click();
-    await expect(page.locator(".calendar-grid")).toBeVisible();
+    await (
+      mobile
+        ? page.locator(".studio-appbar a")
+        : page.getByRole("link", { name: "Veckoverket – till startsidan" })
+    ).click();
+    await expect(
+      page.locator(mobile ? ".studio-week" : ".calendar-grid"),
+    ).toBeVisible();
     await expect(
       nav.getByRole("button", { name: "Vecka", exact: true }),
     ).toHaveAttribute("aria-current", "page");

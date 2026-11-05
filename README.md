@@ -2,9 +2,9 @@
 
 En svensk webbapp för veckoplanering, målhantering och uppföljning.
 
-Mobilens veckoöversikt visar verkliga möten, fokusblock, uppgifter, deadlines och veckomål i en kompakt risotrycksvy. Bottenflikarna är **Idag**, **Vecka** och **Uppgifter**; **Jobb** och **Nätverk** nås via profilikonen. Nya uppgifter kan kopplas till datum och mål. Familjekategorin döljs i den professionella översikten utan att sparade bokningar ändras.
+Mobilens veckoöversikt visar verkliga möten, fokusblock, uppgifter, deadlines och veckomål i en kompakt risotrycksvy. Huvudnavigationen är **Vecka**, **Jobb**, **Nätverk** och **Mer**. Mål, reflektion och inställningar finns under **Mer**. Dagplaneringen nås via **Visa dagplanering** i veckoöversikten. Nya uppgifter kan kopplas till datum och mål. Familjekategorin döljs i den professionella översikten utan att sparade bokningar ändras.
 
-Appen kan installeras på hemskärmen med en egen RISO-ikon. På mobilen finns **Installera appen** under **Idag → Verktyg**, och på datorn finns alternativet i **Inställningar**. Följ [installationsguiden på engelska](docs/install-app.md). Den sparade appvyn kan öppnas utan nät; inloggning, molnsynk och Google-import kräver anslutning.
+Appen kan installeras på hemskärmen med en egen RISO-ikon. På mobilen finns **Installera appen** under **Visa dagplanering → Verktyg**, och på datorn finns alternativet i **Inställningar**. Följ [installationsguiden på engelska](docs/install-app.md). Den sparade appvyn kan öppnas utan nät; inloggning, molnsynk och Google-import kräver anslutning.
 
 Kalenderkopplingen med privat iCal-länk kan installeras helt i webbläsaren. Följ [Codespaces-guiden på engelska](docs/ical-calendar-setup.md); Node.js och installationskommandona körs i GitHubs molnmiljö.
 

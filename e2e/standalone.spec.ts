@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { openToday } from "./navigation";
 import AxeBuilder from "@axe-core/playwright";
 
 for (const platform of ["ios", "chromium"] as const) {
@@ -44,9 +45,10 @@ for (const platform of ["ios", "chromium"] as const) {
         "data-layout",
         "daily",
       );
-      await nav.getByRole("button", { name: "Idag", exact: true }).click();
+      await nav.getByRole("button", { name: "Vecka", exact: true }).click();
+      await openToday(page);
       await expect(page.locator(".day-shell:visible")).toHaveCount(1);
-      const bar = (await page.locator(".studio-tabbar").boundingBox())!;
+      const bar = (await page.locator(".navigation-bar").boundingBox())!;
       expect(Math.abs(bar.y + bar.height - height)).toBeLessThan(2);
       for (const button of await nav.getByRole("button").all()) {
         const box = (await button.boundingBox())!;
@@ -106,12 +108,14 @@ for (const platform of ["ios", "chromium"] as const) {
         })),
       ).toEqual([]);
     }
-    await nav.getByRole("button", { name: "Idag", exact: true }).click();
+    await nav.getByRole("button", { name: "Vecka", exact: true }).click();
+    await openToday(page);
     for (let i = 0; i < 3; i++)
       await page
         .getByRole("button", { name: "Välj föregående dag", exact: true })
         .click();
-    await nav.getByRole("button", { name: "Idag", exact: true }).click();
+    await nav.getByRole("button", { name: "Vecka", exact: true }).click();
+    await openToday(page);
     await expect(page.locator(".day-focus-name")).toContainText(
       "Torsdag29 oktober 2026",
     );
@@ -154,7 +158,8 @@ for (const platform of ["ios", "chromium"] as const) {
       .click();
     await expect(page.getByRole("dialog")).not.toBeVisible();
     await page.reload();
-    await nav.getByRole("button", { name: "Idag", exact: true }).click();
+    await nav.getByRole("button", { name: "Vecka", exact: true }).click();
+    await openToday(page);
     const saved = page.locator(`[data-activity-id="${id}"]`);
     await expect(saved).toContainText("Installerad mobilplan");
     await expect(

@@ -1,8 +1,6 @@
 "use client";
 import {
-  CalendarDays,
   Check,
-  CheckCheck,
   Plus,
   Printer,
   SlidersHorizontal,
@@ -28,13 +26,11 @@ export function StudioHeader({
   onHome,
   onSettings,
   onAccount,
-  onNavigate,
 }: {
   week: string;
   onHome: () => void;
   onSettings: () => void;
   onAccount: () => void;
-  onNavigate: (view: "career" | "network" | "reflection") => void;
 }) {
   return (
     <header className="studio-appbar">
@@ -66,57 +62,14 @@ export function StudioHeader({
       >
         <SlidersHorizontal size={21} />
       </button>
-      <details className="studio-profile">
-        <summary aria-label="Profil och fler vyer">
-          <UserRound size={20} />
-        </summary>
-        <nav
-          aria-label="Fler vyer"
-          onClick={(event) => {
-            if ((event.target as Element).closest("button")) {
-              const menu = event.currentTarget.closest("details");
-              if (menu) menu.open = false;
-            }
-          }}
-        >
-          <button onClick={onAccount}>Konto & molnlagring</button>
-          <button onClick={() => onNavigate("career")}>Jobb</button>
-          <button onClick={() => onNavigate("network")}>Nätverk</button>
-          <button onClick={() => onNavigate("reflection")}>Reflektion</button>
-        </nav>
-      </details>
+      <button
+        className="studio-profile"
+        aria-label="Konto & molnlagring"
+        onClick={onAccount}
+      >
+        <UserRound size={20} />
+      </button>
     </header>
-  );
-}
-
-export function StudioTabBar({
-  active,
-  onToday,
-  onWeek,
-  onTasks,
-}: {
-  active: "today" | "week" | "tasks" | "other";
-  onToday: () => void;
-  onWeek: () => void;
-  onTasks: () => void;
-}) {
-  return (
-    <nav className="studio-tabbar" aria-label="Huvudnavigation">
-      {[
-        { id: "today", label: "Idag", Icon: CalendarDays, click: onToday },
-        { id: "week", label: "Vecka", Icon: CalendarDays, click: onWeek },
-        { id: "tasks", label: "Uppgifter", Icon: CheckCheck, click: onTasks },
-      ].map(({ id, label, Icon, click }) => (
-        <button
-          key={id}
-          aria-current={active === id ? "page" : undefined}
-          onClick={click}
-        >
-          <Icon size={20} />
-          <span>{label}</span>
-        </button>
-      ))}
-    </nav>
   );
 }
 
@@ -126,6 +79,7 @@ export function StudioWeek({
   activities,
   activeDay,
   onSelectDay,
+  onDay,
   onWeek,
   onOpen,
   onStatus,
@@ -139,6 +93,7 @@ export function StudioWeek({
   activities: Activity[];
   activeDay: number;
   onSelectDay: (day: number) => void;
+  onDay: () => void;
   onWeek: (week: string) => void;
   onOpen: (activity: Activity) => void;
   onStatus: (activity: Activity, done: boolean) => void;
@@ -309,6 +264,9 @@ export function StudioWeek({
       <div className="studio-heading">
         <h1>Veckoöversikt</h1>
         <p>Projekt • Tidslinje • Leveranser</p>
+        <button className="studio-add-inline" onClick={onDay}>
+          Visa dagplanering
+        </button>
       </div>
       <dl className="studio-kpis">
         <div>
@@ -473,74 +431,6 @@ export function StudioWeek({
           <i />
         </div>
       </footer>
-    </section>
-  );
-}
-
-export function StudioTasks({
-  data,
-  onToggle,
-  onNew,
-  children,
-}: {
-  data: AppData;
-  onToggle: (id: string) => void;
-  onNew: () => void;
-  children: React.ReactNode;
-}) {
-  const [completed, setCompleted] = useState(false);
-  const goals = data.goals.filter((goal) => goal.categoryId !== "family");
-  const tasks = data.tasks
-    .filter(
-      (task) =>
-        task.done === completed &&
-        goals.some((goal) => goal.id === task.goalId),
-    )
-    .sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999"));
-  return (
-    <section className="studio-tasks" aria-label="Uppgifter">
-      <div className="studio-task-toolbar">
-        <div role="group" aria-label="Visa uppgifter">
-          <button aria-pressed={!completed} onClick={() => setCompleted(false)}>
-            Öppna
-          </button>
-          <button aria-pressed={completed} onClick={() => setCompleted(true)}>
-            Klara
-          </button>
-        </div>
-        <button onClick={onNew}>+ Ny uppgift</button>
-      </div>
-      <ul>
-        {tasks.map((task) => (
-          <li key={task.id}>
-            <label>
-              <input
-                type="checkbox"
-                checked={task.done}
-                onChange={() => onToggle(task.id)}
-              />
-              <span>
-                <strong>{task.title}</strong>
-                <small>
-                  {task.date || "Utan datum"} ·{" "}
-                  {goals.find((goal) => goal.id === task.goalId)?.title}
-                </small>
-              </span>
-            </label>
-          </li>
-        ))}
-      </ul>
-      {!tasks.length && (
-        <p>
-          {completed
-            ? "Inga avklarade uppgifter ännu."
-            : "Inga öppna uppgifter."}
-        </p>
-      )}
-      <details className="studio-manage-goals">
-        <summary>Mål och prioriteringar</summary>
-        {children}
-      </details>
     </section>
   );
 }
