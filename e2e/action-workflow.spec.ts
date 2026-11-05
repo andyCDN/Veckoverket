@@ -104,6 +104,22 @@ const nav = (page: Page, name: string) =>
     .click();
 
 for (const mobile of [false, true]) {
+  test(`tom uppföljning döljs automatiskt ${mobile ? "på mobil" : "på dator"}`, async ({
+    page,
+  }) => {
+    if (mobile) await page.setViewportSize({ width: 390, height: 844 });
+    const data = fixture();
+    data.applications = [];
+    data.contacts = [];
+    await setup(page, data);
+    await expect(
+      page.getByRole("navigation", { name: "Huvudnavigation" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "Att följa upp" }),
+    ).toHaveCount(0);
+    await expect(page.locator(".week-focus")).toHaveCount(0);
+  });
   test(`Vecka leder till rätt nästa steg och samma bokning från ansökan ${mobile ? "på mobil" : "på dator"}`, async ({
     page,
   }) => {
