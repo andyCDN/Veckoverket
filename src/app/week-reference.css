@@ -919,13 +919,13 @@
 @media (max-width: 700px) {
   .mockup-workspace[data-view] .workspace-navigation {
     display: grid;
-    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     width: 100%;
     gap: 4px;
     padding: 0;
   }
   .mockup-workspace[data-view] .workspace-navigation .nav-item {
-    grid-column: span 3;
+    grid-column: span 1;
     justify-content: center;
     min-width: 0;
     min-height: 44px;
@@ -942,7 +942,7 @@
   .mockup-workspace[data-view]
     .workspace-navigation
     .nav-item[data-primary="true"] {
-    grid-column: span 4;
+    grid-column: span 1;
     font-size: 12px;
   }
 }
@@ -964,7 +964,15 @@
     font-size: 10px;
   }
 }
+.navigation-more {
+  position: relative;
+}
 .navigation-more > summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
   list-style: none;
   cursor: pointer;
 }
@@ -973,8 +981,9 @@
 }
 .navigation-more-options {
   position: absolute;
-  right: max(8px, var(--app-safe-right));
-  bottom: calc(100% + 6px);
+  z-index: 60;
+  right: 0;
+  top: calc(100% + 6px);
   width: min(260px, calc(100vw - 24px));
   padding: 8px;
   border: 2px solid var(--ink);
@@ -983,6 +992,17 @@
 }
 .navigation-more-options .nav-item {
   width: 100%;
+}
+.navigation-more:has([aria-current="page"]) > summary {
+  color: var(--blue);
+  box-shadow: inset 0 -3px 0 currentColor;
+}
+@media screen {
+  :root[data-app-mode="standalone"][data-layout="daily"]
+    .navigation-more-options {
+    top: auto;
+    bottom: calc(100% + 6px);
+  }
 }
 .application-overview {
   display: grid;

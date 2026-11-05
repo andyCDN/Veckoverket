@@ -47,6 +47,7 @@ for (const mobile of [false, true]) {
     await expect(page.locator(".calendar-grid")).toBeVisible();
     const before = await stored(page);
     const nav = page.getByRole("navigation", { name: "Huvudnavigation" });
+    await nav.getByText("Mer", { exact: true }).click();
     await nav
       .getByRole("button", { name: "Inställningar", exact: true })
       .click();
@@ -101,6 +102,7 @@ for (const mobile of [false, true]) {
     await expect(page.locator(".day-shell.is-selected .day-empty")).toHaveText(
       "Inga pass denna dag",
     );
+    await nav.getByText("Mer", { exact: true }).click();
     await nav
       .getByRole("button", {
         name: mobile ? "Reflektion" : "Veckoreflektion",

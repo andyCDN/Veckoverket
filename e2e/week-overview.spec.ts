@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { createData } from "../src/lib/defaults";
 import type { Activity } from "../src/lib/types";
 
-test("veckovyn visar bokad fördelning och gemensam tid utan att ändra planer eller avklarade pass", async ({
+test("veckovyn visar totalsiffror utan diagram och bevarar planer och avklarade pass", async ({
   page,
 }) => {
   await page.clock.install({ time: new Date("2026-10-30T10:00:00+01:00") });
@@ -57,8 +57,7 @@ test("veckovyn visar bokad fördelning och gemensam tid utan att ändra planer e
   );
   await page.reload();
   const overview = page.getByRole("region", { name: "Veckans tidsöversikt" });
-  await expect(overview).toContainText("Jobbsök 75 %");
-  await expect(overview).toContainText("Nätverkande 25 %");
+  await expect(page.locator(".week-balance-bar")).toHaveCount(0);
   await expect(overview.locator("dl")).toContainText(
     "Planerat7,5 hGenomfört1,5 hÅterstår6 h",
   );

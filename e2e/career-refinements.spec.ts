@@ -107,8 +107,11 @@ test("gemensamma nästa steg visar försenade kontakter, bokar utan dubbelboknin
   await page.setViewportSize({ width: 390, height: 844 });
   const d = fixture();
   await setup(page, d);
-  await page.getByRole("button", { name: "Nästa steg", exact: true }).click();
-  const queue = page.getByRole("region", { name: "Gemensamma nästa steg" });
+  await page.getByRole("button", { name: "Nätverk", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Uppföljningar", exact: true })
+    .click();
+  let queue = page.getByRole("region", { name: "Uppföljningar för kontakter" });
   await expect(queue).toContainText("1 försenade uppföljningar");
   await page.getByLabel("Visa nästa steg").selectOption("overdue");
   await expect(
@@ -119,6 +122,9 @@ test("gemensamma nästa steg visar försenade kontakter, bokar utan dubbelboknin
   ).toHaveCount(0);
   await queue.getByRole("button", { name: "Markera nästa steg klart" }).click();
   expect((await stored(page)).contacts![0].entries).toHaveLength(2);
+  await page.getByRole("button", { name: "Jobb", exact: true }).click();
+  await page.getByRole("button", { name: "Nästa steg", exact: true }).click();
+  queue = page.getByRole("region", { name: "Nästa steg för ansökningar" });
   await page.getByLabel("Visa nästa steg").selectOption("today");
   await expect(queue).toContainText("Rekryteraren efterfrågade ett exempel");
   await queue.getByRole("button", { name: "Redigera nästa steg" }).click();
@@ -150,7 +156,7 @@ test("gemensamma nästa steg visar försenade kontakter, bokar utan dubbelboknin
   await nav(page);
   await page.getByRole("button", { name: "Nästa steg", exact: true }).click();
   await expect(
-    page.getByRole("region", { name: "Gemensamma nästa steg" }),
+    page.getByRole("region", { name: "Nästa steg för ansökningar" }),
   ).toContainText("Överenskommet med Kim");
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.screenshot({
@@ -256,7 +262,7 @@ test("intervjuunderlaget samlar dokument, kontaktlogg, punkter och återkoppling
     .click();
   await page
     .getByRole("navigation", { name: "Huvudnavigation" })
-    .getByRole("button", { name: "Veckovy", exact: true })
+    .getByRole("button", { name: "Vecka", exact: true })
     .click();
   await page.locator('[data-activity-id="meeting"]').click();
   await dialog

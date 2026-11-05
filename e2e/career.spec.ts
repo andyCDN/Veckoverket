@@ -169,7 +169,7 @@ test("kontaktlogg går att redigera på mobil utan att kalender eller planer rad
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await setup(page);
-  await page.getByRole("button", { name: "Kontaktlogg", exact: true }).click();
+  await page.getByRole("button", { name: "Nätverk", exact: true }).click();
   await page.getByRole("button", { name: "Ny kontakt", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Namn", { exact: true }).fill("Kim Andersson");
@@ -285,6 +285,10 @@ test("separata tidsmål justeras tillsammans och kontaktpass använder nätverka
   await setup(page);
   await page
     .getByRole("navigation", { name: "Huvudnavigation" })
+    .getByText("Mer", { exact: true })
+    .click();
+  await page
+    .getByRole("navigation", { name: "Huvudnavigation" })
     .getByRole("button", { name: "Inställningar", exact: true })
     .click();
   const career = page
@@ -322,14 +326,14 @@ test("ansökans nästa steg, historik och kontaktkoppling fungerar på mobil och
   await page.setViewportSize({ width: 390, height: 844 });
   await setup(page);
   const before = await stored(page);
-  await page.getByRole("button", { name: "Kontaktlogg", exact: true }).click();
+  await page.getByRole("button", { name: "Nätverk", exact: true }).click();
   await page.getByRole("button", { name: "Ny kontakt", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Namn", { exact: true }).fill("Kim Rekryterare");
   await dialog
     .getByRole("button", { name: "Spara kontakt", exact: true })
     .click();
-  await page.getByRole("button", { name: "Ansökningar", exact: true }).click();
+  await page.getByRole("button", { name: "Jobb", exact: true }).click();
   await page.getByRole("button", { name: "Ny ansökan", exact: true }).click();
   await dialog.getByLabel("Organisation", { exact: true }).fill("Bolaget");
   await dialog.getByLabel("Tjänst", { exact: true }).fill("Analytiker");
@@ -539,7 +543,7 @@ test("ansökningsdeadline får arbetstid vid sparning och visas i dagsplaneringe
   );
   await page
     .getByRole("navigation", { name: "Huvudnavigation" })
-    .getByRole("button", { name: "Veckovy", exact: true })
+    .getByRole("button", { name: "Vecka", exact: true })
     .click();
   await page
     .getByRole("button", { name: "Välj nästa dag", exact: true })
@@ -594,7 +598,7 @@ test("äldre deadlines kan bokas i dagsvyn och platsbrist lämnar kalendern ofö
   await setup(page);
   await page
     .getByRole("navigation", { name: "Huvudnavigation" })
-    .getByRole("button", { name: "Veckovy", exact: true })
+    .getByRole("button", { name: "Vecka", exact: true })
     .click();
   await page.locator(".deadline-planning > summary").click();
   await page
@@ -616,6 +620,7 @@ test("äldre deadlines kan bokas i dagsvyn och platsbrist lämnar kalendern ofö
     .getByRole("navigation", { name: "Huvudnavigation" })
     .getByRole("button", { name: "Jobb", exact: true })
     .click();
+  await page.getByText("Deadlines och planering", { exact: true }).click();
   await page.getByRole("button", { name: "Deadlines", exact: true }).click();
   await page.getByRole("button", { name: "Ny deadline", exact: true }).click();
   const dialog = page.getByRole("dialog");

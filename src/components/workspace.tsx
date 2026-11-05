@@ -8,7 +8,6 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  LayoutDashboard,
   Plus,
   Settings2,
   Sparkles,
@@ -98,25 +97,17 @@ import { saveInterviewNotes } from "@/lib/application-interviews";
 import { FollowUpPanel } from "./follow-up";
 import { followUps, type FollowUp } from "@/lib/follow-up";
 type View =
-  | "dashboard"
-  | "planner"
-  | "goals"
-  | "reflection"
-  | "settings"
-  | "career"
-  | "network";
+  "planner" | "goals" | "reflection" | "settings" | "career" | "network";
 const NAV = [
-  { id: "planner", label: "Veckovy", icon: CalendarDays },
+  { id: "planner", label: "Vecka", icon: CalendarDays },
   { id: "career", label: "Jobb", icon: BookOpen },
   { id: "network", label: "Nätverk", icon: Users },
-  { id: "dashboard", label: "Min vecka", icon: LayoutDashboard },
   { id: "goals", label: "Mål & aktiviteter", icon: Target },
   { id: "reflection", label: "Veckoreflektion", icon: BookOpen },
   { id: "settings", label: "Inställningar", icon: Settings2 },
 ] as const;
 const APP_NAV_LABELS: Record<View, string> = {
-  dashboard: "Idag",
-  planner: "Veckovy",
+  planner: "Vecka",
   goals: "Mål",
   reflection: "Reflektion",
   settings: "Inställningar",
@@ -172,7 +163,7 @@ export function Workspace() {
   const [calendarMode, setCalendarMode] = useState<"week" | "day">("week");
   const [weekendOpen, setWeekendOpen] = useState(false);
   const [week, setWeek] = useState(monday(today())),
-    [view, setView] = useState<View>("dashboard");
+    [view, setView] = useState<View>("planner");
   const [daySelection, setDaySelection] = useState<{
     week: string;
     day: number;
@@ -311,7 +302,7 @@ export function Workspace() {
     setResetOpen(false);
     setRoutineId(null);
     setNotice("");
-    setView("dashboard");
+    setView("planner");
     setWeek(monday(today()));
     setDaySelection(null);
   }, [user?.id]);
@@ -859,7 +850,7 @@ export function Workspace() {
       ),
     };
     setData(next, { undoLabel: "planeringsinställningar" });
-    navigate("dashboard");
+    navigate("planner");
     notify(
       result.conflicts.length
         ? "Inställningarna är sparade. Se planeringsförslagen för det som inte ryms."
@@ -875,7 +866,7 @@ export function Workspace() {
     });
     const w = Object.keys(imported.weeks).sort().at(-1);
     if (w) setWeek(w);
-    setView("dashboard");
+    setView("planner");
     notify("Planen har lästs in.");
   }
   function importGoogle(
@@ -919,7 +910,7 @@ export function Workspace() {
     setMobileFiltersOpen(false);
     setDaySelection(null);
     setWeek(currentWeek);
-    navigate("dashboard");
+    navigate("planner");
     notify("Planering och statistik har nollställts.");
     requestAnimationFrame(() =>
       window.scrollTo({ top: 0, behavior: "instant" }),
@@ -1012,7 +1003,7 @@ export function Workspace() {
       }}
     />
   );
-  const isCalendar = view === "dashboard" || view === "planner";
+  const isCalendar = view === "planner";
   const categoryFilters = (
     <CategoryFilter
       categories={data.categories}
@@ -1065,16 +1056,13 @@ export function Workspace() {
         if (menu) menu.open = false;
         navigate(id);
         if (standalone && mobile) {
-          if (id === "dashboard") changeWeek(monday(today()));
+          if (id === "planner") changeWeek(monday(today()));
           requestAnimationFrame(() =>
             window.scrollTo({ top: 0, behavior: "instant" }),
           );
         }
       }}
     >
-      <span className="nav-index" aria-hidden="true">
-        0{NAV.findIndex((item) => item.id === id) + 1}
-      </span>
       <Icon size={15} />
       <span className="nav-label">
         {mobile && (standalone || id === "reflection" || id === "goals")
@@ -1086,24 +1074,28 @@ export function Workspace() {
   const navigationBar = (
     <div className="navigation-bar">
       <nav className="workspace-navigation" aria-label="Huvudnavigation">
-        {NAV.filter(
-          (item) =>
-            !(standalone && mobile) ||
-            ["planner", "career", "network"].includes(item.id),
+        {NAV.filter((item) =>
+          ["planner", "career", "network"].includes(item.id),
         ).map(navigationItem)}
-        {standalone && mobile && (
-          <details className="navigation-more">
-            <summary className="nav-item">
-              <MoreHorizontal size={20} />
-              <span>Mer</span>
-            </summary>
-            <div className="navigation-more-options">
-              {NAV.filter(
-                (item) => !["planner", "career", "network"].includes(item.id),
-              ).map(navigationItem)}
-            </div>
-          </details>
-        )}
+        <details
+          className="navigation-more"
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.currentTarget.open = false;
+              event.currentTarget.querySelector("summary")?.focus();
+            }
+          }}
+        >
+          <summary className="nav-item">
+            <MoreHorizontal size={20} />
+            <span>Mer</span>
+          </summary>
+          <div className="navigation-more-options">
+            {NAV.filter(
+              (item) => !["planner", "career", "network"].includes(item.id),
+            ).map(navigationItem)}
+          </div>
+        </details>
       </nav>
       {!mobile && storageStatus}
       <WorkspaceTools
@@ -1129,7 +1121,7 @@ export function Workspace() {
         onHome={() => {
           changeWeek(monday(today()));
           setDaySelection(null);
-          navigate("dashboard");
+          navigate("planner");
         }}
         dayFocus={
           (mobile || calendarMode === "day") && isCalendar
@@ -1147,14 +1139,10 @@ export function Workspace() {
       <div className="main-shell">
         <main id="main-content" tabIndex={-1}>
           <div
-            className={`main-heading ${view === "dashboard" || view === "planner" ? "calendar-page-heading" : ""}`}
+            className={`main-heading ${view === "planner" ? "calendar-page-heading" : ""}`}
           >
             <div>
-              <h1>
-                {view === "dashboard"
-                  ? "Min vecka"
-                  : NAV.find((n) => n.id === view)?.label}
-              </h1>
+              <h1>{NAV.find((n) => n.id === view)?.label}</h1>
             </div>
           </div>
           {mobile && storageStatus}
@@ -1181,7 +1169,7 @@ export function Workspace() {
               </button>
             </div>
           )}
-          {(view === "dashboard" || view === "planner") && (
+          {view === "planner" && (
             <>
               <section className="week-section">
                 <div className="week-toolbar">
@@ -1407,7 +1395,7 @@ export function Workspace() {
                   </div>
                 </div>
               )}
-              {view === "dashboard" && (
+              {view === "planner" && (
                 <details className="info-drawer">
                   <summary>
                     <span className="section-tag">[ Bilaga 01 ]</span>
@@ -1521,9 +1509,6 @@ export function Workspace() {
             <CareerView
               key={`${view}-${user?.id ?? "local"}-${undoVersion}`}
               section={view === "network" ? "network" : "jobs"}
-              onSectionChange={(section) =>
-                navigate(section === "network" ? "network" : "career")
-              }
               data={data}
               onEditing={setCareerEditing}
               onChange={(next, base) => {

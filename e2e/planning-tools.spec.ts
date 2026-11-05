@@ -1,3 +1,4 @@
+import { navigateTo } from "./navigation";
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { createData } from "../src/lib/defaults";
@@ -52,11 +53,7 @@ async function seed(page: Page, data: AppData) {
 }
 const stored = (page: Page): Promise<AppData> =>
   page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), key);
-const nav = (page: Page, name: string) =>
-  page
-    .getByRole("navigation", { name: "Huvudnavigation" })
-    .getByRole("button", { name, exact: true })
-    .click();
+const nav = navigateTo;
 
 test("regler kategoriserar sparade bokningar på mobil och manuella val kan återgå till automatisk kategori", async ({
   page,
@@ -154,7 +151,7 @@ test("regler kategoriserar sparade bokningar på mobil och manuella val kan åte
       (a) => a.external?.eventId === "one",
     )?.categoryId,
   ).toBe("career");
-  await nav(page, "Min vecka");
+  await nav(page, "Vecka");
   await page
     .locator(".calendar-block")
     .filter({ hasText: "Intervju two" })

@@ -44,8 +44,7 @@ for (const platform of ["ios", "chromium"] as const) {
         "data-layout",
         "daily",
       );
-      await nav.getByText("Mer", { exact: true }).click();
-      await nav.getByRole("button", { name: "Idag", exact: true }).click();
+      await nav.getByRole("button", { name: "Vecka", exact: true }).click();
       await expect(page.locator(".day-shell:visible")).toHaveCount(1);
       const bar = (await page.locator(".navigation-bar").boundingBox())!;
       expect(Math.abs(bar.y + bar.height - height)).toBeLessThan(2);
@@ -108,14 +107,12 @@ for (const platform of ["ios", "chromium"] as const) {
         })),
       ).toEqual([]);
     }
-    await nav.getByText("Mer", { exact: true }).click();
-    await nav.getByRole("button", { name: "Idag", exact: true }).click();
+    await nav.getByRole("button", { name: "Vecka", exact: true }).click();
     for (let i = 0; i < 3; i++)
       await page
         .getByRole("button", { name: "Välj föregående dag", exact: true })
         .click();
-    await nav.getByText("Mer", { exact: true }).click();
-    await nav.getByRole("button", { name: "Idag", exact: true }).click();
+    await nav.getByRole("button", { name: "Vecka", exact: true }).click();
     await expect(page.locator(".day-focus-name")).toContainText(
       "Torsdag29 oktober 2026",
     );

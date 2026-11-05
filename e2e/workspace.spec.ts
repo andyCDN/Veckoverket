@@ -1,10 +1,8 @@
-import { test, expect } from "@playwright/test";
+import { navigateTo } from "./navigation";
+import { test, expect, type Page } from "@playwright/test";
 import { addDays, hours, time } from "../src/lib/date";
-async function nav(page: import("@playwright/test").Page, name: string) {
-  await page
-    .getByRole("navigation")
-    .getByRole("button", { name, exact: true })
-    .click();
+async function nav(page: Page, name: string) {
+  await navigateTo(page, name);
 }
 async function stored(page: import("@playwright/test").Page) {
   return page.evaluate(() =>
@@ -17,7 +15,7 @@ test("svensk vecka, musikalternativ, överbelastning och beständig lagring", as
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("./");
-  await expect(page.getByRole("heading", { name: "Min vecka" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Vecka", exact: true })).toBeVisible();
   await page.screenshot({ path: "test-results/desktop.png", fullPage: true });
   let data = await stored(page),
     week = Object.keys(data.weeks)[0];
@@ -32,7 +30,7 @@ test("svensk vecka, musikalternativ, överbelastning och beständig lagring", as
     page.locator(".preview-row").filter({ hasText: "Jobbsök" }),
   ).toContainText("6,3 h");
   await page.getByRole("button", { name: "Spara och planera veckan" }).click();
-  await expect(page.getByRole("heading", { name: "Min vecka" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Vecka", exact: true })).toBeVisible();
   await page.reload();
   await page.locator(".info-drawer > summary").click();
   await expect(
@@ -295,11 +293,11 @@ test("tillgänglighet i huvudvyer och aktivitetsdialog", async ({ page }) => {
   await page.goto("./");
   await expect(page.locator(".calendar-grid")).toBeVisible();
   for (const name of [
-    "Min vecka",
+    "Vecka",
     "Mål & aktiviteter",
     "Veckoreflektion",
     "Inställningar",
-    "Veckovy",
+    "Vecka",
   ]) {
     await nav(page, name);
     const scan = await new AxeBuilder({ page })
@@ -482,7 +480,7 @@ test("varje kalenderhändelse kan bockas av, återställas och sparas utan att �
       .locator("strong"),
   ).toHaveText("5 h / 1 h");
   await page.setViewportSize({ width: 390, height: 844 });
-  await nav(page, "Min vecka");
+  await nav(page, "Vecka");
   await page.getByRole("button", { name: /^Visa måndag/ }).click();
   await lunch.getByRole("checkbox", { name: /^Genomförd:/ }).focus();
   await page.keyboard.press("Space");

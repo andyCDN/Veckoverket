@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { mock, login, status, plan, row, userA, userB, week } from "./helpers";
 
 async function openReset(page: import("@playwright/test").Page) {
+  await page.getByRole("navigation").getByText("Mer", { exact: true }).click();
   await page
     .getByRole("navigation")
     .getByRole("button", { name: "Inställningar", exact: true })

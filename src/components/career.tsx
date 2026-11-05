@@ -60,7 +60,6 @@ import {
 const statuses = APPLICATION_STATUSES;
 type Props = {
   section: "jobs" | "network";
-  onSectionChange: (section: "jobs" | "network") => void;
   data: AppData;
   onChange: (next: AppData, base: AppData) => void;
   onOpen: (activity: Activity) => void;
@@ -73,7 +72,6 @@ export function CareerView({
   onOpen,
   onEditing,
   section,
-  onSectionChange,
 }: Props) {
   const [materialsId, setMaterialsId] = useState<string | null>(null);
   const [actionEditing, setActionEditing] = useState(false);
@@ -197,25 +195,21 @@ export function CareerView({
           : "Dina ansökningar och nästa steg. Öppna Nätverk för kontakter och samtalslogg."}
       </p>
       <div className="career-tabs" role="group" aria-label="Visa jobböversikt">
-        {[
-          ["applications", "Ansökningar"],
-          ["contacts", "Kontaktlogg"],
-          ["actions", "Nästa steg"],
-          ["deadlines", "Deadlines"],
-        ].map(([id, label]) => (
+        {(section === "network"
+          ? [
+              ["contacts", "Kontakter"],
+              ["actions", "Uppföljningar"],
+            ]
+          : [
+              ["applications", "Ansökningar"],
+              ["actions", "Nästa steg"],
+            ]
+        ).map(([id, label]) => (
           <button
             className="button secondary"
             key={id}
             aria-pressed={tab === id}
             onClick={() => {
-              if (id === "contacts" && section !== "network") {
-                onSectionChange("network");
-                return;
-              }
-              if (id === "applications" && section !== "jobs") {
-                onSectionChange("jobs");
-                return;
-              }
               setTab(id);
               setMessage("");
             }}
@@ -224,9 +218,22 @@ export function CareerView({
           </button>
         ))}
       </div>
+      {section === "jobs" && (
+        <details className="career-planning-options">
+          <summary>Deadlines och planering</summary>
+          <button
+            className="text-button"
+            aria-pressed={tab === "deadlines"}
+            onClick={() => setTab("deadlines")}
+          >
+            Deadlines
+          </button>
+        </details>
+      )}
       {message && <p role="status">{message}</p>}
       {tab === "actions" && (
         <CareerActions
+          scope={section}
           data={data}
           onChange={onChange}
           onEditing={setActionEditing}

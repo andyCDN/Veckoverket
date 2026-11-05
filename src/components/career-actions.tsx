@@ -17,17 +17,26 @@ export function CareerActions({
   onChange,
   onBook,
   onEditing,
+  scope,
 }: {
   data: AppData;
   onChange: (next: AppData, base: AppData) => void;
   onBook: (action: TrackedAction) => void;
   onEditing: (editing: boolean) => void;
+  scope: "jobs" | "network";
 }) {
   const [period, setPeriod] = useState("open"),
     [draft, setDraft] = useState<TrackedAction | null>(null),
     [error, setError] = useState(""),
     [base, setBase] = useState(data);
-  const all = careerActions(data),
+  const inScope = (action: TrackedAction) =>
+    scope === "jobs"
+      ? Boolean(action.applicationId)
+      : Boolean(action.contactId);
+  const applications = scope === "jobs" ? (data.applications ?? []) : [];
+  const contacts = scope === "network" ? (data.contacts ?? []) : [];
+  const suggestions = careerSuggestions(data).filter(inScope);
+  const all = careerActions(data).filter(inScope),
     date = today();
   const edit = (a: TrackedAction | null) => {
     setDraft(a);
@@ -48,7 +57,14 @@ export function CareerActions({
           (period === "waiting" && a.kind === "waiting")),
   );
   return (
-    <section className="stack" aria-label="Gemensamma nästa steg">
+    <section
+      className="stack"
+      aria-label={
+        scope === "jobs"
+          ? "Nästa steg för ansökningar"
+          : "Uppföljningar för kontakter"
+      }
+    >
       <p>
         {
           all.filter((a) => a.status === "open" && a.date && a.date < date)
@@ -73,7 +89,7 @@ export function CareerActions({
         </label>
         <button
           className="button primary"
-          disabled={!data.applications?.length && !data.contacts?.length}
+          disabled={!applications.length && !contacts.length}
           onClick={() =>
             edit({
               id: uid(),
@@ -82,9 +98,9 @@ export function CareerActions({
               owner: "Jag",
               reason: "",
               status: "open",
-              ...(data.applications?.length
-                ? { applicationId: data.applications[0].id }
-                : { contactId: data.contacts?.[0].id }),
+              ...(applications.length
+                ? { applicationId: applications[0].id }
+                : { contactId: contacts[0]?.id }),
             })
           }
         >
@@ -208,12 +224,12 @@ export function CareerActions({
         })}
       </div>
       <details>
-        <summary>Saknar nästa steg ({careerSuggestions(data).length})</summary>
+        <summary>Saknar nästa steg ({suggestions.length})</summary>
         <p>
           Förslagen sparas först när du granskar dem och väljer Spara nästa
           steg.
         </p>
-        {careerSuggestions(data).map((a) => (
+        {suggestions.map((a) => (
           <div className="career-card stack" key={a.id}>
             <p>
               {a.title} ·{" "}
@@ -271,12 +287,12 @@ export function CareerActions({
                     })
                   }
                 >
-                  {data.applications?.map((a) => (
+                  {applications.map((a) => (
                     <option key={`a:${a.id}`} value={`a:${a.id}`}>
                       {a.role} · {a.organization}
                     </option>
                   ))}
-                  {data.contacts?.map((c) => (
+                  {contacts.map((c) => (
                     <option key={`c:${c.id}`} value={`c:${c.id}`}>
                       {c.name}
                     </option>

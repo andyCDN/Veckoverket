@@ -37,7 +37,7 @@ test("ansökningar och kontaktlogg molnsparas, återläses och hålls åtskilda 
   expect(f.documents.get(userA)!.data.applications?.[0].role).toBe(
     "Analytiker",
   );
-  await page.getByRole("button", { name: "Kontaktlogg", exact: true }).click();
+  await page.getByRole("button", { name: "Nätverk", exact: true }).click();
   await page.getByRole("button", { name: "Ny kontakt", exact: true }).click();
   await dialog.getByLabel("Namn", { exact: true }).fill("Kim");
   await dialog
@@ -53,7 +53,7 @@ test("ansökningar och kontaktlogg molnsparas, återläses och hålls åtskilda 
   expect(f.documents.get(userA)!.data.contacts?.[0].entries[0].notes).toBe(
     "Samtal om rollen",
   );
-  await page.getByRole("button", { name: "Ansökningar", exact: true }).click();
+  await page.getByRole("button", { name: "Jobb", exact: true }).click();
   await page
     .getByRole("button", { name: "Redigera ansökan", exact: true })
     .click();
