@@ -212,6 +212,8 @@ export function decodeData(raw: string): AppData {
       typeof t.id !== "string" ||
       typeof t.title !== "string" ||
       typeof t.done !== "boolean" ||
+      (t.date !== undefined &&
+        (typeof t.date !== "string" || !isLocalDate(t.date))) ||
       !d.goals.some((g: { id: string }) => g.id === t.goalId)
     )
       throw new Error("En uppgift är ogiltig.");

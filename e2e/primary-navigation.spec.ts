@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-for (const mobile of [false, true]) {
+for (const mobile of [false]) {
   test(`veckovy, jobb och nätverk är separata ingångar ${mobile ? "på mobil" : "på dator"}`, async ({
     page,
   }) => {

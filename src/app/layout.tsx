@@ -9,6 +9,7 @@ import "./week-reference.css";
 import "./recording.css";
 import "./riso-print.css";
 import "./workflow.css";
+import "./studio-week.css";
 const masthead = localFont({
   src: "./fonts/RobotoCondensed-Masthead.woff",
   variable: "--font-masthead",

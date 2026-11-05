@@ -1,10 +1,12 @@
 import { test, expect, chromium, type Page } from "@playwright/test";
+import { openToday } from "./navigation";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 async function ready(page: Page) {
   await page.goto("./");
+  await openToday(page);
   await expect(page.locator(".calendar-grid")).toBeVisible();
   await page.evaluate(() =>
     navigator.serviceWorker.ready.then(() => undefined),

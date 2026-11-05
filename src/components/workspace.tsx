@@ -65,6 +65,13 @@ import { DayFocus } from "./day-focus";
 import { Calendar } from "./calendar";
 import { WeekSummary } from "./week-summary";
 import { WeekFocus } from "./week-focus";
+import {
+  StudioHeader,
+  StudioTabBar,
+  StudioTaskForm,
+  StudioTasks,
+  StudioWeek,
+} from "./studio-week";
 import { WeekExtras } from "./week-extras";
 import { swapActivities } from "@/lib/activity-swap";
 import { ActivityEditor } from "./activity-editor";
@@ -161,6 +168,7 @@ export function Workspace() {
     setBlockedSave,
   } = useWorkspaceStorage(newWorkspace);
   const [careerEditing, setCareerEditing] = useState(false);
+  const [studioTaskDate, setStudioTaskDate] = useState<string | null>(null);
   const [careerEntry, setCareerEntry] = useState<{
     id: string;
     tab: "actions";
@@ -245,6 +253,7 @@ export function Workspace() {
     !editor &&
     !generator &&
     !newGoal &&
+    !studioTaskDate &&
     !account &&
     !googleOpen &&
     !resetOpen &&
@@ -300,6 +309,7 @@ export function Workspace() {
   useEffect(() => {
     setEditor(null);
     setNewGoal(false);
+    setStudioTaskDate(null);
     setGenerator(false);
     setAccount(false);
     setHelp(false);
@@ -316,6 +326,7 @@ export function Workspace() {
       Boolean(
         editor ||
         newGoal ||
+        studioTaskDate ||
         generator ||
         googleOpen ||
         resetOpen ||
@@ -328,6 +339,7 @@ export function Workspace() {
   }, [
     editor,
     newGoal,
+    studioTaskDate,
     generator,
     googleOpen,
     resetOpen,
@@ -1077,6 +1089,43 @@ export function Workspace() {
       </span>
     </button>
   );
+  const goalsView = (
+    <GoalsView
+      data={data}
+      week={week}
+      onToggle={toggleTask}
+      onNew={() => setNewGoal(true)}
+      onAddTask={(goalId, title) =>
+        setData({
+          ...data,
+          tasks: [...data.tasks, { id: uid(), goalId, title, done: false }],
+        })
+      }
+      onDelete={(id) => {
+        if (
+          window.confirm(
+            "Ta bort målet och dess uppgifter? Planerade aktiviteter bevaras.",
+          )
+        )
+          setData({
+            ...data,
+            goals: data.goals.filter((g) => g.id !== id),
+            tasks: data.tasks.filter((t) => t.goalId !== id),
+            weeks: Object.fromEntries(
+              Object.entries(data.weeks).map(([w, p]) => [
+                w,
+                {
+                  ...p,
+                  activities: p.activities.map((a) =>
+                    a.goalId === id ? { ...a, goalId: undefined } : a,
+                  ),
+                },
+              ]),
+            ),
+          });
+      }}
+    />
+  );
   const navigationBar = (
     <div className="navigation-bar">
       <nav className="workspace-navigation" aria-label="Huvudnavigation">
@@ -1119,39 +1168,85 @@ export function Workspace() {
       className="app-shell mockup-workspace"
       data-view={view}
       data-calendar-mode={calendarMode}
+      data-mobile-design={mobile ? "studio" : undefined}
     >
       <a className="skip-link" href="#main-content">
         Hoppa till innehållet
       </a>
-      <PlannerMasthead
-        onHome={() => {
-          changeWeek(monday(today()));
-          setDaySelection(null);
-          navigate("planner");
-        }}
-        dayFocus={
-          (mobile || calendarMode === "day") && isCalendar
-            ? dayFocus
-            : undefined
-        }
-        week={week}
-        settings={weekData.settings}
-        minutes={Object.values(categoryMinutes(activities)).reduce(
-          (sum, n) => sum + n,
-          0,
-        )}
-      />
-      {navigationBar}
+      {mobile ? (
+        <StudioHeader
+          week={week}
+          onHome={() => {
+            changeWeek(monday(today()));
+            setCalendarMode("week");
+            navigate("planner");
+          }}
+          onSettings={() => navigate("settings")}
+          onAccount={() => setAccount(true)}
+          onNavigate={navigate}
+        />
+      ) : (
+        <PlannerMasthead
+          onHome={() => {
+            changeWeek(monday(today()));
+            setDaySelection(null);
+            navigate("planner");
+          }}
+          dayFocus={
+            (mobile || calendarMode === "day") && isCalendar
+              ? dayFocus
+              : undefined
+          }
+          week={week}
+          settings={weekData.settings}
+          minutes={Object.values(categoryMinutes(activities)).reduce(
+            (sum, n) => sum + n,
+            0,
+          )}
+        />
+      )}
+      {!mobile && navigationBar}
+      {mobile && (
+        <StudioTabBar
+          active={
+            view === "planner"
+              ? calendarMode === "day"
+                ? "today"
+                : "week"
+              : view === "goals"
+                ? "tasks"
+                : "other"
+          }
+          onToday={() => {
+            const current = monday(today());
+            changeWeek(current);
+            setDaySelection({ week: current, day: weekday(today()) });
+            setCalendarMode("day");
+            navigate("planner");
+          }}
+          onWeek={() => {
+            setCalendarMode("week");
+            navigate("planner");
+          }}
+          onTasks={() => navigate("goals")}
+        />
+      )}
       <div className="main-shell">
         <main id="main-content" tabIndex={-1}>
           <div
             className={`main-heading ${view === "planner" ? "calendar-page-heading" : ""}`}
           >
             <div>
-              <h1>{NAV.find((n) => n.id === view)?.label}</h1>
+              <h1>
+                {mobile && view === "goals"
+                  ? "Uppgifter"
+                  : NAV.find((n) => n.id === view)?.label}
+              </h1>
             </div>
           </div>
-          {mobile && storageStatus}
+          {mobile &&
+            !(view === "planner" && calendarMode === "week") &&
+            storageStatus}
           {ical.error && data.icalCalendar?.autoRefresh && !googleOpen && (
             <div className="ical-sync-error" role="status">
               <p>{ical.error}</p>
@@ -1177,361 +1272,405 @@ export function Workspace() {
           )}
           {view === "planner" && (
             <>
-              <section className="week-section">
-                <WeekFocus
+              {mobile && calendarMode === "week" ? (
+                <StudioWeek
                   data={data}
                   week={week}
                   activities={activities}
-                  onOpen={(activity) => {
-                    selectDay(weekday(activity.date));
-                    openActivity(activity);
-                  }}
-                  onAction={(action) => {
-                    setCareerEntry({ id: action.id, tab: "actions" });
-                    navigate(action.applicationId ? "career" : "network");
-                  }}
+                  activeDay={activeDay}
+                  onSelectDay={selectDay}
+                  onWeek={changeWeek}
+                  onOpen={openActivity}
+                  onStatus={(activity, done) =>
+                    updatePlan({
+                      ...plan,
+                      activities: activities.map((item) =>
+                        item.id === activity.id
+                          ? { ...item, status: done ? "done" : "planned" }
+                          : item,
+                      ),
+                    })
+                  }
+                  onTask={toggleTask}
+                  onCreate={(date) =>
+                    setEditor({ date, start: weekData.settings.start })
+                  }
+                  onNewTask={setStudioTaskDate}
+                  onGoals={() => navigate("goals")}
                 />
-                <div className="week-toolbar">
-                  <div className="toolbar-week-controls">{weekControls}</div>
-                  <button
-                    className="text-button this-week-button"
-                    onClick={() => changeWeek(monday(today()))}
-                  >
-                    {currentWeek
-                      ? mobile
-                        ? "Idag"
-                        : "Denna vecka"
-                      : "Till idag"}
-                  </button>
-                  {!mobile && (
-                    <div
-                      className="calendar-view-switch"
-                      role="group"
-                      aria-label="Kalendervy"
-                    >
-                      <button
-                        aria-pressed={calendarMode === "day"}
-                        onClick={() => setCalendarMode("day")}
-                      >
-                        Dag
-                      </button>
-                      <button
-                        aria-pressed={calendarMode === "week"}
-                        onClick={() => setCalendarMode("week")}
-                      >
-                        Vecka
-                      </button>
-                    </div>
+              ) : (
+                <>
+                  {mobile && (
+                    <div className="studio-today-heading">{dayFocus}</div>
                   )}
-                  {!mobile && (
-                    <div className="toolbar-category-filters">
-                      <details className="calendar-filter-options">
-                        <summary>
-                          Filtrera pass
-                          {categoryFilter !== "all"
-                            ? ` · ${categoryLabel(data.categories.find((category) => category.id === categoryFilter))}`
-                            : ""}
-                        </summary>
-                        <div className="calendar-filter-options-panel">
-                          {categoryFilters}
-                        </div>
-                      </details>
-                    </div>
-                  )}
-                  <div className="week-actions">
-                    {mobile && (
-                      <details className="calendar-tools-menu">
-                        <summary>
-                          <MoreHorizontal size={19} aria-hidden="true" />{" "}
-                          Verktyg
-                        </summary>
+                  <section className="week-section">
+                    <WeekFocus
+                      data={data}
+                      week={week}
+                      activities={activities}
+                      onOpen={(activity) => {
+                        selectDay(weekday(activity.date));
+                        openActivity(activity);
+                      }}
+                      onAction={(action) => {
+                        setCareerEntry({ id: action.id, tab: "actions" });
+                        navigate(action.applicationId ? "career" : "network");
+                      }}
+                    />
+                    <div className="week-toolbar">
+                      <div className="toolbar-week-controls">
+                        {weekControls}
+                      </div>
+                      <button
+                        className="text-button this-week-button"
+                        onClick={() => changeWeek(monday(today()))}
+                      >
+                        {currentWeek
+                          ? mobile
+                            ? "Idag"
+                            : "Denna vecka"
+                          : "Till idag"}
+                      </button>
+                      {!mobile && (
                         <div
-                          className="calendar-menu-options"
-                          onClick={(event) => {
-                            if ((event.target as Element).closest("button")) {
-                              const menu =
-                                event.currentTarget.closest("details");
-                              if (menu) menu.open = false;
-                              menu?.querySelector("summary")?.focus();
-                            }
-                          }}
+                          className="calendar-view-switch"
+                          role="group"
+                          aria-label="Kalendervy"
                         >
                           <button
-                            className="text-button"
-                            aria-expanded={mobileFiltersOpen}
-                            aria-controls="calendar-category-filters"
-                            onClick={() =>
-                              setMobileFiltersOpen((open) => !open)
-                            }
+                            aria-pressed={calendarMode === "day"}
+                            onClick={() => setCalendarMode("day")}
                           >
-                            <ListFilter size={16} />
-                            {mobileFiltersOpen
-                              ? "Dölj filter"
-                              : "Filtrera aktiviteter"}
+                            Dag
                           </button>
-                          {calendarTools}
-                          <AppInstallButton className="text-button" />
+                          <button
+                            aria-pressed={calendarMode === "week"}
+                            onClick={() => setCalendarMode("week")}
+                          >
+                            Vecka
+                          </button>
                         </div>
-                      </details>
-                    )}
-                    <button
-                      className="button primary new-session"
-                      aria-label="Ny aktivitet"
-                      onClick={() =>
-                        setEditor({
-                          date: addDays(week, activeDay),
-                          start: weekData.settings.start,
-                        })
-                      }
-                    >
-                      <Plus size={18} />
-                      Nytt pass
-                    </button>
-                  </div>
-                </div>
-                <div
-                  className={`week-layout ${view === "planner" ? "full-calendar" : ""}`}
-                >
-                  <div className="week-board">
-                    {mobile && categoryFilter !== "all" && (
-                      <div className="mobile-active-filter">
-                        <span>
-                          Visar{" "}
-                          {categoryLabel(
-                            data.categories.find(
-                              (c) => c.id === categoryFilter,
-                            ),
-                          )}
-                        </span>
+                      )}
+                      {!mobile && (
+                        <div className="toolbar-category-filters">
+                          <details className="calendar-filter-options">
+                            <summary>
+                              Filtrera pass
+                              {categoryFilter !== "all"
+                                ? ` · ${categoryLabel(data.categories.find((category) => category.id === categoryFilter))}`
+                                : ""}
+                            </summary>
+                            <div className="calendar-filter-options-panel">
+                              {categoryFilters}
+                            </div>
+                          </details>
+                        </div>
+                      )}
+                      <div className="week-actions">
+                        {mobile && (
+                          <details className="calendar-tools-menu">
+                            <summary>
+                              <MoreHorizontal size={19} aria-hidden="true" />{" "}
+                              Verktyg
+                            </summary>
+                            <div
+                              className="calendar-menu-options"
+                              onClick={(event) => {
+                                if (
+                                  (event.target as Element).closest("button")
+                                ) {
+                                  const menu =
+                                    event.currentTarget.closest("details");
+                                  if (menu) menu.open = false;
+                                  menu?.querySelector("summary")?.focus();
+                                }
+                              }}
+                            >
+                              <button
+                                className="text-button"
+                                aria-expanded={mobileFiltersOpen}
+                                aria-controls="calendar-category-filters"
+                                onClick={() =>
+                                  setMobileFiltersOpen((open) => !open)
+                                }
+                              >
+                                <ListFilter size={16} />
+                                {mobileFiltersOpen
+                                  ? "Dölj filter"
+                                  : "Filtrera aktiviteter"}
+                              </button>
+                              {calendarTools}
+                              <AppInstallButton className="text-button" />
+                            </div>
+                          </details>
+                        )}
                         <button
-                          className="text-button"
-                          onClick={() => setCategoryFilter("all")}
+                          className="button primary new-session"
+                          aria-label="Ny aktivitet"
+                          onClick={() =>
+                            setEditor({
+                              date: addDays(week, activeDay),
+                              start: weekData.settings.start,
+                            })
+                          }
                         >
-                          Visa alla
+                          <Plus size={18} />
+                          Nytt pass
                         </button>
                       </div>
-                    )}
-                    {mobile && (
-                      <div
-                        id="calendar-category-filters"
-                        className={`calendar-filters ${mobileFiltersOpen ? "is-open" : ""}`}
-                      >
-                        {categoryFilters}
-                      </div>
-                    )}
-                    {mobile && (
-                      <>
-                        <DeadlinePlanning
-                          data={data}
-                          date={addDays(week, activeDay)}
-                          onOpen={(activity) =>
-                            editInWeek(monday(activity.date), activity)
-                          }
-                          onBook={bookDeadline}
-                        />
-                        <FollowUpPanel
-                          data={data}
-                          week={week}
-                          onReschedule={reschedule}
-                          onEdit={editInWeek}
-                        />
-                      </>
-                    )}
-                    {!mobile && <WeekSummary activities={activities} />}
-                    <Calendar
-                      mobile={mobile || calendarMode === "day"}
-                      showWeekends={weekendOpen}
-                      activeDay={activeDay}
-                      onSelectDay={selectDay}
-                      onDelete={(a) => deleteActivity(a.id, false)}
-                      week={week}
-                      data={weekData}
-                      activities={activities}
-                      categoryFilter={categoryFilter}
-                      onEdit={openActivity}
-                      onMove={move}
-                      onSwap={(a, target) => {
-                        swap(a.id, target.id);
-                      }}
-                      onStatusChange={(activity, status) =>
-                        updatePlan({
-                          ...plan,
-                          activities: activities.map((a) =>
-                            a.id === activity.id ? { ...a, status } : a,
-                          ),
-                        })
-                      }
-                      onCreate={(date, start, end) =>
-                        setEditor({
-                          date,
-                          start: start ?? weekData.settings.start,
-                          end,
-                        })
-                      }
-                    />
-                    {!mobile && (
-                      <WeekExtras
-                        data={data}
-                        week={week}
-                        activities={activities}
-                        weekendOpen={weekendOpen}
-                        onWeekend={() => {
-                          if (weekendOpen && activeDay > 4)
-                            selectDay(days.find((d) => d < 5) ?? 0);
-                          setWeekendOpen((open) => !open);
-                        }}
-                        onOpen={openActivity}
-                        onBook={bookDeadline}
-                        onCreate={() =>
-                          setEditor({
-                            date: addDays(week, activeDay),
-                            start: weekData.settings.start,
-                          })
-                        }
-                      />
-                    )}
-                    {!mobile && (
-                      <>
-                        <DeadlinePlanning
-                          data={data}
-                          date={addDays(week, activeDay)}
-                          onOpen={(activity) =>
-                            editInWeek(monday(activity.date), activity)
-                          }
-                          onBook={bookDeadline}
-                        />
-                        <FollowUpPanel
-                          data={data}
-                          week={week}
-                          onReschedule={reschedule}
-                          onEdit={editInWeek}
-                        />
-                      </>
-                    )}
-                    <div className="bottomstrip">
-                      <span>{time(weekData.settings.start)} / Start</span>
-                      <span className="registration-line" aria-hidden="true" />
-                      <span>{time(weekData.settings.end)} / Slut</span>
                     </div>
-                  </div>
-                </div>
-              </section>
-              {!mobile && (
-                <div className="calendar-secondary-controls">
-                  <div className="calendar-secondary-tools">
-                    {calendarTools}
-                    {calendarMode === "week" && dayFocus}
-                  </div>
-                </div>
-              )}
-              {view === "planner" && (
-                <details className="info-drawer">
-                  <summary>
-                    <span className="section-tag">[ Bilaga 01 ]</span>
-                    <strong>Planinfo / mål / tidsfördelning</strong>
-                    <span aria-hidden="true">＋</span>
-                  </summary>
-                  <EditorialSidebar
-                    data={weekData}
-                    plan={plan}
-                    goals={goals}
-                    focus={focus}
-                    onToggleTask={toggleTask}
-                    onGoalView={() => navigate("goals")}
-                    onSettings={() => navigate("settings")}
-                    onEdit={openActivity}
-                    onComplete={(activity) => {
-                      updatePlan({
-                        ...plan,
-                        activities: activities.map((a) =>
-                          a.id === activity.id ? { ...a, status: "done" } : a,
-                        ),
-                      });
-                      notify("Genomförd tid är sparad.");
-                    }}
-                  />
-                </details>
-              )}
-              <div
-                className={`conflicts-panel ${conflicts.length ? "has-conflicts" : ""}`}
-              >
-                <div className="conflict-icon">
-                  {conflicts.length ? (
-                    <AlertCircle size={20} />
-                  ) : (
-                    <ShieldCheck size={20} />
-                  )}
-                </div>
-                <div>
-                  <h3>
-                    {conflicts.length
-                      ? `${conflicts.length} saker att se över`
-                      : "Inga planeringskonflikter"}
-                  </h3>
-                  {conflicts.length ? (
-                    conflicts.map((c) => (
-                      <div className="conflict-message" key={c.id}>
-                        <strong>{c.message}</strong>
-                        <p>{c.suggestion}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <p>Inga överlappningar eller saknade tidsmål.</p>
-                  )}
-                </div>
-                {conflicts.length > 0 && (
-                  <button
-                    className="text-button"
-                    onClick={() => navigate("settings")}
-                  >
-                    Justera veckan
-                    <ArrowRight size={15} />
-                  </button>
-                )}
-              </div>
-              {view === "planner" && (
-                <details className="activity-list">
-                  <summary>Alla veckans pass</summary>
-                  <h3>Veckans aktiviteter</h3>
-                  <p className="muted">
-                    Öppna en aktivitet för att ändra tid, status, mål eller
-                    återkommande regel. Genomförd tid följs upp i
-                    veckoreflektionen.
-                  </p>
-                  <div className="activity-table">
-                    {activities.map((a) => (
-                      <button
-                        key={a.id}
-                        onClick={() => setEditor({ activity: a, date: a.date })}
-                      >
-                        <span
-                          className="activity-dot"
-                          style={{
-                            background: data.categories.find(
-                              (c) => c.id === a.categoryId,
-                            )?.color,
+                    <div
+                      className={`week-layout ${view === "planner" ? "full-calendar" : ""}`}
+                    >
+                      <div className="week-board">
+                        {mobile && categoryFilter !== "all" && (
+                          <div className="mobile-active-filter">
+                            <span>
+                              Visar{" "}
+                              {categoryLabel(
+                                data.categories.find(
+                                  (c) => c.id === categoryFilter,
+                                ),
+                              )}
+                            </span>
+                            <button
+                              className="text-button"
+                              onClick={() => setCategoryFilter("all")}
+                            >
+                              Visa alla
+                            </button>
+                          </div>
+                        )}
+                        {mobile && (
+                          <div
+                            id="calendar-category-filters"
+                            className={`calendar-filters ${mobileFiltersOpen ? "is-open" : ""}`}
+                          >
+                            {categoryFilters}
+                          </div>
+                        )}
+                        {mobile && (
+                          <>
+                            <DeadlinePlanning
+                              data={data}
+                              date={addDays(week, activeDay)}
+                              onOpen={(activity) =>
+                                editInWeek(monday(activity.date), activity)
+                              }
+                              onBook={bookDeadline}
+                            />
+                            <FollowUpPanel
+                              data={data}
+                              week={week}
+                              onReschedule={reschedule}
+                              onEdit={editInWeek}
+                            />
+                          </>
+                        )}
+                        {!mobile && <WeekSummary activities={activities} />}
+                        <Calendar
+                          mobile={mobile || calendarMode === "day"}
+                          showWeekends={weekendOpen}
+                          activeDay={activeDay}
+                          onSelectDay={selectDay}
+                          onDelete={(a) => deleteActivity(a.id, false)}
+                          week={week}
+                          data={weekData}
+                          activities={activities}
+                          categoryFilter={categoryFilter}
+                          onEdit={openActivity}
+                          onMove={move}
+                          onSwap={(a, target) => {
+                            swap(a.id, target.id);
                           }}
+                          onStatusChange={(activity, status) =>
+                            updatePlan({
+                              ...plan,
+                              activities: activities.map((a) =>
+                                a.id === activity.id ? { ...a, status } : a,
+                              ),
+                            })
+                          }
+                          onCreate={(date, start, end) =>
+                            setEditor({
+                              date,
+                              start: start ?? weekData.settings.start,
+                              end,
+                            })
+                          }
                         />
-                        <strong>{a.title}</strong>
-                        <span>
-                          {a.date.slice(5)} · {time(a.start)}–{time(a.end)}
-                        </span>
-                        <span>
-                          {a.status === "done"
-                            ? "Genomförd"
-                            : a.status === "skipped"
-                              ? "Blev inte av"
-                              : a.blockType === "locked"
-                                ? "Låst"
-                                : a.blockType === "protected"
-                                  ? "Skyddad"
-                                  : "Flexibel"}
-                        </span>
-                        <ArrowUpRight size={15} />
+                        {!mobile && (
+                          <WeekExtras
+                            data={data}
+                            week={week}
+                            activities={activities}
+                            weekendOpen={weekendOpen}
+                            onWeekend={() => {
+                              if (weekendOpen && activeDay > 4)
+                                selectDay(days.find((d) => d < 5) ?? 0);
+                              setWeekendOpen((open) => !open);
+                            }}
+                            onOpen={openActivity}
+                            onBook={bookDeadline}
+                            onCreate={() =>
+                              setEditor({
+                                date: addDays(week, activeDay),
+                                start: weekData.settings.start,
+                              })
+                            }
+                          />
+                        )}
+                        {!mobile && (
+                          <>
+                            <DeadlinePlanning
+                              data={data}
+                              date={addDays(week, activeDay)}
+                              onOpen={(activity) =>
+                                editInWeek(monday(activity.date), activity)
+                              }
+                              onBook={bookDeadline}
+                            />
+                            <FollowUpPanel
+                              data={data}
+                              week={week}
+                              onReschedule={reschedule}
+                              onEdit={editInWeek}
+                            />
+                          </>
+                        )}
+                        <div className="bottomstrip">
+                          <span>{time(weekData.settings.start)} / Start</span>
+                          <span
+                            className="registration-line"
+                            aria-hidden="true"
+                          />
+                          <span>{time(weekData.settings.end)} / Slut</span>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                  {!mobile && (
+                    <div className="calendar-secondary-controls">
+                      <div className="calendar-secondary-tools">
+                        {calendarTools}
+                        {calendarMode === "week" && dayFocus}
+                      </div>
+                    </div>
+                  )}
+                  {view === "planner" && (
+                    <details className="info-drawer">
+                      <summary>
+                        <span className="section-tag">[ Bilaga 01 ]</span>
+                        <strong>Planinfo / mål / tidsfördelning</strong>
+                        <span aria-hidden="true">＋</span>
+                      </summary>
+                      <EditorialSidebar
+                        data={weekData}
+                        plan={plan}
+                        goals={goals}
+                        focus={focus}
+                        onToggleTask={toggleTask}
+                        onGoalView={() => navigate("goals")}
+                        onSettings={() => navigate("settings")}
+                        onEdit={openActivity}
+                        onComplete={(activity) => {
+                          updatePlan({
+                            ...plan,
+                            activities: activities.map((a) =>
+                              a.id === activity.id
+                                ? { ...a, status: "done" }
+                                : a,
+                            ),
+                          });
+                          notify("Genomförd tid är sparad.");
+                        }}
+                      />
+                    </details>
+                  )}
+                  <div
+                    className={`conflicts-panel ${conflicts.length ? "has-conflicts" : ""}`}
+                  >
+                    <div className="conflict-icon">
+                      {conflicts.length ? (
+                        <AlertCircle size={20} />
+                      ) : (
+                        <ShieldCheck size={20} />
+                      )}
+                    </div>
+                    <div>
+                      <h3>
+                        {conflicts.length
+                          ? `${conflicts.length} saker att se över`
+                          : "Inga planeringskonflikter"}
+                      </h3>
+                      {conflicts.length ? (
+                        conflicts.map((c) => (
+                          <div className="conflict-message" key={c.id}>
+                            <strong>{c.message}</strong>
+                            <p>{c.suggestion}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <p>Inga överlappningar eller saknade tidsmål.</p>
+                      )}
+                    </div>
+                    {conflicts.length > 0 && (
+                      <button
+                        className="text-button"
+                        onClick={() => navigate("settings")}
+                      >
+                        Justera veckan
+                        <ArrowRight size={15} />
                       </button>
-                    ))}
+                    )}
                   </div>
-                </details>
+                  {view === "planner" && (
+                    <details className="activity-list">
+                      <summary>Alla veckans pass</summary>
+                      <h3>Veckans aktiviteter</h3>
+                      <p className="muted">
+                        Öppna en aktivitet för att ändra tid, status, mål eller
+                        återkommande regel. Genomförd tid följs upp i
+                        veckoreflektionen.
+                      </p>
+                      <div className="activity-table">
+                        {activities.map((a) => (
+                          <button
+                            key={a.id}
+                            onClick={() =>
+                              setEditor({ activity: a, date: a.date })
+                            }
+                          >
+                            <span
+                              className="activity-dot"
+                              style={{
+                                background: data.categories.find(
+                                  (c) => c.id === a.categoryId,
+                                )?.color,
+                              }}
+                            />
+                            <strong>{a.title}</strong>
+                            <span>
+                              {a.date.slice(5)} · {time(a.start)}–{time(a.end)}
+                            </span>
+                            <span>
+                              {a.status === "done"
+                                ? "Genomförd"
+                                : a.status === "skipped"
+                                  ? "Blev inte av"
+                                  : a.blockType === "locked"
+                                    ? "Låst"
+                                    : a.blockType === "protected"
+                                      ? "Skyddad"
+                                      : "Flexibel"}
+                            </span>
+                            <ArrowUpRight size={15} />
+                          </button>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+                </>
               )}
             </>
           )}
@@ -1571,46 +1710,18 @@ export function Workspace() {
               }}
             />
           )}
-          {view === "goals" && (
-            <GoalsView
-              data={data}
-              week={week}
-              onToggle={toggleTask}
-              onNew={() => setNewGoal(true)}
-              onAddTask={(goalId, title) =>
-                setData({
-                  ...data,
-                  tasks: [
-                    ...data.tasks,
-                    { id: uid(), goalId, title, done: false },
-                  ],
-                })
-              }
-              onDelete={(id) => {
-                if (
-                  window.confirm(
-                    "Ta bort målet och dess uppgifter? Planerade aktiviteter bevaras.",
-                  )
-                )
-                  setData({
-                    ...data,
-                    goals: data.goals.filter((g) => g.id !== id),
-                    tasks: data.tasks.filter((t) => t.goalId !== id),
-                    weeks: Object.fromEntries(
-                      Object.entries(data.weeks).map(([w, p]) => [
-                        w,
-                        {
-                          ...p,
-                          activities: p.activities.map((a) =>
-                            a.goalId === id ? { ...a, goalId: undefined } : a,
-                          ),
-                        },
-                      ]),
-                    ),
-                  });
-              }}
-            />
-          )}
+          {view === "goals" &&
+            (mobile ? (
+              <StudioTasks
+                data={data}
+                onToggle={toggleTask}
+                onNew={() => setStudioTaskDate(today())}
+              >
+                {goalsView}
+              </StudioTasks>
+            ) : (
+              goalsView
+            ))}
           {view === "reflection" && (
             <>
               <div className="reflection-week">
@@ -1913,6 +2024,34 @@ export function Workspace() {
             notify("Målet har skapats.");
           }}
           onClose={() => setNewGoal(false)}
+        />
+      )}
+      {studioTaskDate && (
+        <StudioTaskForm
+          data={data}
+          date={studioTaskDate}
+          onClose={() => setStudioTaskDate(null)}
+          onNewGoal={() => {
+            setStudioTaskDate(null);
+            setNewGoal(true);
+          }}
+          onSave={(title, goalId, date) => {
+            setData(
+              (current) =>
+                current && current.goals.some((goal) => goal.id === goalId)
+                  ? {
+                      ...current,
+                      tasks: [
+                        ...current.tasks,
+                        { id: uid(), title, goalId, date, done: false },
+                      ],
+                    }
+                  : current,
+              { undoLabel: "ny uppgift" },
+            );
+            setStudioTaskDate(null);
+            notify("Uppgiften är sparad.");
+          }}
         />
       )}
       {generator && generation && (

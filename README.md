@@ -2,7 +2,9 @@
 
 En svensk webbapp för veckoplanering, målhantering och uppföljning.
 
-Appen kan installeras på hemskärmen med en egen RISO-ikon. På mobilen finns **Installera appen** under **Verktyg**, och på datorn finns alternativet i **Inställningar**. Följ [installationsguiden på engelska](docs/install-app.md). Den sparade appvyn kan öppnas utan nät; inloggning, molnsynk och Google-import kräver anslutning.
+Mobilens veckoöversikt visar verkliga möten, fokusblock, uppgifter, deadlines och veckomål i en kompakt risotrycksvy. Bottenflikarna är **Idag**, **Vecka** och **Uppgifter**; **Jobb** och **Nätverk** nås via profilikonen. Nya uppgifter kan kopplas till datum och mål. Familjekategorin döljs i den professionella översikten utan att sparade bokningar ändras.
+
+Appen kan installeras på hemskärmen med en egen RISO-ikon. På mobilen finns **Installera appen** under **Idag → Verktyg**, och på datorn finns alternativet i **Inställningar**. Följ [installationsguiden på engelska](docs/install-app.md). Den sparade appvyn kan öppnas utan nät; inloggning, molnsynk och Google-import kräver anslutning.
 
 Kalenderkopplingen med privat iCal-länk kan installeras helt i webbläsaren. Följ [Codespaces-guiden på engelska](docs/ical-calendar-setup.md); Node.js och installationskommandona körs i GitHubs molnmiljö.
 
@@ -74,7 +76,6 @@ Ansökningarnas nästa steg kan filtreras på **Idag**, **Kommande sju dagar**, 
 
 Uppgifter och väntelägen har ett gemensamt kortflöde. **Egen uppgift** har ett klart-senast-datum och **Boka arbetstid**; **Väntar på annan** har ansvarig mottagare, bevakningsdatum och **Boka uppföljning** från det datumet. Väntan skapar ingen automatisk kalenderbokning. Bokning från ansökan, kontakt eller nästa-steg-lista använder samma åtgärds-id och förhindrar dubbelbokning. Äldre aktiva pass med samma koppling och rubrik känns igen utan att skrivas om. Ett bokat steg öppnar det befintliga passet; efter genomfört pass krävs fortfarande en uttrycklig markering av nästa steg som klart. Kalenderutfall och historik bevaras.
 
-
 **Dokumentunderlag** sparar annonslänk och annonstext samt flera dokumentversioner med typ, länk, versionsnamn och skickat datum. Länkar öppnas i ett nytt fönster; materialet sparas i samma arbetsyta och molnsynk som ansökan.
 
 **Boka intervju** lägger in ett låst intervjupass och, om önskat, ett skyddat förberedelsepass före mötet. Allt sparas atomiskt: vid kapacitetsbrist ändras varken kalender eller ansökan. Ansökans status blir Intervju, och aktuella kalenderpass kan öppnas direkt från ansökan. **Intervjuanteckningar** sparar förberedelser, utfall, nästa steg och uppföljningsdatum. Genomfördmarkering ändrar endast intervjupassets status, inte förberedelser eller andra aktiviteter. Datum och status läses från de verkliga kalenderpassen även efter manuell redigering.
@@ -88,7 +89,6 @@ Inspelningssidan har sökbar transkription med ljudhänvisningar, rättelser med
 **Visa historik** visar registrering, statusändringar, ändrade nästa steg och egna daterade kontakt-, intervju- och återkopplingsanteckningar. Äldre ansökningar får ingen automatiskt konstruerad historik. Kontakter kopplas via ansökningsformuläret och kan öppnas från ansökan. Historik och kopplingar följer med i säkerhetskopior, ångra och kontoavgränsad molnsynk. Borttagna kontakter visas som borttagna utan att tidigare händelser raderas.
 
 Under **Jobb** finns ansökningsöversikten med sökning och statusfilter. Varje ansökan lyfter fram ett nästa steg, dess bokning och en huvudåtgärd. Dokument, intervjuer och historik ligger under fler alternativ. **Nätverk** använder samma kortmönster för kontakter; daterade samtalsanteckningar och länkade pass ligger under **Samtalslogg och kalenderpass**. Alla pass kan öppnas och redigeras i Vecka.
-
 
 **Deadlines** tar delsteg i utförandeordning och placerar dem bakåt från sista datum och klockslag, högst ett år framåt. Förslaget respekterar sparade veckoregler, kalenderimport, lunch, familjetid och buffert. Befintliga planer ändras inte. Nya veckor förbereds med låsta reservationer, skyddade och återkommande pass samt veckorutiner. Om alla delsteg inte ryms sparas ingenting; frigör tid eller justera delstegen. Sparade kalenderpass uppdateras inte automatiskt när en deadline redigeras. Öppna dem i kalendern för att ändra eller ta bort dem innan en ny bakåtplanering.
 

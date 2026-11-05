@@ -73,7 +73,13 @@ export type Goal = {
   week: string;
   description: string;
 };
-export type Task = { id: string; title: string; goalId: string; done: boolean };
+export type Task = {
+  id: string;
+  title: string;
+  goalId: string;
+  done: boolean;
+  date?: string;
+};
 export type Reflection = {
   week: string;
   good: string;
