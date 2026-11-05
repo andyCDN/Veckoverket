@@ -56,6 +56,8 @@ import {
 } from "@/lib/career-actions";
 import { ActionControl, ActionKindSelector } from "./action-control";
 import { actionNeedsAttention } from "@/lib/action-workflow";
+import { NetworkContacts, ContactLogForm } from "./network-contacts";
+import { logContact } from "@/lib/network-overview";
 import { Modal } from "./modal";
 import { PlanningConsequences } from "./planning-consequences";
 import {
@@ -100,6 +102,7 @@ export function CareerView({
   );
   const [focusActionId, setFocusActionId] = useState(initialActionId);
   const [application, setApplication] = useState<JobApplication | null>(null);
+  const [contactLog, setContactLog] = useState<NetworkContact | null>(null);
   const [contact, setContact] = useState<NetworkContact | null>(null);
   const [deadline, setDeadline] = useState<Deadline | null>(null);
   const [booking, setBooking] = useState<{
@@ -118,6 +121,7 @@ export function CareerView({
     actionEditing ||
     application ||
     contact ||
+    contactLog ||
     deadline ||
     booking ||
     preview ||
@@ -757,128 +761,28 @@ export function CareerView({
           >
             Ny kontakt
           </button>
-          {!contacts.length && <p>Inga kontakter registrerade.</p>}
-          <div className="career-cards">
-            {[...contacts]
-              .sort((a, b) =>
-                (a.followUpDate || "9999").localeCompare(
-                  b.followUpDate || "9999",
-                ),
-              )
-              .map((c) => {
-                const step = nextStep("contact", c);
-                return (
-                  <article className="career-card stack" key={c.id}>
-                    <h2>
-                      {c.name}
-                      {c.organization && ` · ${c.organization}`}
-                    </h2>
-                    <div className="application-next-step">
-                      <h3>
-                        {step?.kind === "waiting"
-                          ? "Väntar på svar"
-                          : "Nästa steg"}
-                      </h3>
-                      <p>{step?.title || "Välj vad du vill göra härnäst."}</p>
-                      {step ? (
-                        <ActionControl
-                          data={data}
-                          action={step}
-                          onOpen={onOpen}
-                          onBook={() => bookStep(step)}
-                          onEdit={() => {
-                            if (step.legacy === "contact") setContact(c);
-                            else {
-                              setFocusActionId(step.id);
-                              setTab("actions");
-                            }
-                          }}
-                          editLabel={
-                            step.legacy === "contact"
-                              ? "Redigera kontakt och logg"
-                              : "Visa nästa steg"
-                          }
-                          onComplete={() =>
-                            onChange(completeCareerAction(data, step.id), data)
-                          }
-                        />
-                      ) : (
-                        <div className="career-actions">
-                          <button
-                            className="button primary"
-                            onClick={() => setContact(c)}
-                          >
-                            Lägg till nästa steg
-                          </button>
-                          <button
-                            className="text-button"
-                            onClick={() => setContact(c)}
-                          >
-                            Redigera kontakt och logg
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    {!!data.careerActions?.filter(
-                      (v) => v.contactId === c.id && v.status === "open",
-                    ).length && (
-                      <button
-                        className="text-button"
-                        onClick={() => setTab("actions")}
-                      >
-                        Visa kopplade nästa steg (
-                        {
-                          data.careerActions.filter(
-                            (v) => v.contactId === c.id && v.status === "open",
-                          ).length
-                        }
-                        )
-                      </button>
-                    )}
-                    <details className="application-details">
-                      <summary>Samtalslogg och kalenderpass</summary>
-                      <div className="career-actions">
-                        <a
-                          className="button secondary"
-                          href={recordingHref({ contactId: c.id })}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Spela in samtal
-                        </a>
-                        {!step && (
-                          <button
-                            className="button secondary"
-                            onClick={() =>
-                              setBooking({
-                                title: c.nextAction || `Kontakt med ${c.name}`,
-                                date: nextDate(c.followUpDate),
-                                contactId: c.id,
-                              })
-                            }
-                          >
-                            Boka kontakt
-                          </button>
-                        )}
-                      </div>
-                      <ol>
-                        {[...c.entries]
-                          .sort((a, b) => b.date.localeCompare(a.date))
-                          .map((e) => (
-                            <li key={e.id}>
-                              <strong>
-                                {e.date} · {e.channel}
-                              </strong>
-                              <p className="career-notes">{e.notes}</p>
-                            </li>
-                          ))}
-                      </ol>
-                      {passes(linked("contactId", c.id))}
-                    </details>
-                  </article>
-                );
-              })}
-          </div>
+          <NetworkContacts
+            data={data}
+            onEdit={setContact}
+            onLog={setContactLog}
+            onOpen={onOpen}
+            onBook={bookStep}
+            onComplete={(step) =>
+              onChange(completeCareerAction(data, step.id), data)
+            }
+            onEditAction={(step) => {
+              setFocusActionId(step.id);
+              setTab("actions");
+            }}
+            onActions={() => setTab("actions")}
+            onBookContact={(c) =>
+              setBooking({
+                title: c.nextAction || `Kontakt med ${c.name}`,
+                date: nextDate(c.followUpDate),
+                contactId: c.id,
+              })
+            }
+          />
         </>
       )}
       {tab === "deadlines" && (
@@ -1108,6 +1012,17 @@ export function CareerView({
               );
               setApplication(null);
             }
+          }}
+        />
+      )}
+      {contactLog && (
+        <ContactLogForm
+          contact={contactLog}
+          onClose={() => setContactLog(null)}
+          onSave={(input) => {
+            onChange(logContact(data, contactLog.id, input), data);
+            setContactLog(null);
+            setMessage("Kontaktloggen har sparats.");
           }}
         />
       )}

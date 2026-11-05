@@ -186,7 +186,7 @@ test("kontaktlogg går att redigera på mobil utan att kalender eller planer rad
   await dialog
     .getByRole("button", { name: "Spara kontakt", exact: true })
     .click();
-  await page.getByText("Samtalslogg och kalenderpass", { exact: true }).click();
+  await page.getByText(/^Tidslinje ·/).click();
   await expect(
     page.getByText("Diskuterade rollen och nästa möte.", { exact: true }),
   ).toBeVisible();
