@@ -7,6 +7,9 @@ for (const mobile of [false, true]) {
   }) => {
     if (mobile) await page.setViewportSize({ width: 320, height: 740 });
     await page.goto("./");
+    await expect(
+      page.getByRole("region", { name: "Veckans tidsöversikt" }),
+    ).toHaveCount(0);
     const nav = page.getByRole("navigation", { name: "Huvudnavigation" });
     for (const label of ["Vecka", "Jobb", "Nätverk"]) {
       const button = nav.getByRole("button", { name: label, exact: true });

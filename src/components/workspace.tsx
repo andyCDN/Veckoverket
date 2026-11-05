@@ -63,7 +63,6 @@ import { bookDeadlineWork } from "@/lib/deadline-scheduling";
 import { DeadlinePlanning } from "./deadline-planning";
 import { DayFocus } from "./day-focus";
 import { Calendar } from "./calendar";
-import { WeekSummary } from "./week-summary";
 import { WeekFocus } from "./week-focus";
 import { StudioHeader, StudioTaskForm, StudioWeek } from "./studio-week";
 import { WeekExtras } from "./week-extras";
@@ -1427,7 +1426,6 @@ export function Workspace() {
                             />
                           </>
                         )}
-                        {!mobile && <WeekSummary activities={activities} />}
                         <Calendar
                           mobile={mobile || calendarMode === "day"}
                           showWeekends={weekendOpen}
