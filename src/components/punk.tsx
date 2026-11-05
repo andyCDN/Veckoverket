@@ -10,11 +10,13 @@ export function PlannerMasthead({
   minutes,
   week,
   dayFocus,
+  onHome,
 }: {
   settings: Settings;
   week: string;
   dayFocus?: React.ReactNode;
   minutes: number;
+  onHome: () => void;
 }) {
   const days = plannedDays(settings);
   const range = days.length
@@ -30,17 +32,35 @@ export function PlannerMasthead({
           <span className="masthead-range">{range}</span>
         </div>
         <div className="title-line">
-          <img
-            className="standalone-brand-icon"
-            src={appPath("/icons/veckoverket-32.png")}
-            width={28}
-            height={28}
-            alt=""
-            aria-hidden="true"
-          />
-          <span className="brand-title">
-            Vecko<span>verket</span>
-          </span>
+          <a
+            className="brand-home"
+            href={appPath("/")}
+            aria-label="Veckoverket – till startsidan"
+            onClick={(event) => {
+              if (
+                event.button !== 0 ||
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey
+              )
+                return;
+              event.preventDefault();
+              onHome();
+            }}
+          >
+            <img
+              className="standalone-brand-icon"
+              src={appPath("/icons/veckoverket-32.png")}
+              width={28}
+              height={28}
+              alt=""
+              aria-hidden="true"
+            />
+            <span className="brand-title">
+              Vecko<span>verket</span>
+            </span>
+          </a>
           <span className="schema-label">Veckans schema</span>
         </div>
       </div>

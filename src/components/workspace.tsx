@@ -1126,6 +1126,11 @@ export function Workspace() {
         Hoppa till innehållet
       </a>
       <PlannerMasthead
+        onHome={() => {
+          changeWeek(monday(today()));
+          setDaySelection(null);
+          navigate("dashboard");
+        }}
         dayFocus={
           (mobile || calendarMode === "day") && isCalendar
             ? dayFocus
