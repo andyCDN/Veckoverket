@@ -44,13 +44,21 @@
     position: absolute;
     inset: 0;
     z-index: -1;
-    background-image: radial-gradient(
-      var(--print-blue) 1.1px,
-      transparent 1.4px
+    background-image:
+      radial-gradient(circle, var(--print-blue) 3.2px, transparent 3.7px),
+      radial-gradient(circle, var(--print-yellow) 3.4px, transparent 3.9px);
+    background-size: 14px 14px;
+    background-position:
+      0 0,
+      2px 2px;
+    clip-path: none;
+    mask-image: radial-gradient(
+      ellipse 64% 180% at 112% 0%,
+      #000 22%,
+      #000c 48%,
+      transparent 76%
     );
-    background-size: 5px 5px;
-    clip-path: polygon(62% 0, 100% 0, 100% 100%, 85% 100%);
-    opacity: 0.65;
+    opacity: 0.82;
     pointer-events: none;
   }
   .mockup-workspace[data-view] .brand-home {
@@ -207,6 +215,15 @@
   }
 }
 @media screen and (max-width: 700px) {
+  .mockup-workspace[data-view] .planner-header::after {
+    background-image:
+      radial-gradient(circle, var(--print-blue) 2.4px, transparent 2.8px),
+      radial-gradient(circle, var(--print-yellow) 2.5px, transparent 2.9px);
+    background-size: 11px 11px;
+    background-position:
+      0 0,
+      1.5px 1.5px;
+  }
   .mockup-workspace[data-view] .workspace-navigation {
     gap: 8px;
     padding-right: 6px;
