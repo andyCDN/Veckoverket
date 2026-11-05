@@ -1237,6 +1237,13 @@ export function Workspace() {
           )}
           {view === "planner" && (
             <>
+              <WeekFocus
+                data={data}
+                onAction={(action) => {
+                  setCareerEntry({ id: action.id, tab: "actions" });
+                  navigate(action.applicationId ? "career" : "network");
+                }}
+              />
               {mobile && calendarMode === "week" ? (
                 <StudioWeek
                   data={data}
@@ -1270,19 +1277,6 @@ export function Workspace() {
                     <div className="studio-today-heading">{dayFocus}</div>
                   )}
                   <section className="week-section">
-                    <WeekFocus
-                      data={data}
-                      week={week}
-                      activities={activities}
-                      onOpen={(activity) => {
-                        selectDay(weekday(activity.date));
-                        openActivity(activity);
-                      }}
-                      onAction={(action) => {
-                        setCareerEntry({ id: action.id, tab: "actions" });
-                        navigate(action.applicationId ? "career" : "network");
-                      }}
-                    />
                     <div className="week-toolbar">
                       <div className="toolbar-week-controls">
                         {weekControls}

@@ -547,7 +547,7 @@ test("v2.5: aktiv dag, exakta datum, veckobyte och nytt pass på vald dag", asyn
       "true",
     );
     await expect(
-      page.getByRole("region", { name: "Idag och nästa steg" }),
+      page.getByRole("region", { name: "Att följa upp" }),
     ).toBeVisible();
     await page
       .locator(".day-shell.is-selected .calendar-entry")

@@ -109,10 +109,15 @@ for (const mobile of [false, true]) {
   }) => {
     if (mobile) await page.setViewportSize({ width: 390, height: 844 });
     await setup(page);
-    const focus = page.getByRole("region", { name: "Idag och nästa steg" });
-    await expect(focus).toContainText("1 av 3 pass genomförda idag");
-    await expect(focus).toContainText("Pågår nu");
-    await expect(focus).toContainText("Pågående arbete");
+    const focus = page.getByRole("region", { name: "Att följa upp" });
+    await expect(page.locator(".week-focus-next")).toHaveCount(0);
+    await expect(focus).not.toContainText("Pågår nu");
+    await expect(focus).toContainText("Skicka arbetsprov");
+    if (mobile) {
+      const followUpBox = (await focus.boundingBox())!;
+      const overviewBox = (await page.locator(".studio-week").boundingBox())!;
+      expect(followUpBox.y).toBeLessThan(overviewBox.y);
+    }
     await page.screenshot({
       path: `test-results/action-focus-${mobile ? "mobile" : "desktop"}.png`,
       fullPage: true,
@@ -171,6 +176,10 @@ for (const mobile of [false, true]) {
     await dialog
       .getByRole("button", { name: "Stäng dialog", exact: true })
       .click();
+    if (mobile)
+      await page
+        .getByRole("button", { name: "Visa dagplanering", exact: true })
+        .click();
     await page
       .locator(`[data-activity-id="${booked[0].id}"]`)
       .getByRole("checkbox", { name: /^Genomförd:/ })
@@ -247,6 +256,6 @@ test("vänteläge bevakas med datum och bokas tidigast då utan automatisk kalen
   });
   await page.reload();
   await expect(
-    page.getByRole("region", { name: "Idag och nästa steg" }),
+    page.getByRole("region", { name: "Att följa upp" }),
   ).not.toContainText("Svar på arbetsprovet");
 });

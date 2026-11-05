@@ -1,6 +1,6 @@
 .week-focus {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   margin: 0 0 20px;
 }
@@ -42,25 +42,6 @@
   margin: 8px 0;
   font-size: 13px;
   line-height: 1.5;
-}
-.week-focus-kicker {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 4px 12px;
-  font: 700 11px/1.5 var(--mono);
-}
-.week-focus-kicker > span {
-  font-weight: 400;
-}
-.week-focus-title {
-  display: block;
-  font-size: 19px;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-}
-.week-focus-next .primary {
-  margin-top: 8px;
 }
 .week-focus-followups h2 > span {
   margin-left: 6px;
