@@ -22,6 +22,15 @@
     .mark{background:var(--yellow);color:var(--ink);height:27px;width:30px;display:grid;place-items:center;font-size:13px;font-weight:950;transform:rotate(-5deg)}
     .top button{border:1px solid #63726a;background:transparent;color:#fff;border-radius:3px;padding:7px 10px;font-size:11px;font-weight:750;white-space:nowrap}
     .top button:hover{background:#34433b}
+    .top .refresh-btn{display:flex;align-items:center;justify-content:center;gap:5px;border:1px solid var(--yellow);background:var(--yellow);color:var(--ink);font-size:11px;font-weight:900;padding:9px 10px;min-height:33px}
+    .top .refresh-btn:hover{background:#ffdb7c}
+    .top .refresh-btn:disabled{opacity:.7;cursor:progress}
+    .top .refresh-btn[aria-busy="true"]{background:#e1d6ab}
+    .status .quiet{flex:0 1 43%;line-height:1.3}
+    .status>span:first-child{min-width:0}
+    .status #race-status{line-height:1.2}
+    .status .dot.has-data{background:#469866;box-shadow:0 0 0 3px #46986620}
+    .status .dot.has-error{background:#cc7b2d;box-shadow:0 0 0 3px #cc7b2d20}
     .intro{display:flex;align-items:end;justify-content:space-between;gap:12px;min-height:58px}
     .intro small{font-size:10px;font-weight:850;letter-spacing:1.5px;color:#647268;text-transform:uppercase;display:block;margin-bottom:4px}
     h1{margin:0;font-size:clamp(24px,5.7vw,43px);font-family:Impact,"Arial Narrow","Franklin Gothic Heavy",Arial,sans-serif;text-transform:uppercase;letter-spacing:-.3px;line-height:1}
@@ -90,6 +99,13 @@
       .bottom{font-size:12px;min-height:38px}
       .bottom button{font-size:12px}
     }
+    @media(max-width:360px){
+      .top{gap:6px;padding:0 10px}
+      .logo{font-size:13px;gap:6px}
+      .mark{width:26px;height:25px;font-size:12px}
+      .top .refresh-btn{font-size:10px;padding:7px 6px;min-height:31px}
+      .status .quiet{font-size:9px}
+    }
     @media(max-height:710px) and (max-width:699px){
       .app{gap:6px}
       .top{height:46px;min-height:46px}
@@ -142,15 +158,15 @@
   <div class="app">
     <header class="top">
       <div class="logo"><span class="mark">26</span> SENATSKOLLEN</div>
-      <button type="button" data-open="sources">Källor & info ↗</button>
+      <button type="button" id="refresh-btn" class="refresh-btn" aria-label="Hämta nya röstsiffror" title="Hämta senaste röstsiffrorna">↻ Uppdatera siffror</button>
     </header>
     <div class="intro">
       <div><small>USA / U.S. Senate / 2026</small><h1>Två val. Ett läge.</h1></div>
-      <div class="snapshot">Ögonblicksbild<br>7 november 2026</div>
+      <div class="snapshot" id="snapshot">Ögonblicksbild<br>7 november 2026</div>
     </div>
-    <div class="status"><span><span class="dot" aria-hidden="true"></span> Båda ej avgjorda i ögonblicksbilden</span><span class="quiet">Inga siffror uppdateras automatiskt</span></div>
+    <div class="status"><span><span class="dot" aria-hidden="true"></span><span id="race-status">Båda ej avgjorda i ögonblicksbilden</span></span><span class="quiet" id="refresh-feedback" role="status" aria-live="polite">Tryck på Uppdatera för nya siffror</span></div>
     <main class="cards" aria-label="Senatsvalens resultat">
-      <article class="card" aria-labelledby="alaska-heading">
+      <article class="card" data-race="alaska" aria-labelledby="alaska-heading">
         <div class="heading"><div class="state"><span class="ordinal">01</span><h2 id="alaska-heading">ALASKA</h2></div><span class="undecided">Preliminärt</span></div>
         <div class="lead"><strong class="number">+554</strong><span class="who"><strong>Mary Peltola leder</strong><br>med 554 röster</span></div>
         <div class="race">
@@ -158,9 +174,9 @@
           <div class="cand"><div class="name"><span class="party rep">R</span> Dan Sullivan</div><div class="votes">102 617</div><div class="percent">47,9 %</div></div>
         </div>
         <div class="bar" role="img" aria-label="Peltola 48,2 procent, Sullivan 47,9 procent, övriga 3,9 procent"><span class="dem" style="width:48.2%"></span><span class="rep" style="width:47.9%"></span></div>
-        <div class="foot"><div class="next">≈ 74 % räknat · <strong>18 nov:</strong> rangordnad räkning</div><button type="button" class="detail" data-open="alaska">Livekort & detaljer ↗</button></div>
+        <div class="foot"><div class="next"><span class="reported">≈ 74 % räknat</span> · <strong>18 nov:</strong> rangordnad räkning</div><button type="button" class="detail" data-open="alaska">Livekort & detaljer ↗</button></div>
       </article>
-      <article class="card" aria-labelledby="mississippi-heading">
+      <article class="card" data-race="mississippi" aria-labelledby="mississippi-heading">
         <div class="heading"><div class="state"><span class="ordinal">02</span><h2 id="mississippi-heading">MISSISSIPPI</h2></div><span class="undecided">Preliminärt</span></div>
         <div class="lead"><strong class="number">+2 645</strong><span class="who"><strong>Scott Colom leder</strong><br>med 2 645 röster</span></div>
         <div class="race">
@@ -168,16 +184,16 @@
           <div class="cand"><div class="name"><span class="party rep">R</span> Cindy Hyde-Smith</div><div class="votes">465 387</div><div class="percent">48,8 %</div></div>
         </div>
         <div class="bar" role="img" aria-label="Colom 49,1 procent, Hyde-Smith 48,8 procent, övriga 2,1 procent"><span class="dem" style="width:49.1%"></span><span class="rep" style="width:48.8%"></span></div>
-        <div class="foot"><div class="next">≈ 98 % räknat · <strong>13 nov:</strong> länsintygande</div><button type="button" class="detail" data-open="mississippi">Livekort & detaljer ↗</button></div>
+        <div class="foot"><div class="next"><span class="reported">≈ 98 % räknat</span> · <strong>13 nov:</strong> länsintygande</div><button type="button" class="detail" data-open="mississippi">Livekort & detaljer ↗</button></div>
       </article>
     </main>
-    <footer class="bottom"><span><strong>SNAPSHOT / 07.11.26</strong> · kontrollera livekort för nyare siffror</span><button type="button" data-open="sources">Om datan ↗</button></footer>
+    <footer class="bottom"><span id="data-source"><strong>SNAPSHOT / 07.11.26</strong> · tryck på Uppdatera</span><button type="button" data-open="sources">Källor & metod ↗</button></footer>
   </div>
 
   <dialog id="alaska" aria-labelledby="dialog-ak-label">
     <div class="dialog-head"><h3 id="dialog-ak-label">Alaska / Live & detaljer</h3><button class="close" type="button" data-close aria-label="Stäng Alaska">Stäng ×</button></div>
     <div class="dialog-body">
-      <p><strong>Senast sparade siffror (7 nov):</strong> Peltola 103 171 · Sullivan 102 617 · Gerald Heikes 4 851 · Daniel J. Sullivan Jr. 3 607. Cirka 74 % räknat.</p>
+      <p id="alaska-detail-counts"><strong>Senast sparade siffror (7 nov):</strong> Peltola 103 171 · Sullivan 102 617 · Gerald Heikes 4 851 · Daniel J. Sullivan Jr. 3 607. Cirka 74 % räknat.</p>
       <p class="source-note">Livekortet nedan är externt och kan visa nyare resultat än siffrorna på startsidan. Det visas endast när du öppnar denna ruta.</p>
       <iframe title="Externt resultatkort Alaska från Polling Desk" data-src="https://polling-desk.com/embed/race/2026/senate/ak" referrerpolicy="strict-origin-when-cross-origin"></iframe>
       <div class="links"><a href="https://polling-desk.com/races/2026/senate/ak" target="_blank" rel="noopener noreferrer">Livekälla ↗</a><a href="https://www.elections.alaska.gov/election-results/" target="_blank" rel="noopener noreferrer">Officiell valmyndighet ↗</a></div>
@@ -186,7 +202,7 @@
   <dialog id="mississippi" aria-labelledby="dialog-ms-label">
     <div class="dialog-head"><h3 id="dialog-ms-label">Mississippi / Live & detaljer</h3><button class="close" type="button" data-close aria-label="Stäng Mississippi">Stäng ×</button></div>
     <div class="dialog-body">
-      <p><strong>Senast sparade siffror (7 nov):</strong> Colom 468 032 · Hyde-Smith 465 387 · Ty Pinkins 20 044. Cirka 98 % räknat.</p>
+      <p id="mississippi-detail-counts"><strong>Senast sparade siffror (7 nov):</strong> Colom 468 032 · Hyde-Smith 465 387 · Ty Pinkins 20 044. Cirka 98 % räknat.</p>
       <p class="source-note">Livekortet nedan är externt och kan visa nyare resultat än siffrorna på startsidan. Det visas endast när du öppnar denna ruta.</p>
       <iframe title="Externt resultatkort Mississippi från Polling Desk" data-src="https://polling-desk.com/embed/race/2026/senate/ms" referrerpolicy="strict-origin-when-cross-origin"></iframe>
       <div class="links"><a href="https://polling-desk.com/races/2026/senate/ms" target="_blank" rel="noopener noreferrer">Livekälla ↗</a><a href="https://www.sos.ms.gov/elections-voting/election-results" target="_blank" rel="noopener noreferrer">Officiell valmyndighet ↗</a></div>
@@ -195,14 +211,143 @@
   <dialog id="sources" aria-labelledby="dialog-sources-label">
     <div class="dialog-head"><h3 id="dialog-sources-label">Källor & metod</h3><button class="close" type="button" data-close aria-label="Stäng källor">Stäng ×</button></div>
     <div class="dialog-body">
-      <p><strong>Två val på en enda skärm.</strong> Röstsiffrorna på startsidan är en daterad ögonblicksbild från Polling Desk / civicAPI, avläst den 7 november 2026. De uppdateras inte automatiskt.</p>
+      <p><strong>Två val på en enda skärm.</strong> Röstsiffrorna på startsidan är en daterad ögonblicksbild från Polling Desk / civicAPI, avläst den 7 november 2026. Du kan hämta nyare siffror med knappen Uppdatera.</p>
+      <p>När du trycker på <strong>Uppdatera siffror</strong> hämtas valdata direkt från Carmena’s öppna JSON-API. Datumet visar när datakällan senast uppdaterade sitt resultat, inte tidpunkten när sidan öppnades. Om tjänsten är otillgänglig behålls de senast visade siffrorna.</p>
       <p>Öppna "Livekort & detaljer" för ett inbäddat resultatkort från extern leverantör. Dess innehåll kan ändras när leverantören publicerar nya uppgifter. När resultat fastställs officiellt måste detta bekräftas hos respektive valmyndighet.</p>
       <h4>Officiella källor</h4>
-      <div class="links"><a href="https://www.elections.alaska.gov/election-results/" target="_blank" rel="noopener noreferrer">Alaska ↗</a><a href="https://www.sos.ms.gov/elections-voting/election-results" target="_blank" rel="noopener noreferrer">Mississippi ↗</a><a href="https://polling-desk.com/senate-results" target="_blank" rel="noopener noreferrer">Polling Desk ↗</a></div>
+      <div class="links"><a href="https://www.elections.alaska.gov/election-results/" target="_blank" rel="noopener noreferrer">Alaska ↗</a><a href="https://www.sos.ms.gov/elections-voting/election-results" target="_blank" rel="noopener noreferrer">Mississippi ↗</a><a href="https://polling-desk.com/senate-results" target="_blank" rel="noopener noreferrer">Polling Desk ↗</a><a href="https://carmenaresearch.com/election-data/live-results-api/" target="_blank" rel="noopener noreferrer">Carmena’s JSON-data ↗</a></div>
       <p class="source-note" style="margin-top:16px">Sidan är fristående och skickar inga pushnotiser. Den är avsedd som en snabb överblick, inte som officiell valrapportering.</p>
     </div>
   </dialog>
   <script>
+    // Fristående webbplats: hämtar uppdaterade röstetal direkt från en publik CORS-tillåten JSON-källa.
+    // Om källan inte går att nå lämnas de tidigare visade röstsiffrorna orörda.
+    const RACES = {
+      alaska: {
+        url: 'https://carmenaresearch.com/live/race/alaska-senate.json',
+        state: 'AK', democrat: /peltola/i, republican: /sullivan/i,
+        shortD: 'Peltola', shortR: 'Sullivan'
+      },
+      mississippi: {
+        url: 'https://carmenaresearch.com/live/race/mississippi-senate.json',
+        state: 'MS', democrat: /colom/i, republican: /hyde[\s-]*smith/i,
+        shortD: 'Colom', shortR: 'Hyde-Smith'
+      }
+    };
+    const fmtInt = new Intl.NumberFormat('sv-SE', {maximumFractionDigits:0});
+    const fmtPct = new Intl.NumberFormat('sv-SE', {minimumFractionDigits:1,maximumFractionDigits:1});
+    const dateSv = new Intl.DateTimeFormat('sv-SE', {timeZone:'Europe/Stockholm',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+    const clockSv = new Intl.DateTimeFormat('sv-SE', {timeZone:'Europe/Stockholm',hour:'2-digit',minute:'2-digit'});
+    const refreshBtn = document.getElementById('refresh-btn');
+    const feedback = document.getElementById('refresh-feedback');
+    const raceStatus = document.getElementById('race-status');
+    const snapshot = document.getElementById('snapshot');
+    const sourceLabel = document.getElementById('data-source');
+    const previous = {};
+    function readRace(data, key) {
+      const config = RACES[key];
+      if (!data || data.state !== config.state || data.office !== 'S' || !data.areas || !data.areas.top || !Array.isArray(data.areas.top.c)) {
+        throw new Error('Oväntat format för '+key);
+      }
+      const rows = data.areas.top.c.map(row => ({
+        name: String(row[0] ?? ''),
+        party: String(row[1] ?? '').toUpperCase(),
+        votes: Number(row[2])
+      })).filter(row => row.name && Number.isSafeInteger(row.votes) && row.votes >= 0);
+      const dem = rows.find(r => config.democrat.test(r.name) && r.party==='D');
+      const rep = rows.find(r => config.republican.test(r.name) && r.party==='R');
+      if (!dem || !rep || rows.length < 2) throw new Error('Kandidaterna kunde inte läsas för '+key);
+      const total = rows.reduce((sum,r)=>sum+r.votes,0);
+      if (total <= 0) throw new Error('Rösttotal saknas för '+key);
+      const rawDate = data.areas.top.at || data.updatedAt;
+      const sourceDate = rawDate && !isNaN(new Date(rawDate).getTime()) ? new Date(rawDate) : null;
+      const calls = Array.isArray(data.calls) ? data.calls : [];
+      const call = calls.find(c => c.by && c.winner && /AP|Associated Press/i.test(c.by));
+      return {rows,dem,rep,total,lead: Math.abs(dem.votes-rep.votes),leading:dem.votes===rep.votes ? null : (dem.votes>rep.votes ? dem : rep),
+        pctD:100*dem.votes/total,pctR:100*rep.votes/total,
+        reported:Number.isFinite(Number(data.areas.top.reported)) ? Number(data.areas.top.reported) : null,
+        source: String(data.areas.top.source || 'Carmena'), date:sourceDate,call};
+    }
+    function updateCard(key, data) {
+      const card = document.querySelector('[data-race="'+key+'"]');
+      const config = RACES[key];
+      const details = document.getElementById(key+'-detail-counts');
+      const votes = card.querySelectorAll('.votes');
+      const percents = card.querySelectorAll('.percent');
+      const bars = card.querySelectorAll('.bar span');
+      const number = card.querySelector('.number');
+      const who = card.querySelector('.who');
+      const badge = card.querySelector('.undecided');
+      const newFingerprint = [data.dem.votes,data.rep.votes,data.total,data.reported,data.call?.winner||''].join(':');
+      const changed = previous[key] === undefined || previous[key] !== newFingerprint;
+      previous[key] = newFingerprint;
+      votes[0].textContent = fmtInt.format(data.dem.votes);
+      votes[1].textContent = fmtInt.format(data.rep.votes);
+      percents[0].textContent = fmtPct.format(data.pctD)+' %';
+      percents[1].textContent = fmtPct.format(data.pctR)+' %';
+      bars[0].style.width = data.pctD+'%';
+      bars[1].style.width = data.pctR+'%';
+      card.querySelector('.bar').setAttribute('aria-label',`${config.shortD} ${fmtPct.format(data.pctD)} procent, ${config.shortR} ${fmtPct.format(data.pctR)} procent`);
+      number.textContent = (data.leading ? '+' : '±')+fmtInt.format(data.lead);
+      who.replaceChildren();
+      const strong=document.createElement('strong');
+      strong.textContent = data.leading ? `${data.leading===data.dem ? config.shortD : config.shortR} leder` : 'Lika många röster';
+      who.append(strong,document.createElement('br'),document.createTextNode(data.leading ? `med ${fmtInt.format(data.lead)} röster` : 'mellan huvudkandidaterna'));
+      badge.textContent = data.call ? 'Utropat av AP' : 'Preliminärt';
+      badge.title = data.call ? 'Medieprognos, inte officiellt certifierat' : 'Ej officiellt certifierat';
+      if(data.reported!==null && data.reported>=0 && data.reported<=100){card.querySelector('.reported').textContent=`≈ ${fmtInt.format(data.reported)} % rapporterat`;}
+      const stamp = data.date ? ` · Källa: ${dateSv.format(data.date)}` : '';
+      details.textContent = `Senaste hämtade uppgifter (${data.source})${stamp}: ${data.rows.map(r=>`${r.name} ${fmtInt.format(r.votes)}`).join(' · ')}.`;
+      return changed;
+    }
+    async function fetchRace(key) {
+      const controller = new AbortController();
+      const timeout = setTimeout(()=>controller.abort(),10000);
+      try {
+        const url = RACES[key].url + '?check=' + Date.now();
+        const response=await fetch(url,{cache:'no-store',signal:controller.signal,headers:{'Accept':'application/json'}});
+        if(!response.ok)throw new Error('HTTP '+response.status);
+        return readRace(await response.json(),key);
+      } finally {clearTimeout(timeout);}
+    }
+    async function refreshResults() {
+      if(refreshBtn.disabled)return;
+      refreshBtn.disabled=true;
+      refreshBtn.setAttribute('aria-busy','true');
+      refreshBtn.textContent='↻ Hämtar…';
+      feedback.textContent='Hämtar från valdatakällan…';
+      const keys=Object.keys(RACES);
+      const results=await Promise.allSettled(keys.map(key=>fetchRace(key)));
+      let updated=0, failures=0, changed=0;
+      let newest=null;
+      results.forEach((result,i)=>{
+        if(result.status==='fulfilled'){
+          const key=keys[i], data=result.value;
+          try {
+            if(updateCard(key,data))changed++;
+            updated++;
+            if(data.date && (!newest || data.date>newest))newest=data.date;
+          } catch(e){failures++;console.warn('Resultat kunde inte visas:',e);}
+        }else {failures++;console.warn('Resultat kunde inte hämtas:',keys[i],result.reason);}
+      });
+      const clock=clockSv.format(new Date());
+      if(updated){
+        snapshot.textContent=newest ? `Datakälla senast\n${dateSv.format(newest)}` : 'Hämtade resultat';
+        snapshot.style.whiteSpace='pre-line';
+        sourceLabel.textContent=`Källa: Carmena’s / ${updated===2?'AK + MS':updated===1?'ett val':'ingen'} · ej officiell certifiering`;
+        raceStatus.textContent=updated===2 ? 'Valresultat hämtade · ej certifierade' : 'Delvis uppdaterat · ej certifierade';
+        feedback.textContent=failures ? `${updated} av 2 uppdaterade · ${clock}` : changed ? `Kontrollerat ${clock} · data hämtade` : `Inga nya siffror · ${clock}`;
+        document.querySelector('.dot').className='dot has-data';
+      }else{
+        feedback.textContent=`Kunde inte hämta data · ${clock}`;
+        raceStatus.textContent='Sparade siffror visas fortfarande';
+        document.querySelector('.dot').className='dot has-error';
+      }
+      refreshBtn.textContent='↻ Uppdatera siffror';
+      refreshBtn.disabled=false;
+      refreshBtn.removeAttribute('aria-busy');
+    }
+    refreshBtn.addEventListener('click',refreshResults);
     document.querySelectorAll('[data-open]').forEach(btn=>btn.addEventListener('click',()=>{
       const dialog=document.getElementById(btn.dataset.open);
       if (!dialog) return;
