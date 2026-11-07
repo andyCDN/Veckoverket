@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#17221e">
+  <meta name="description" content="Senatskollen 2026. Alaska och Mississippi på en enda skärm – utan scroll.">
+  <title>Senatskollen — Alaska & Mississippi</title>
+  <style>
+    :root{--paper:#edece5;--card:#fbfaf6;--ink:#17221e;--faint:#627068;--line:#cbd0c6;--blue:#3569ca;--red:#d9564a;--yellow:#f2c868}
+    *{box-sizing:border-box}
+    html,body{width:100%;height:100%;margin:0}
+    html{overflow:hidden}
+    body{height:100vh;height:100dvh;overflow:hidden;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+    button,a{font:inherit}
+    button{cursor:pointer}
+    a{color:inherit}
+    a:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+    .app{height:100%;display:flex;flex-direction:column;min-height:0;max-width:1200px;margin:auto;padding:0 13px max(8px,env(safe-area-inset-bottom));gap:9px}
+    .top{height:53px;min-height:53px;margin:0 -13px;padding:0 14px;background:var(--ink);color:#f8f8f2;display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:5px solid transparent;border-image:linear-gradient(90deg,var(--blue) 50%,var(--red) 50%) 1}
+    .logo{font-size:15px;font-weight:900;letter-spacing:-.65px;display:flex;align-items:center;gap:9px;white-space:nowrap}
+    .mark{background:var(--yellow);color:var(--ink);height:27px;width:30px;display:grid;place-items:center;font-size:13px;font-weight:950;transform:rotate(-5deg)}
+    .top button{border:1px solid #63726a;background:transparent;color:#fff;border-radius:3px;padding:7px 10px;font-size:11px;font-weight:750;white-space:nowrap}
+    .top button:hover{background:#34433b}
+    .intro{display:flex;align-items:end;justify-content:space-between;gap:12px;min-height:58px}
+    .intro small{font-size:10px;font-weight:850;letter-spacing:1.5px;color:#647268;text-transform:uppercase;display:block;margin-bottom:4px}
+    h1{margin:0;font-size:clamp(24px,5.7vw,43px);font-family:Impact,"Arial Narrow","Franklin Gothic Heavy",Arial,sans-serif;text-transform:uppercase;letter-spacing:-.3px;line-height:1}
+    .snapshot{font-size:10px;line-height:1.4;color:#536158;text-align:right;max-width:133px;font-weight:650}
+    .status{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;font-weight:750;min-height:22px}
+    .status span:first-child{display:flex;align-items:center;gap:7px}
+    .dot{width:7px;height:7px;display:inline-block;border-radius:100%;background:#d9564a;box-shadow:0 0 0 3px #d9564a20}
+    .status .quiet{color:var(--faint);font-weight:600;font-size:10px;text-align:right}
+    .cards{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:repeat(2,minmax(0,1fr));gap:9px}
+    .card{position:relative;overflow:hidden;min-width:0;min-height:0;display:flex;flex-direction:column;gap:7px;padding:11px 13px;background:var(--card);border:1px solid #bdc7bd;box-shadow:0 5px 14px #17221e0a}
+    .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--blue) 50%,var(--red) 50%)}
+    .heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .state{display:flex;align-items:baseline;gap:8px;min-width:0}
+    .ordinal{font:italic 12px Georgia,serif;color:#8d9a8f}
+    h2{font:900 clamp(24px,6.5vw,34px)/1 Impact,"Arial Narrow",Arial,sans-serif;letter-spacing:-.3px;margin:0}
+    .undecided{font-size:9px;font-weight:800;color:#3e5e49;background:#e4ede4;padding:5px 6px;border-radius:2px;white-space:nowrap;text-transform:uppercase;letter-spacing:.3px}
+    .lead{display:flex;align-items:baseline;gap:10px;min-height:43px;margin-top:auto}
+    .number{font:900 clamp(37px,9.8vw,53px)/.96 Impact,"Arial Narrow",Arial,sans-serif;letter-spacing:-.8px;font-variant-numeric:tabular-nums}
+    .who{font-size:11px;line-height:1.3;color:var(--faint)}
+    .who strong{color:var(--ink)}
+    .race{display:grid;gap:6px}
+    .cand{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:baseline;gap:7px;white-space:nowrap}
+    .name{font-size:12px;font-weight:800;overflow:hidden;text-overflow:ellipsis}
+    .party{font-size:10px;font-weight:800;margin-right:4px;color:var(--blue)}
+    .party.rep{color:var(--red)}
+    .votes{font-size:12px;font-weight:850;letter-spacing:-.1px;font-variant-numeric:tabular-nums}
+    .percent{font-size:11px;font-weight:700;color:var(--faint);min-width:39px;text-align:right;font-variant-numeric:tabular-nums}
+    .bar{display:flex;min-height:7px;height:7px;width:100%;background:#d8d9d0;overflow:hidden;margin-bottom:auto}
+    .bar .dem{background:var(--blue)} .bar .rep{background:var(--red)}
+    .foot{display:flex;justify-content:space-between;align-items:center;gap:8px;padding-top:6px;border-top:1px solid #dee1d8;font-size:10px}
+    .next{color:var(--faint);line-height:1.25;min-width:0}
+    .next strong{color:var(--ink)}
+    .detail{flex-shrink:0;border:1px solid #9ba99b;background:transparent;padding:6px 9px;font-size:10px;font-weight:850;border-radius:3px;white-space:nowrap}
+    .detail:hover{background:#e9eee7}
+    .bottom{min-height:28px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10px;color:var(--faint)}
+    .bottom strong{color:var(--ink)}
+    .bottom button{border:0;padding:5px 0;background:none;color:var(--ink);font-weight:800;font-size:10px;text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+    dialog{border:1px solid #94a39a;background:var(--card);color:var(--ink);padding:0;width:min(590px,calc(100% - 24px));max-height:calc(100dvh - 28px);overflow:auto;box-shadow:0 24px 80px #0006;border-radius:3px}
+    dialog::backdrop{background:#0b1812b8}
+    .dialog-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 18px;background:var(--ink);color:white}
+    .dialog-head h3{margin:0;font:900 27px/1 Impact,"Arial Narrow",Arial,sans-serif;text-transform:uppercase}
+    .close{border:1px solid #a7b8aa;background:none;color:#fff;font-weight:800;padding:5px 10px;border-radius:2px}
+    .dialog-body{padding:17px 18px 20px;font-size:13px;line-height:1.5}
+    .dialog-body p{margin:0 0 13px}
+    .dialog-body h4{margin:12px 0 7px;font-size:12px;text-transform:uppercase;letter-spacing:.6px}
+    .dialog-body iframe{width:100%;height:280px;border:1px solid #d2dbcf;background:white;display:block}
+    .dialog-body a{font-weight:800;text-decoration:underline;text-underline-offset:3px}
+    .links{display:flex;flex-wrap:wrap;gap:9px 14px;margin-top:13px}
+    .source-note{color:var(--faint);font-size:12px}
+    @media(min-width:700px){
+      .app{padding:0 26px max(14px,env(safe-area-inset-bottom));gap:15px}
+      .top{margin:0 -26px;padding:0 26px;height:65px;min-height:65px}
+      .intro{min-height:95px}
+      .cards{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:minmax(0,1fr);gap:16px}
+      .card{padding:clamp(16px,3vw,30px);gap:clamp(12px,3vh,27px)}
+      h2{font-size:clamp(36px,5vw,65px)}
+      .number{font-size:clamp(62px,7vw,95px)}
+      .lead{min-height:85px}
+      .who{font-size:14px}
+      .race{gap:15px}
+      .name,.votes{font-size:16px}.percent{font-size:14px;min-width:56px}
+      .bar{height:12px;min-height:12px}
+      .foot,.next,.detail{font-size:13px}
+      .foot{padding-top:18px}
+      .detail{padding:11px 13px}
+      .bottom{font-size:12px;min-height:38px}
+      .bottom button{font-size:12px}
+    }
+    @media(max-height:710px) and (max-width:699px){
+      .app{gap:6px}
+      .top{height:46px;min-height:46px}
+      .intro{min-height:44px}
+      .intro small{margin-bottom:1px;font-size:9px}
+      h1{font-size:25px}
+      .status{min-height:17px;font-size:10px}
+      .card{padding:8px 11px;gap:5px}
+      h2{font-size:25px}
+      .lead{min-height:33px}
+      .number{font-size:37px}
+      .race{gap:4px}
+      .name,.votes{font-size:11px}
+      .percent{font-size:10px}
+      .bottom{min-height:22px}
+    }
+    @media(max-height:570px) and (max-width:699px){
+      .intro{min-height:34px}
+      .intro small{display:none}
+      h1{font-size:22px}
+      .status{min-height:15px}
+      .card{gap:3px;padding:7px 10px}
+      .lead{min-height:28px}
+      .number{font-size:32px}
+      .who{font-size:10px}
+      h2{font-size:23px}
+      .undecided{font-size:8px;padding:4px}
+      .race{gap:3px}
+      .foot{padding-top:3px}
+      .detail{padding:4px 7px}
+    }
+    @media (orientation:landscape) and (max-height:530px){
+      .app{gap:5px;padding-bottom:4px}
+      .top{height:39px;min-height:39px}
+      .intro{min-height:32px}
+      .intro small{display:none}
+      h1{font-size:23px}
+      .status{min-height:15px}
+      .cards{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:minmax(0,1fr);gap:9px}
+      .card{gap:5px;padding:10px}
+      h2{font-size:26px}
+      .number{font-size:38px}
+      .lead{min-height:36px}
+      .bottom{min-height:19px}
+    }
+    @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <div class="logo"><span class="mark">26</span> SENATSKOLLEN</div>
+      <button type="button" data-open="sources">Källor & info ↗</button>
+    </header>
+    <div class="intro">
+      <div><small>USA / U.S. Senate / 2026</small><h1>Två val. Ett läge.</h1></div>
+      <div class="snapshot">Ögonblicksbild<br>7 november 2026</div>
+    </div>
+    <div class="status"><span><span class="dot" aria-hidden="true"></span> Båda ej avgjorda i ögonblicksbilden</span><span class="quiet">Inga siffror uppdateras automatiskt</span></div>
+    <main class="cards" aria-label="Senatsvalens resultat">
+      <article class="card" aria-labelledby="alaska-heading">
+        <div class="heading"><div class="state"><span class="ordinal">01</span><h2 id="alaska-heading">ALASKA</h2></div><span class="undecided">Preliminärt</span></div>
+        <div class="lead"><strong class="number">+554</strong><span class="who"><strong>Mary Peltola leder</strong><br>med 554 röster</span></div>
+        <div class="race">
+          <div class="cand"><div class="name"><span class="party">D</span> Mary Peltola</div><div class="votes">103 171</div><div class="percent">48,2 %</div></div>
+          <div class="cand"><div class="name"><span class="party rep">R</span> Dan Sullivan</div><div class="votes">102 617</div><div class="percent">47,9 %</div></div>
+        </div>
+        <div class="bar" role="img" aria-label="Peltola 48,2 procent, Sullivan 47,9 procent, övriga 3,9 procent"><span class="dem" style="width:48.2%"></span><span class="rep" style="width:47.9%"></span></div>
+        <div class="foot"><div class="next">≈ 74 % räknat · <strong>18 nov:</strong> rangordnad räkning</div><button type="button" class="detail" data-open="alaska">Livekort & detaljer ↗</button></div>
+      </article>
+      <article class="card" aria-labelledby="mississippi-heading">
+        <div class="heading"><div class="state"><span class="ordinal">02</span><h2 id="mississippi-heading">MISSISSIPPI</h2></div><span class="undecided">Preliminärt</span></div>
+        <div class="lead"><strong class="number">+2 645</strong><span class="who"><strong>Scott Colom leder</strong><br>med 2 645 röster</span></div>
+        <div class="race">
+          <div class="cand"><div class="name"><span class="party">D</span> Scott Colom</div><div class="votes">468 032</div><div class="percent">49,1 %</div></div>
+          <div class="cand"><div class="name"><span class="party rep">R</span> Cindy Hyde-Smith</div><div class="votes">465 387</div><div class="percent">48,8 %</div></div>
+        </div>
+        <div class="bar" role="img" aria-label="Colom 49,1 procent, Hyde-Smith 48,8 procent, övriga 2,1 procent"><span class="dem" style="width:49.1%"></span><span class="rep" style="width:48.8%"></span></div>
+        <div class="foot"><div class="next">≈ 98 % räknat · <strong>13 nov:</strong> länsintygande</div><button type="button" class="detail" data-open="mississippi">Livekort & detaljer ↗</button></div>
+      </article>
+    </main>
+    <footer class="bottom"><span><strong>SNAPSHOT / 07.11.26</strong> · kontrollera livekort för nyare siffror</span><button type="button" data-open="sources">Om datan ↗</button></footer>
+  </div>
+
+  <dialog id="alaska" aria-labelledby="dialog-ak-label">
+    <div class="dialog-head"><h3 id="dialog-ak-label">Alaska / Live & detaljer</h3><button class="close" type="button" data-close aria-label="Stäng Alaska">Stäng ×</button></div>
+    <div class="dialog-body">
+      <p><strong>Senast sparade siffror (7 nov):</strong> Peltola 103 171 · Sullivan 102 617 · Gerald Heikes 4 851 · Daniel J. Sullivan Jr. 3 607. Cirka 74 % räknat.</p>
+      <p class="source-note">Livekortet nedan är externt och kan visa nyare resultat än siffrorna på startsidan. Det visas endast när du öppnar denna ruta.</p>
+      <iframe title="Externt resultatkort Alaska från Polling Desk" data-src="https://polling-desk.com/embed/race/2026/senate/ak" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      <div class="links"><a href="https://polling-desk.com/races/2026/senate/ak" target="_blank" rel="noopener noreferrer">Livekälla ↗</a><a href="https://www.elections.alaska.gov/election-results/" target="_blank" rel="noopener noreferrer">Officiell valmyndighet ↗</a></div>
+    </div>
+  </dialog>
+  <dialog id="mississippi" aria-labelledby="dialog-ms-label">
+    <div class="dialog-head"><h3 id="dialog-ms-label">Mississippi / Live & detaljer</h3><button class="close" type="button" data-close aria-label="Stäng Mississippi">Stäng ×</button></div>
+    <div class="dialog-body">
+      <p><strong>Senast sparade siffror (7 nov):</strong> Colom 468 032 · Hyde-Smith 465 387 · Ty Pinkins 20 044. Cirka 98 % räknat.</p>
+      <p class="source-note">Livekortet nedan är externt och kan visa nyare resultat än siffrorna på startsidan. Det visas endast när du öppnar denna ruta.</p>
+      <iframe title="Externt resultatkort Mississippi från Polling Desk" data-src="https://polling-desk.com/embed/race/2026/senate/ms" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      <div class="links"><a href="https://polling-desk.com/races/2026/senate/ms" target="_blank" rel="noopener noreferrer">Livekälla ↗</a><a href="https://www.sos.ms.gov/elections-voting/election-results" target="_blank" rel="noopener noreferrer">Officiell valmyndighet ↗</a></div>
+    </div>
+  </dialog>
+  <dialog id="sources" aria-labelledby="dialog-sources-label">
+    <div class="dialog-head"><h3 id="dialog-sources-label">Källor & metod</h3><button class="close" type="button" data-close aria-label="Stäng källor">Stäng ×</button></div>
+    <div class="dialog-body">
+      <p><strong>Två val på en enda skärm.</strong> Röstsiffrorna på startsidan är en daterad ögonblicksbild från Polling Desk / civicAPI, avläst den 7 november 2026. De uppdateras inte automatiskt.</p>
+      <p>Öppna "Livekort & detaljer" för ett inbäddat resultatkort från extern leverantör. Dess innehåll kan ändras när leverantören publicerar nya uppgifter. När resultat fastställs officiellt måste detta bekräftas hos respektive valmyndighet.</p>
+      <h4>Officiella källor</h4>
+      <div class="links"><a href="https://www.elections.alaska.gov/election-results/" target="_blank" rel="noopener noreferrer">Alaska ↗</a><a href="https://www.sos.ms.gov/elections-voting/election-results" target="_blank" rel="noopener noreferrer">Mississippi ↗</a><a href="https://polling-desk.com/senate-results" target="_blank" rel="noopener noreferrer">Polling Desk ↗</a></div>
+      <p class="source-note" style="margin-top:16px">Sidan är fristående och skickar inga pushnotiser. Den är avsedd som en snabb överblick, inte som officiell valrapportering.</p>
+    </div>
+  </dialog>
+  <script>
+    document.querySelectorAll('[data-open]').forEach(btn=>btn.addEventListener('click',()=>{
+      const dialog=document.getElementById(btn.dataset.open);
+      if (!dialog) return;
+      const iframe=dialog.querySelector('iframe[data-src]');
+      if(iframe){ const url=new URL(iframe.dataset.src); url.searchParams.set('_t',Date.now().toString()); iframe.src=url.toString(); }
+      dialog.showModal();
+    }));
+    document.querySelectorAll('dialog').forEach(dialog=>{
+      dialog.querySelectorAll('[data-close]').forEach(btn=>btn.addEventListener('click',()=>dialog.close()));
+      dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close()});
+    });
+  </script>
+</body>
+</html>
