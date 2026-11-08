@@ -2,6 +2,8 @@
 
 En svensk webbapp för veckoplanering, målhantering och uppföljning.
 
+Desktop och mobil delar samma risotryckspalett: naturpapper, marinblå text, kobolt, lime och korall. Logotyp, navigationsknappar och kort använder samma typografi och raka bläcklinjer med hårda tryckskuggor. Desktop behåller sin breda kalender och mobilen sin kompakta översikt.
+
 Mobilens veckoöversikt visar verkliga möten, fokusblock, uppgifter, deadlines och veckomål i en kompakt risotrycksvy. Huvudnavigationen är **Vecka**, **Jobb**, **Nätverk** och **Mer**. Mål, reflektion och inställningar finns under **Mer**. Dagplaneringen nås via **Visa dagplanering** i veckoöversikten. Nya uppgifter kan kopplas till datum och mål. Familjekategorin döljs i den professionella översikten utan att sparade bokningar ändras.
 
 Appen kan installeras på hemskärmen med en egen RISO-ikon. På mobilen finns **Installera appen** under **Visa dagplanering → Verktyg**, och på datorn finns alternativet i **Inställningar**. Följ [installationsguiden på engelska](docs/install-app.md). Den sparade appvyn kan öppnas utan nät; inloggning, molnsynk och Google-import kräver anslutning.

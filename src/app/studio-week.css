@@ -1,4 +1,4 @@
-/* The compact three-tab mobile edition. Desktop keeps its full workspace. */
+/* Compact mobile layout using the shared studio print palette. */
 .mockup-workspace[data-mobile-design="studio"] {
   --paper: #faf7f2;
   --paper-light: #fff;

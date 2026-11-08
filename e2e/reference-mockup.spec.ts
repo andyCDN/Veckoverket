@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { createData } from "../src/lib/defaults";
 import type { Activity } from "../src/lib/types";
-test("den bifogade mockupen: masthead, kompakt kalender, helg och dagvy bevarar alla sparade aktiviteter", async ({
+test("gemensam risodesign: desktopkalender, helg, utskrift och dagvy bevarar alla sparade aktiviteter", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
@@ -99,16 +99,14 @@ test("den bifogade mockupen: masthead, kompakt kalender, helg och dagvy bevarar 
     color: getComputedStyle(el).color,
     family: getComputedStyle(el).fontFamily,
   }));
-  expect(logo.color).toBe("rgb(255, 246, 217)");
-  expect(logo.family).toContain("masthead");
+  expect(logo.color).toBe("rgb(18, 30, 66)");
+  expect(logo.family).toContain("Anton");
   await expect(page.locator(".day-shell:visible")).toHaveCount(5);
   await expect(page.locator(".weekend-summaries")).toContainText("Familj");
   await expect(page.locator(".week-unplanned")).toContainText(
     "Ansökan · 45 min",
   );
-  const toolbar = (await page.locator(".week-toolbar").boundingBox())!,
-    stats = (await summary.boundingBox())!;
-  expect(stats.y - (toolbar.y + toolbar.height)).toBeLessThan(5);
+  await expect(summary).toHaveCount(0);
   const first = page.locator('[data-activity-id="ref-0-510"]'),
     box = (await first.boundingBox())!,
     check = (await first.locator(".calendar-completion").boundingBox())!;
@@ -140,6 +138,9 @@ test("den bifogade mockupen: masthead, kompakt kalender, helg och dagvy bevarar 
   await expect(page.locator('[data-activity-id="ref-5-600"]')).toBeVisible();
   await page.emulateMedia({ media: "screen" });
   await page.setViewportSize({ width: 390, height: 844 });
+  await page
+    .getByRole("button", { name: "Visa dagplanering", exact: true })
+    .click();
   await expect(page.locator(".day-shell:visible")).toHaveCount(1);
   await page.screenshot({ path: "test-results/reference-mockup-mobile.png" });
   expect(await stored()).toEqual(before);
