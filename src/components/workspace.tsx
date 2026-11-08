@@ -63,6 +63,8 @@ import { bookDeadlineWork } from "@/lib/deadline-scheduling";
 import { DeadlinePlanning } from "./deadline-planning";
 import { DayFocus } from "./day-focus";
 import { Calendar } from "./calendar";
+import { HabitTracker } from "./habit-tracker";
+import { toggleHabit, saveHabit, pauseHabit } from "@/lib/habits";
 import { WeekFocus } from "./week-focus";
 import { StudioHeader, StudioTaskForm, StudioWeek } from "./studio-week";
 import { WeekExtras } from "./week-extras";
@@ -160,6 +162,7 @@ export function Workspace() {
     blockedSave,
     setBlockedSave,
   } = useWorkspaceStorage(newWorkspace);
+  const [habitEditing, setHabitEditing] = useState(false);
   const [careerEditing, setCareerEditing] = useState(false);
   const [studioTaskDate, setStudioTaskDate] = useState<string | null>(null);
   const [careerEntry, setCareerEntry] = useState<{
@@ -230,7 +233,8 @@ export function Workspace() {
         routineId ||
         account ||
         view === "settings" ||
-        careerEditing,
+        careerEditing ||
+        habitEditing,
       ),
     onSnapshot: autoImportIcal,
   });
@@ -247,6 +251,7 @@ export function Workspace() {
     !generator &&
     !newGoal &&
     !studioTaskDate &&
+    !habitEditing &&
     !account &&
     !googleOpen &&
     !resetOpen &&
@@ -325,7 +330,8 @@ export function Workspace() {
         resetOpen ||
         routineId ||
         view === "settings" ||
-        careerEditing,
+        careerEditing ||
+        habitEditing,
       ),
     );
     return () => setEditing(false);
@@ -339,6 +345,7 @@ export function Workspace() {
     routineId,
     view,
     careerEditing,
+    habitEditing,
     setEditing,
   ]);
   const navigate = (v: View) => {
@@ -1242,6 +1249,33 @@ export function Workspace() {
                   setCareerEntry({ id: action.id, tab: "actions" });
                   navigate(action.applicationId ? "career" : "network");
                 }}
+              />
+              <HabitTracker
+                key={`${user?.id ?? "local"}-${undoVersion}`}
+                data={data}
+                week={week}
+                onWeek={changeWeek}
+                onEditing={setHabitEditing}
+                onToggle={(id, date) =>
+                  setData(
+                    (current) =>
+                      current ? toggleHabit(current, id, date) : current,
+                    { undoLabel: "avbockning av vana" },
+                  )
+                }
+                onSave={(draft) =>
+                  setData(
+                    (current) =>
+                      current ? saveHabit(current, draft) : current,
+                    { undoLabel: "vana" },
+                  )
+                }
+                onPause={(id) =>
+                  setData(
+                    (current) => (current ? pauseHabit(current, id) : current),
+                    { undoLabel: "paus av vana" },
+                  )
+                }
               />
               {mobile && calendarMode === "week" ? (
                 <StudioWeek

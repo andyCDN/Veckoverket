@@ -1,3 +1,4 @@
+import { validateHabits } from "./habits";
 import { separateJobCategories } from "./job-categories";
 import { validateCareerData } from "./career-planning";
 import type { AppData } from "./types";
@@ -296,6 +297,7 @@ export function decodeData(raw: string): AppData {
       throw new Error("Google-kalenderns importinställningar är ogiltiga.");
   }
   validateCareerData(d as AppData);
+  validateHabits(d.habits);
   return ensureCityHallCategory(
     separateJobCategories(refreshDemoCopy(d as AppData)),
   );

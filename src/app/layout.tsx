@@ -11,6 +11,7 @@ import "./riso-print.css";
 import "./workflow.css";
 import "./studio-week.css";
 import "./studio-system.css";
+import "./habits.css";
 const masthead = localFont({
   src: "./fonts/RobotoCondensed-Masthead.woff",
   variable: "--font-masthead",

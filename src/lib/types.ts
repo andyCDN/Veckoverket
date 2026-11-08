@@ -222,8 +222,18 @@ export type Deadline = {
   applicationId?: string;
   steps: { id: string; title: string; minutes: number }[];
 };
+export type Habit = {
+  id: string;
+  title: string;
+  createdOn: string;
+  schedule:
+    { kind: "days"; days: number[] } | { kind: "weekly"; target: number };
+  checks: string[];
+  paused?: boolean;
+};
 export type AppData = {
   version: 1;
+  habits?: Habit[];
   applications?: JobApplication[];
   contacts?: NetworkContact[];
   careerActions?: CareerAction[];
