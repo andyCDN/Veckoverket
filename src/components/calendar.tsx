@@ -119,7 +119,7 @@ function CalendarBlock({
         onClick={onEdit}
         title={`${a.title} · ${categoryLabel(category)} · ${time(a.start)}–${time(a.end)}`}
         tabIndex={filteredOut ? -1 : 0}
-        aria-label={`${a.title}, ${categoryLabel(category)}, ${time(a.start)} till ${time(a.end)}${a.status === "done" ? ", genomförd" : a.status === "skipped" ? ", missat" : ""}. ${a.routine ? "Öppna övning" : "Redigera aktivitet"}`}
+        aria-label={`${a.title}, ${categoryLabel(category)}, ${time(a.start)} till ${time(a.end)}${a.status === "done" ? ", genomförd" : a.status === "skipped" ? ", missat" : ""}. ${a.routine ? "Öppna övning" : "Redigera pass"}`}
         data-routine={a.routine}
         className={`calendar-block ${filteredOut ? "is-filtered-out" : ""} ${family ? "family" : ""} ${lunch ? "lunch" : ""} ${a.status === "done" ? "is-done" : ""} ${a.status === "skipped" ? "is-skipped" : ""} ${isDragging ? "dragging" : ""}`}
       >
@@ -507,7 +507,7 @@ export function Calendar({
         accessibility={{
           announcements: {
             onDragStart: ({ active }) =>
-              `Flyttar ${activities.find((a) => a.id === active.id)?.title ?? "aktivitet"}.`,
+              `Flyttar ${activities.find((a) => a.id === active.id)?.title ?? "pass"}.`,
             onDragOver: ({ over }) =>
               over ? `Över ${String(over.id)}.` : "Utanför kalendern.",
             onDragEnd: () =>
@@ -516,7 +516,7 @@ export function Calendar({
           },
           screenReaderInstructions: {
             draggable:
-              "Tryck blanksteg för att börja flytta, piltangenter för att flytta och blanksteg för att släppa. Du kan också öppna aktiviteten och ändra tid och datum i formuläret.",
+              "Tryck blanksteg för att börja flytta, piltangenter för att flytta och blanksteg för att släppa. Du kan också öppna passet och ändra tid och datum i formuläret.",
           },
         }}
       >
@@ -724,7 +724,7 @@ export function Calendar({
                     )}
                     <button
                       className="day-bottom-add"
-                      aria-label={`Lägg till aktivitet ${DAY_NAMES[d].toLowerCase()}`}
+                      aria-label={`Lägg till pass ${DAY_NAMES[d].toLowerCase()}`}
                       onClick={() => onCreate(date)}
                     >
                       <Plus size={13} />

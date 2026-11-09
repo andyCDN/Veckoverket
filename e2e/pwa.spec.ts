@@ -226,7 +226,7 @@ test("en uppdaterad service worker väntar och lämnar ett öppet formulär orö
   await ready(page);
   await page
     .locator(
-      '.day-shell.is-selected .calendar-block[aria-label$="Redigera aktivitet"]',
+      '.day-shell.is-selected .calendar-block[aria-label$="Redigera pass"]',
     )
     .first()
     .click();

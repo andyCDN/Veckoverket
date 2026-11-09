@@ -40,7 +40,7 @@ test("drar ett intervall i dagvyn och sparar ett pass med vald längd", async ({
   await expect(page.getByLabel("Slut", { exact: true })).toHaveValue("11:45");
   await page.getByLabel("Namn", { exact: true }).fill("Markerat pass");
   await page
-    .getByRole("button", { name: "Spara aktivitet", exact: true })
+    .getByRole("button", { name: "Spara pass", exact: true })
     .click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   const saved = await page.evaluate(() =>

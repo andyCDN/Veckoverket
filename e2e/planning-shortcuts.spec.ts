@@ -49,7 +49,9 @@ for (const width of [1440, 390, 320])
     await dialog
       .getByLabel(/^Sammanfattning av veckan/)
       .fill("Leveranserna är klara.");
-    await dialog.getByRole("button", { name: "Klar", exact: true }).click();
+    await dialog
+      .getByRole("button", { name: "Stäng checken", exact: true })
+      .click();
     const stored = () =>
       page.evaluate(() =>
         JSON.parse(localStorage.getItem("veckoverket.workspace.v1")!),
@@ -64,6 +66,7 @@ for (const width of [1440, 390, 320])
     await dialog
       .getByRole("button", { name: "Stäng dialog", exact: true })
       .click();
+    await shortcuts.getByText("Fler alternativ", { exact: true }).click();
     await shortcuts
       .getByRole("button", { name: "Dra och boka", exact: true })
       .click();
@@ -109,7 +112,7 @@ for (const width of [1440, 390, 320])
       .getByLabel("Namn", { exact: true })
       .fill("Dragbokad fokusstund");
     await dialog
-      .getByRole("button", { name: "Spara aktivitet", exact: true })
+      .getByRole("button", { name: "Spara pass", exact: true })
       .click();
     expect((await stored()).weeks["2026-11-02"].activities).toEqual(
       expect.arrayContaining([
@@ -128,7 +131,9 @@ for (const width of [1440, 390, 320])
     await expect(page.getByLabel(/^Sammanfattning av veckan/)).toHaveValue(
       "Leveranserna är klara.",
     );
-    await page.getByRole("button", { name: "Klar", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Stäng checken", exact: true })
+      .click();
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,

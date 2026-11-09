@@ -291,12 +291,12 @@ export function ActivityEditor({
     <Modal
       title={
         activity
-          ? "Redigera aktivitet"
+          ? "Redigera pass"
           : followUp
             ? "Boka om missat pass"
-            : "Ny aktivitet"
+            : "Nytt pass"
       }
-      description="Ange livsområde, datum och tid för aktiviteten."
+      description="Ange område, datum och tid för passet."
       onClose={onClose}
     >
       <form onSubmit={submit} className="stack">
@@ -358,7 +358,7 @@ export function ActivityEditor({
         </label>
         <div className="form-row">
           <label>
-            Livsområde
+            Område
             <select
               value={form.categoryId}
               onChange={(e) => patch({ categoryId: e.target.value })}
@@ -604,7 +604,7 @@ export function ActivityEditor({
           )}
           <button type="submit" className="button primary">
             <Check size={17} />
-            Spara aktivitet
+            Spara pass
           </button>
         </div>
       </form>

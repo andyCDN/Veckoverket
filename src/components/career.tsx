@@ -1601,7 +1601,7 @@ function DeadlineForm({
           </label>
         </div>
         <label>
-          Livsområde
+          Område
           <select
             value={v.categoryId}
             onChange={(e) => set({ ...v, categoryId: e.target.value })}
@@ -1847,7 +1847,7 @@ function BookingForm({
           </label>
         </div>
         <label>
-          Livsområde
+          Område
           <select
             value={category}
             disabled={Boolean(value.careerActionId)}

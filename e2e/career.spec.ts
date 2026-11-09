@@ -132,7 +132,7 @@ test("ansökan, kalenderuppföljning och bakåtplanering bevaras vid omladdning"
     .getByRole("combobox", { name: "Status", exact: true })
     .selectOption("done");
   await dialog
-    .getByRole("button", { name: "Spara aktivitet", exact: true })
+    .getByRole("button", { name: "Spara pass", exact: true })
     .click();
   await expect
     .poll(

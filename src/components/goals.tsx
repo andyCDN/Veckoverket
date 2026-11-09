@@ -72,7 +72,7 @@ export function GoalForm({
         </label>
         <div className="form-row">
           <label>
-            Livsområde
+            Område
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}

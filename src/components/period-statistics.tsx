@@ -56,7 +56,7 @@ export function PeriodStatistics({
           ))}
         </div>
         <label>
-          Livsområde i statistiken
+          Område i statistiken
           <select
             value={category}
             onChange={(event) => setCategory(event.target.value)}
@@ -140,7 +140,7 @@ export function PeriodStatistics({
         <caption>Tid per livsområde under perioden</caption>
         <thead>
           <tr>
-            <th scope="col">Livsområde</th>
+            <th scope="col">Område</th>
             <th scope="col">Tidsmål</th>
             <th scope="col">Plan</th>
             <th scope="col">Gjort</th>

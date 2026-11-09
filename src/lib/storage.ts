@@ -215,6 +215,13 @@ export function decodeData(raw: string): AppData {
       typeof t.id !== "string" ||
       typeof t.title !== "string" ||
       typeof t.done !== "boolean" ||
+      (t.state !== undefined &&
+        !["open", "waiting", "dropped"].includes(t.state)) ||
+      (t.waitingFor !== undefined &&
+        (typeof t.waitingFor !== "string" || t.waitingFor.length > 200)) ||
+      (t.reviewOn !== undefined &&
+        (typeof t.reviewOn !== "string" || !isLocalDate(t.reviewOn))) ||
+      (t.needsPlanning !== undefined && typeof t.needsPlanning !== "boolean") ||
       (t.estimatedMinutes !== undefined &&
         (!Number.isInteger(t.estimatedMinutes) ||
           t.estimatedMinutes < 5 ||
@@ -251,7 +258,7 @@ export function decodeData(raw: string): AppData {
       !["week", "good", "unfinished", "balance", "next", "updatedAt"].every(
         (k) => typeof r[k] === "string",
       ) ||
-      ["startPlan", "goalReview"].some(
+      ["startPlan", "goalReview", "reviewSummary", "reviewRecordedAt"].some(
         (k) => r[k] !== undefined && typeof r[k] !== "string",
       )
     )

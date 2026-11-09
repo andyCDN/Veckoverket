@@ -199,7 +199,7 @@ test("ångrar status, redigering och borttagning i ordning utan att fånga textf
     .click();
   await page.getByLabel("Namn", { exact: true }).fill("Ändrad bokning");
   await page
-    .getByRole("button", { name: "Spara aktivitet", exact: true })
+    .getByRole("button", { name: "Spara pass", exact: true })
     .click();
   await page
     .locator(".calendar-block")
@@ -262,7 +262,7 @@ test("visar fyra och tolv veckors statistik på mobil utan att skapa veckor som 
     exact: true,
   });
   await panel
-    .getByRole("combobox", { name: "Livsområde i statistiken", exact: true })
+    .getByRole("combobox", { name: "Område i statistiken", exact: true })
     .selectOption("learning");
   await expect(panel).toContainText("3 av 4 veckor har sparad plan");
   await expect(panel.locator(".statistics-totals")).toContainText("3,5 h");

@@ -1,6 +1,8 @@
 "use client";
 import type { Activity, AppData, Reflection } from "@/lib/types";
 import { addDays, fullDate, time, weekNumber } from "@/lib/date";
+import { WeekReview } from "./week-flow";
+import type { TaskDecision } from "@/lib/task-workflow";
 import { Modal } from "./modal";
 
 export function WeeklyRoutineModal({
@@ -17,6 +19,8 @@ export function WeeklyRoutineModal({
   onNextWeek,
   onClose,
   onPlanWeek,
+  onReviewFinish,
+  onTaskDecision,
 }: {
   activity: Activity;
   scheduled?: boolean;
@@ -31,6 +35,8 @@ export function WeeklyRoutineModal({
   onNextWeek: () => void;
   onClose: () => void;
   onPlanWeek: () => void;
+  onReviewFinish: (ids: string[]) => void;
+  onTaskDecision: (id: string, decision: TaskDecision) => void;
 }) {
   const start = activity.routine === "week-start";
   const reflection = data.reflections[week] ?? {
@@ -84,6 +90,30 @@ export function WeeklyRoutineModal({
         <p className="muted" role="status">
           {storageLabel}
         </p>
+        {!start && (
+          <WeekReview
+            data={data}
+            week={week}
+            onFinish={onReviewFinish}
+            onDecision={onTaskDecision}
+          />
+        )}
+        {start && data.reflections[addDays(week, -7)]?.next && (
+          <section className="previous-week-summary">
+            <h3>Från förra veckans fredagscheck</h3>
+            <p className="career-notes">
+              {data.reflections[addDays(week, -7)].next}
+            </p>
+          </section>
+        )}
+        {start && data.reflections[addDays(week, -7)]?.reviewSummary && (
+          <details>
+            <summary>Förra veckans sparade resultat</summary>
+            <p className="career-notes">
+              {data.reflections[addDays(week, -7)].reviewSummary}
+            </p>
+          </details>
+        )}
         {start ? (
           <>
             <p>
@@ -126,37 +156,41 @@ export function WeeklyRoutineModal({
           className="routine-goals"
           aria-label={start ? "Veckans mål" : "Måluppfyllelse"}
         >
-          <h3>{start ? "Veckans mål" : "Måluppfyllelse"}</h3>
-          <p>Avbockade uppgifter visar genomförandet för respektive mål.</p>
-          {goals.map((goal) => {
-            const tasks = data.tasks.filter((task) => task.goalId === goal.id);
-            const done = tasks.filter((task) => task.done).length;
-            return (
-              <div className="routine-goal" key={goal.id}>
-                <strong>{goal.title}</strong>
-                {goal.description && <p>{goal.description}</p>}
-                <span>
-                  {tasks.length
-                    ? `${done} av ${tasks.length} uppgifter · ${Math.round((done / tasks.length) * 100)} %`
-                    : "Inga uppgifter kopplade – bedöm målet i anteckningarna."}
-                </span>
-                {tasks.map((task) => (
-                  <label className="routine-task" key={task.id}>
-                    <input
-                      type="checkbox"
-                      checked={task.done}
-                      onChange={() => onTask(task.id)}
-                    />
-                    <span>{task.title}</span>
-                  </label>
-                ))}
-              </div>
-            );
-          })}
-          {!goals.length && <p>Inga veckomål finns för den här veckan.</p>}
-          <button className="button secondary" onClick={onGoals}>
-            Öppna mål och aktiviteter
-          </button>
+          <details open={start}>
+            <summary>{start ? "Veckans mål" : "Måluppfyllelse"}</summary>
+            <p>Avbockade uppgifter visar genomförandet för respektive mål.</p>
+            {goals.map((goal) => {
+              const tasks = data.tasks.filter(
+                (task) => task.goalId === goal.id,
+              );
+              const done = tasks.filter((task) => task.done).length;
+              return (
+                <div className="routine-goal" key={goal.id}>
+                  <strong>{goal.title}</strong>
+                  {goal.description && <p>{goal.description}</p>}
+                  <span>
+                    {tasks.length
+                      ? `${done} av ${tasks.length} uppgifter · ${Math.round((done / tasks.length) * 100)} %`
+                      : "Inga uppgifter kopplade – bedöm målet i anteckningarna."}
+                  </span>
+                  {tasks.map((task) => (
+                    <label className="routine-task" key={task.id}>
+                      <input
+                        type="checkbox"
+                        checked={task.done}
+                        onChange={() => onTask(task.id)}
+                      />
+                      <span>{task.title}</span>
+                    </label>
+                  ))}
+                </div>
+              );
+            })}
+            {!goals.length && <p>Inga veckomål finns för den här veckan.</p>}
+            <button className="button secondary" onClick={onGoals}>
+              Öppna mål och uppgifter
+            </button>
+          </details>
         </section>
         {!start && (
           <>
@@ -199,12 +233,16 @@ export function WeeklyRoutineModal({
               Ändra tid eller pass
             </button>
           )}
-          {!scheduled ? (
-            <button className="button primary" onClick={onClose}>
+          {!start ? (
+            <button className="button secondary" onClick={onClose}>
+              Stäng checken
+            </button>
+          ) : !scheduled ? (
+            <button className="button secondary" onClick={onClose}>
               Klar
             </button>
           ) : activity.status !== "done" ? (
-            <button className="button primary" onClick={onComplete}>
+            <button className="button secondary" onClick={onComplete}>
               Markera som genomförd
             </button>
           ) : (

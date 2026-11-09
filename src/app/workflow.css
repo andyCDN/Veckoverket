@@ -326,3 +326,155 @@
     display: none;
   }
 }
+
+.week-action-queue {
+  margin: 0 0 18px;
+  padding: 14px;
+  border: 1.5px solid var(--blue);
+  background: white;
+}
+.week-action-queue header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
+}
+.week-action-queue h2 {
+  margin: 0;
+  font: 400 24px/1.3 var(--display);
+  text-transform: uppercase;
+}
+.week-action-queue h3 {
+  font: 700 14px var(--body);
+}
+.week-action-queue small,
+.week-action-queue header > span {
+  font: 10px/1.5 var(--mono);
+}
+.week-action-queue ul {
+  list-style: none;
+  padding: 0;
+}
+.week-action-queue li {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-top: 1px dashed #1633a633;
+}
+.week-action-queue li > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.week-action-queue strong {
+  font-size: 12px;
+}
+.week-action-queue .button {
+  flex-shrink: 0;
+  min-height: 40px;
+  font-size: 10px;
+}
+.planning-main-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+.planning-main-actions summary {
+  cursor: pointer;
+  font: 700 10px var(--mono);
+  min-height: 36px;
+  padding-block: 10px;
+}
+.planning-main-actions details[open] {
+  position: relative;
+}
+.planning-main-actions details[open] > button {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 30;
+  min-width: 150px;
+  background: var(--paper-light);
+}
+.task-resolution details summary,
+.plan-info summary,
+.week-review-flow summary {
+  min-height: 40px;
+  padding-block: 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.task-resolution button {
+  min-height: 44px;
+}
+.week-review-flow {
+  padding: 12px;
+  border: 1.5px solid var(--blue);
+  background: var(--paper);
+}
+.week-review-flow > ul {
+  list-style: none;
+  padding: 0;
+}
+.week-review-flow > ul > li {
+  padding: 12px 0;
+  border-top: 1px dashed #1633a633;
+}
+.week-review-flow li label {
+  display: flex;
+  flex-direction: row;
+  align-items: start;
+  gap: 10px;
+  font-size: 13px;
+}
+.week-review-flow li input {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.plan-info {
+  border-top: 1px solid #1633a633;
+  margin-top: 18px;
+  padding: 5px 10px;
+  background: var(--paper);
+}
+.plan-info p {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.plan-errors {
+  padding: 14px;
+  border: 2px solid var(--red);
+  background: white;
+}
+.show-closed-tasks {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  margin-block: 12px;
+}
+.show-closed-tasks input {
+  width: 18px;
+  height: 18px;
+}
+@media (max-width: 600px) {
+  .planning-main-actions {
+    justify-content: space-between;
+  }
+  .week-action-queue {
+    padding: 10px;
+  }
+}
+@media print {
+  .week-action-queue,
+  .plan-notices {
+    display: none;
+  }
+}

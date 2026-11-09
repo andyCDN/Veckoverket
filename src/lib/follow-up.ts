@@ -35,6 +35,13 @@ export function followUps(data: AppData): FollowUp[] {
   return all
     .filter(({ activity }) => {
       if (activity.status !== "skipped" || !canFollowUp(activity)) return false;
+      if (activity.taskId && data.tasks.some((t) => t.id === activity.taskId))
+        return false;
+      if (
+        activity.habitId &&
+        data.habits?.some((h) => h.id === activity.habitId)
+      )
+        return false;
       const parent =
         activity.followUpOf &&
         byKey.get(

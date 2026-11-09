@@ -289,7 +289,7 @@ test("ett öppet formulär skyddas mot bakgrundsändringar och kontrolleras vid 
     "Min pågående redigering",
   );
   await page
-    .getByRole("button", { name: "Spara aktivitet", exact: true })
+    .getByRole("button", { name: "Spara pass", exact: true })
     .click();
   await status(page, "Olika versioner på enheterna");
   expect(f.documents.get(userA)!.data.weeks[week].activities[0].title).toBe(

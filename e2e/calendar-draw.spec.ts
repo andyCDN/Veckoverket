@@ -67,7 +67,7 @@ test("drar direkt i veckokalenderns tomma yta med korrekt tid på en utvidgad ti
   await expect(dialog.getByLabel("Slut", { exact: true })).toHaveValue("11:45");
   await dialog.getByLabel("Namn", { exact: true }).fill("Direktmarkerat pass");
   await dialog
-    .getByRole("button", { name: "Spara aktivitet", exact: true })
+    .getByRole("button", { name: "Spara pass", exact: true })
     .click();
   const saved = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("veckoverket.workspace.v1")!),

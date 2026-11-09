@@ -218,9 +218,10 @@ for (const width of [1440, 390])
       name: "Veckans mål i kalendern",
       exact: true,
     });
-    await goals
-      .getByRole("checkbox", { name: "Anpassa ansökan A", exact: true })
-      .check();
+    await page
+      .getByRole("dialog", { name: "Nästa steg efter passet", exact: true })
+      .getByRole("button", { name: "Uppgiften är klar", exact: true })
+      .click();
     expect(
       (await stored()).tasks.find((t: { id: string }) => t.id === "t1").done,
     ).toBe(true);
@@ -326,7 +327,7 @@ test("nytt veckomål, konkreta uppgifter och en tidsatt vana skapas utan att lä
     .getByRole("button", { name: "Stäng dialog", exact: true })
     .click();
   await goals
-    .getByRole("button", { name: "Föreslå pass för veckans mål", exact: true })
+    .getByRole("button", { name: "Planera veckans arbete", exact: true })
     .click();
   await dialog
     .getByRole("button", { name: "Visa planeringsförslag", exact: true })

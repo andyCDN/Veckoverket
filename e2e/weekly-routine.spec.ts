@@ -44,7 +44,9 @@ test("måndagsplanering och fredagsövning sparas, följer rätt vecka och går 
     .getByLabel(/^Sammanfattning av veckan/)
     .fill("Utbildningsmodulerna klara.");
   await page.getByLabel(/^Det som återstår/).fill("En ansökan återstår.");
+  await dialog.getByText("Måluppfyllelse", { exact: true }).click();
   await dialog
+    .getByRole("region", { name: "Måluppfyllelse", exact: true })
     .getByLabel("Skicka två genomarbetade ansökningar", { exact: true })
     .check();
   await expect(
@@ -70,11 +72,14 @@ test("måndagsplanering och fredagsövning sparas, följer rätt vecka och går 
   );
   await page.screenshot({ path: "test-results/friday-exercise-320.png" });
   await page
-    .getByRole("button", { name: "Markera som genomförd", exact: true })
+    .getByRole("button", { name: "Avsluta veckan", exact: true })
     .click();
   await expect(
     review.getByRole("checkbox", { name: /^Genomförd:/ }),
   ).toBeChecked();
+  await page
+    .getByRole("button", { name: "Stäng checken", exact: true })
+    .click();
   await page.reload();
   await openToday(page);
   await page.getByRole("button", { name: /^Visa fredag/ }).click();

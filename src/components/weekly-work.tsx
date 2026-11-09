@@ -11,6 +11,9 @@ import {
 } from "@/lib/date";
 import { habitPlanned, effectiveHabitChecks, habitWeek } from "@/lib/habits";
 import {
+  weeklyWorkOptions,
+  tasksInWeek,
+  type WorkOption,
   previewWeeklyWork,
   weeklyGoals,
   workBookings,
@@ -18,6 +21,7 @@ import {
   type WorkPreview,
 } from "@/lib/weekly-work";
 import { plannedDays } from "@/lib/planner";
+import { taskStage } from "@/lib/task-workflow";
 import { Modal } from "./modal";
 
 export function WeeklyGoals({
@@ -26,6 +30,7 @@ export function WeeklyGoals({
   onNew,
   onAddTask,
   onToggle,
+  onReview,
   onPlan,
   onOpen,
 }: {
@@ -34,10 +39,37 @@ export function WeeklyGoals({
   onNew: () => void;
   onAddTask: (goalId: string, title: string) => void;
   onToggle: (id: string) => void;
+  onReview: (id: string) => void;
   onPlan: (taskId?: string) => void;
   onOpen: (a: Activity) => void;
 }) {
-  const goals = weeklyGoals(data, week);
+  const goals = weeklyGoals(data, week).sort((a, b) => {
+    const rank = (id: string) => {
+      const tasks = tasksInWeek(data, week).filter((t) => t.goalId === id);
+      if (!tasks.length) return 1;
+      return Math.min(
+        ...tasks.map((t) => {
+          const stage = taskStage(data, t);
+          return stage === "followup" ||
+            (stage === "waiting" &&
+              t.reviewOn &&
+              t.reviewOn <= planningBoundary().date)
+            ? 0
+            : stage === "unplanned"
+              ? 1
+              : stage === "booked"
+                ? 2
+                : stage === "waiting"
+                  ? 3
+                  : 4;
+        }),
+      );
+    };
+    return rank(a.id) - rank(b.id);
+  });
+  const [showAll, setShowAll] = useState(false);
+  const [showClosed, setShowClosed] = useState(false);
+  const [changed, setChanged] = useState<string[]>([]);
   return (
     <section className="weekly-goal-panel" aria-label="Veckans mål i kalendern">
       <header>
@@ -55,11 +87,16 @@ export function WeeklyGoals({
           uppgifter.
         </p>
       )}
-      {goals.map((goal) => {
-        const tasks = data.tasks.filter((t) => t.goalId === goal.id);
+      {(showAll ? goals : goals.slice(0, 2)).map((goal) => {
+        const tasks = tasksInWeek(data, week).filter(
+          (t) => t.goalId === goal.id,
+        );
         return (
           <article key={goal.id}>
             <h3>{goal.title}</h3>
+            {goal.week !== week && (
+              <small>Ursprungligt mål: vecka {weekNumber(goal.week)}</small>
+            )}
             <p>
               {tasks.filter((t) => t.done).length} av {tasks.length} uppgifter
               klara
@@ -68,44 +105,64 @@ export function WeeklyGoals({
               <p>Lägg till en konkret uppgift för att planera målet.</p>
             )}
             <ul>
-              {tasks.map((task) => {
-                const bookings = workBookings(data, "task", task.id);
-                const booking =
-                  bookings.find((a) => a.status === "planned") ??
-                  bookings.at(-1);
-                return (
-                  <li key={task.id}>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={task.done}
-                        onChange={() => onToggle(task.id)}
-                      />
-                      <span>{task.title}</span>
-                    </label>
-                    {booking ? (
-                      <button
-                        className="text-button"
-                        onClick={() => onOpen(booking)}
-                      >
-                        {booking.status === "done" && !task.done
-                          ? "Pass genomfört · bekräfta uppgiften"
-                          : "Öppna bokat pass"}{" "}
-                        · {fullDate(booking.date)}
-                      </button>
-                    ) : (
-                      !task.done && (
-                        <button
-                          className="text-button"
-                          onClick={() => onPlan(task.id)}
-                        >
-                          Behöver planeras
-                        </button>
-                      )
-                    )}
-                  </li>
-                );
-              })}
+              {tasks
+                .filter(
+                  (task) =>
+                    showClosed ||
+                    changed.includes(task.id) ||
+                    (!task.done && task.state !== "dropped"),
+                )
+                .map((task) => {
+                  const bookings = workBookings(data, "task", task.id);
+                  const booking =
+                    bookings.find((a) => a.status === "planned") ??
+                    bookings.at(-1);
+                  return (
+                    <li key={task.id}>
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={task.done}
+                          onChange={() => {
+                            setChanged((old) => [...old, task.id]);
+                            onToggle(task.id);
+                          }}
+                        />
+                        <span>{task.title}</span>
+                      </label>
+                      {task.state === "waiting" && (
+                        <small>
+                          Väntar på {task.waitingFor} · följ upp {task.reviewOn}
+                        </small>
+                      )}
+                      {!task.done &&
+                        task.state !== "dropped" &&
+                        (taskStage(data, task) === "followup" ||
+                        task.state === "waiting" ? (
+                          <button
+                            className="text-button"
+                            onClick={() => onReview(task.id)}
+                          >
+                            Följ upp
+                          </button>
+                        ) : booking && !task.needsPlanning ? (
+                          <button
+                            className="text-button"
+                            onClick={() => onOpen(booking)}
+                          >
+                            Öppna pass · {fullDate(booking.date)}
+                          </button>
+                        ) : (
+                          <button
+                            className="text-button"
+                            onClick={() => onPlan(task.id)}
+                          >
+                            Planera
+                          </button>
+                        ))}
+                    </li>
+                  );
+                })}
             </ul>
             <details open={!tasks.length} className="weekly-add-task">
               <summary>Lägg till uppgift</summary>
@@ -137,97 +194,38 @@ export function WeeklyGoals({
           </article>
         );
       })}
+      {goals.length > 2 && (
+        <button className="text-button" onClick={() => setShowAll(!showAll)}>
+          {showAll ? "Visa färre mål" : `Visa alla ${goals.length} mål`}
+        </button>
+      )}
       {goals.some((g) =>
-        data.tasks.some((t) => t.goalId === g.id && !t.done),
+        data.tasks.some(
+          (t) => t.goalId === g.id && (t.done || t.state === "dropped"),
+        ),
       ) && (
-        <button className="button primary" onClick={() => onPlan()}>
-          Föreslå pass för veckans mål
+        <label className="show-closed-tasks">
+          <input
+            type="checkbox"
+            checked={showClosed}
+            onChange={(e) => setShowClosed(e.target.checked)}
+          />
+          Visa klara och släppta uppgifter
+        </label>
+      )}
+      {goals.some((g) =>
+        data.tasks.some(
+          (t) => t.goalId === g.id && taskStage(data, t) === "unplanned",
+        ),
+      ) && (
+        <button className="button secondary" onClick={() => onPlan()}>
+          Planera veckans arbete
         </button>
       )}
     </section>
   );
 }
 
-type Option = {
-  key: string;
-  label: string;
-  request: WorkRequest;
-  selected: boolean;
-};
-function planningOptions(
-  data: AppData,
-  week: string,
-  scope?: { taskId?: string; habitId?: string },
-): Option[] {
-  const boundary = planningBoundary();
-  const goals = weeklyGoals(data, week);
-  const options: Option[] = [];
-  for (const goal of goals)
-    for (const task of data.tasks.filter(
-      (t) =>
-        t.goalId === goal.id && !t.done && (!t.date || monday(t.date) === week),
-    )) {
-      if (workBookings(data, "task", task.id).length) continue;
-      options.push({
-        key: `task:${task.id}`,
-        label: `${goal.title} · ${task.title}`,
-        request: {
-          kind: "task",
-          id: task.id,
-          date: task.date && task.date >= boundary.date ? task.date : undefined,
-          minutes: Math.min(
-            240,
-            Math.max(15, Math.ceil((task.estimatedMinutes ?? 60) / 15) * 15),
-          ),
-        },
-        selected:
-          !scope?.habitId && (!scope?.taskId || scope.taskId === task.id),
-      });
-    }
-  const rules = data.weeks[week]?.rules ?? data.settings;
-  for (const habit of data.habits ?? []) {
-    if (habit.paused || !habit.minutes) continue;
-    const bookings = workBookings(data, "habit", habit.id).filter(
-      (a) => monday(a.date) === week,
-    );
-    const target =
-      habit.schedule.kind === "days"
-        ? 7
-        : Math.max(
-            0,
-            habitWeek(habit, week, data).target -
-              new Set([
-                ...effectiveHabitChecks(habit, data).filter(
-                  (d) => monday(d) === week,
-                ),
-                ...bookings.map((a) => a.date),
-              ]).size,
-          );
-    let selectedCount = 0;
-    for (let day = 0; day < 7; day++) {
-      const date = addDays(week, day);
-      if (
-        date < boundary.date ||
-        !plannedDays(rules).includes(day) ||
-        !habitPlanned(habit, date) ||
-        effectiveHabitChecks(habit, data).includes(date) ||
-        bookings.some((a) => a.date === date)
-      )
-        continue;
-      const selected =
-        !scope?.taskId &&
-        (!scope?.habitId || scope.habitId === habit.id) &&
-        selectedCount++ < target;
-      options.push({
-        key: `habit:${habit.id}:${date}`,
-        label: `${habit.title} · ${fullDate(date)}`,
-        request: { kind: "habit", id: habit.id, date, minutes: habit.minutes },
-        selected,
-      });
-    }
-  }
-  return options;
-}
 export function WeeklyWorkPlanner({
   data,
   week,
@@ -242,14 +240,14 @@ export function WeeklyWorkPlanner({
   onApply: (next: AppData, base: AppData) => boolean;
 }) {
   const [options, setOptions] = useState(() =>
-    planningOptions(data, week, scope),
+    weeklyWorkOptions(data, week, scope),
   );
   const [preview, setPreview] = useState<{
     base: AppData;
     result: WorkPreview;
   } | null>(null);
   const [error, setError] = useState("");
-  const change = (key: string, patch: Partial<Option>) => {
+  const change = (key: string, patch: Partial<WorkOption>) => {
     setOptions((old) =>
       old.map((o) => (o.key === key ? { ...o, ...patch } : o)),
     );

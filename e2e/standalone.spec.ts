@@ -86,7 +86,7 @@ for (const platform of ["ios", "chromium"] as const) {
         path: `test-results/installed-${platform}-${width}.png`,
       });
       const add = page.getByRole("button", {
-        name: /^Lägg till aktivitet torsdag/,
+        name: /^Lägg till pass torsdag/,
       });
       await add.evaluate((el) => el.scrollIntoView({ block: "center" }));
       const target = (await add.boundingBox())!;
@@ -154,7 +154,7 @@ for (const platform of ["ios", "chromium"] as const) {
     expect(dialog.y + dialog.height).toBeLessThanOrEqual(407);
     await expect(name).toHaveValue("Installerad mobilplan");
     await page
-      .getByRole("button", { name: "Spara aktivitet", exact: true })
+      .getByRole("button", { name: "Spara pass", exact: true })
       .click();
     await expect(page.getByRole("dialog")).not.toBeVisible();
     await page.reload();

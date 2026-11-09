@@ -65,7 +65,7 @@ test("redigering, status, egna aktiviteter, kategorier, mål, uppgifter och refl
     .getByRole("combobox", { name: "Status", exact: true })
     .selectOption("done");
   await page
-    .getByRole("button", { name: "Spara aktivitet", exact: true })
+    .getByRole("button", { name: "Spara pass", exact: true })
     .click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await expect(
@@ -79,7 +79,7 @@ test("redigering, status, egna aktiviteter, kategorier, mål, uppgifter och refl
   const date = await page.getByLabel("Datum", { exact: true }).inputValue();
   const start = await page.getByLabel("Start", { exact: true }).inputValue();
   await page.getByRole("button", { name: "Ta bort", exact: true }).click();
-  await page.getByRole("button", { name: "Ny aktivitet", exact: true }).click();
+  await page.getByRole("button", { name: "Nytt pass", exact: true }).click();
   await page.getByLabel("Namn", { exact: true }).fill("Mitt eget projekt");
   await page.getByLabel("Datum", { exact: true }).fill(date);
   await page.getByLabel("Start", { exact: true }).fill(start);
@@ -88,13 +88,13 @@ test("redigering, status, egna aktiviteter, kategorier, mål, uppgifter och refl
     .getByRole("combobox", { name: "Återkommer", exact: true })
     .selectOption("weekly");
   await page
-    .getByRole("button", { name: "Spara aktivitet", exact: true })
+    .getByRole("button", { name: "Spara pass", exact: true })
     .click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await expect(
     page.locator(".calendar-block").filter({ hasText: "Mitt eget projekt" }),
   ).toBeVisible();
-  await nav(page, "Mål & aktiviteter");
+  await nav(page, "Mål & uppgifter");
   await page.getByRole("button", { name: "Nytt mål", exact: true }).click();
   await page.getByLabel("Mål", { exact: true }).fill("Lära mig fotografera");
   await page
@@ -103,7 +103,7 @@ test("redigering, status, egna aktiviteter, kategorier, mål, uppgifter och refl
   await page.getByRole("button", { name: "Skapa mål", exact: true }).click();
   await page.getByLabel("Ta en bild", { exact: true }).check();
   await page.reload();
-  await nav(page, "Mål & aktiviteter");
+  await nav(page, "Mål & uppgifter");
   await expect(page.getByLabel("Ta en bild", { exact: true })).toBeChecked();
   await nav(page, "Veckoreflektion");
   await page
@@ -157,7 +157,7 @@ test("överlappning nekas i editorn och låst tid kan inte dras", async ({
   await page.getByLabel("Start", { exact: true }).fill("12:00");
   await page.getByLabel("Slut", { exact: true }).fill("13:00");
   await page
-    .getByRole("button", { name: "Spara aktivitet", exact: true })
+    .getByRole("button", { name: "Spara pass", exact: true })
     .click();
   await expect(page.locator(".inline-error")).toContainText("överlappar");
   await page.getByRole("button", { name: "Stäng dialog", exact: true }).click();
@@ -193,9 +193,9 @@ test("mobil dagsagenda, navigation, redigering och ingen sidscroll", async ({
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await page.locator(".calendar-tools-menu > summary").click();
   await page
-    .getByRole("button", { name: "Filtrera aktiviteter", exact: true })
+    .getByRole("button", { name: "Filtrera pass", exact: true })
     .click();
-  const filters = page.getByRole("group", { name: "Filtrera aktiviteter" });
+  const filters = page.getByRole("group", { name: "Filtrera pass" });
   await expect(filters).toBeVisible();
   await filters.getByRole("button", { name: "Musik", exact: true }).click();
   await expect(page.locator(".day-shell:visible .day-empty")).toHaveText(
@@ -298,7 +298,7 @@ test("tillgänglighet i huvudvyer och aktivitetsdialog", async ({ page }) => {
   await expect(page.locator(".calendar-grid")).toBeVisible();
   for (const name of [
     "Vecka",
-    "Mål & aktiviteter",
+    "Mål & uppgifter",
     "Veckoreflektion",
     "Inställningar",
     "Vecka",
@@ -345,19 +345,19 @@ test("kategorifilter ändrar bara visningen och utskrift visar hela veckan", asy
     week = Object.keys(before.weeks)[0],
     total = before.weeks[week].activities.length;
   await page.getByText("Filtrera pass", { exact: true }).click();
-  const filters = page.getByRole("group", { name: "Filtrera aktiviteter" });
+  const filters = page.getByRole("group", { name: "Filtrera pass" });
   await filters.getByRole("button", { name: "Musik", exact: true }).click();
   await expect(page.locator(".calendar-block:visible")).toHaveCount(2);
   for (const a of await page.locator(".calendar-block:visible").all())
     await expect(a.locator(".block-category")).toHaveText("Musik");
   expect(await stored(page)).toEqual(before);
   // A filtered-out job block still occupies its time in the scheduling rules.
-  await page.getByRole("button", { name: "Ny aktivitet", exact: true }).click();
+  await page.getByRole("button", { name: "Nytt pass", exact: true }).click();
   await page
     .getByLabel("Namn", { exact: true })
     .fill("Tid som redan är upptagen");
   await page
-    .getByRole("button", { name: "Spara aktivitet", exact: true })
+    .getByRole("button", { name: "Spara pass", exact: true })
     .click();
   await expect(page.locator(".inline-error")).toContainText("överlappar");
   await page.getByRole("button", { name: "Stäng dialog", exact: true }).click();
@@ -599,7 +599,7 @@ test("v2.5: aktiv dag, exakta datum, veckobyte och nytt pass på vald dag", asyn
       "Tisdag27 oktober 2026",
     );
     await page
-      .getByRole("button", { name: "Ny aktivitet", exact: true })
+      .getByRole("button", { name: "Nytt pass", exact: true })
       .click();
     await expect(page.getByLabel("Datum", { exact: true })).toHaveValue(
       "2026-10-27",
@@ -670,7 +670,7 @@ test("v2.5: missade pass, ombokning, ändrad längd, borttagning och uppföljnin
     time(510 + original.end - original.start),
   );
   await page
-    .getByRole("button", { name: "Spara aktivitet", exact: true })
+    .getByRole("button", { name: "Spara pass", exact: true })
     .click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await expect(panel.getByRole("status")).toHaveText("0 h kvar att boka om");
@@ -693,7 +693,7 @@ test("v2.5: missade pass, ombokning, ändrad längd, borttagning och uppföljnin
   await panel.getByRole("button", { name: /^Ersättningspass:/ }).click();
   await page.getByLabel("Slut", { exact: true }).fill("10:30");
   await page
-    .getByRole("button", { name: "Spara aktivitet", exact: true })
+    .getByRole("button", { name: "Spara pass", exact: true })
     .click();
   await expect(panel.getByRole("status")).toHaveText(
     `${hours(original.end - original.start - 120)} kvar att boka om`,
@@ -718,7 +718,7 @@ test("v2.5: missade pass, ombokning, ändrad längd, borttagning och uppföljnin
     .click();
   await panel.getByRole("button", { name: "Boka om", exact: true }).click();
   await page
-    .getByRole("button", { name: "Spara aktivitet", exact: true })
+    .getByRole("button", { name: "Spara pass", exact: true })
     .click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   after = await stored(page);

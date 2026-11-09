@@ -1,4 +1,4 @@
-import { weeklyGoals } from "./weekly-work";
+import { weeklyGoals, tasksInWeek } from "./weekly-work";
 import { addDays, today } from "./date";
 import type { Activity, AppData } from "./types";
 
@@ -25,7 +25,7 @@ export function studioWeek(
       .filter((goal) => goal.categoryId !== "family")
       .map((goal) => goal.id),
   );
-  const tasks = data.tasks.filter(
+  const tasks = tasksInWeek(data, week).filter(
     (task) =>
       professionalGoalIds.has(task.goalId) &&
       (professional.some((a) => a.taskId === task.id) ||

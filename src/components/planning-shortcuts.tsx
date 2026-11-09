@@ -11,6 +11,7 @@ export function PlanningShortcuts({
   settings,
   activities,
   onCheck,
+  onPlan,
   onCreate,
   onEditing,
 }: {
@@ -18,6 +19,7 @@ export function PlanningShortcuts({
   activeDay: number;
   settings: Settings;
   activities: Activity[];
+  onPlan: () => void;
   onCheck: (kind: "week-start" | "week-review") => void;
   onCreate: (date: string, start: number, end: number) => void;
   onEditing: (editing: boolean) => void;
@@ -47,9 +49,20 @@ export function PlanningShortcuts({
             Fredagscheck
           </button>
         </div>
-        <button className="button primary" onClick={() => setRangeOpen(true)}>
-          Dra och boka
-        </button>
+        <div className="planning-main-actions">
+          <button className="button primary" onClick={onPlan}>
+            Planera veckan
+          </button>
+          <details>
+            <summary>Fler alternativ</summary>
+            <button
+              className="button secondary"
+              onClick={() => setRangeOpen(true)}
+            >
+              Dra och boka
+            </button>
+          </details>
+        </div>
       </section>
       {rangeOpen && (
         <RangeBooking

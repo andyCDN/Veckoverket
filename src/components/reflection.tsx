@@ -125,7 +125,7 @@ export function ReflectionView({
             faktiska tid.
           </p>
           <div className="comparison-head">
-            <span>Livsområde</span>
+            <span>Område</span>
             <span>Plan / gjort</span>
           </div>
           {orderedCategories(data.categories).map((c) => (

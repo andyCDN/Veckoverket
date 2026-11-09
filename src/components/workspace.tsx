@@ -64,6 +64,9 @@ import { DeadlinePlanning } from "./deadline-planning";
 import { DayFocus } from "./day-focus";
 import { Calendar } from "./calendar";
 import { PlanningShortcuts } from "./planning-shortcuts";
+import { PlanningQueue, TaskResolution, PlanNotices } from "./week-flow";
+import { decideTask, reviewWeek } from "@/lib/task-workflow";
+import { workBookings } from "@/lib/weekly-work";
 import { WeeklyGoals, WeeklyWorkPlanner } from "./weekly-work";
 import { HabitTracker } from "./habit-tracker";
 import { toggleHabit, saveHabit, pauseHabit } from "@/lib/habits";
@@ -107,7 +110,7 @@ const NAV = [
   { id: "planner", label: "Vecka", icon: CalendarDays },
   { id: "career", label: "Jobb", icon: BookOpen },
   { id: "network", label: "Nätverk", icon: Users },
-  { id: "goals", label: "Mål & aktiviteter", icon: Target },
+  { id: "goals", label: "Mål & uppgifter", icon: Target },
   { id: "reflection", label: "Veckoreflektion", icon: BookOpen },
   { id: "settings", label: "Inställningar", icon: Settings2 },
 ] as const;
@@ -164,6 +167,7 @@ export function Workspace() {
     blockedSave,
     setBlockedSave,
   } = useWorkspaceStorage(newWorkspace);
+  const [resolutionTaskId, setResolutionTaskId] = useState<string | null>(null);
   const [workPlanning, setWorkPlanning] = useState<{
     taskId?: string;
     habitId?: string;
@@ -244,7 +248,8 @@ export function Workspace() {
         careerEditing ||
         habitEditing ||
         planningEditing ||
-        workPlanning,
+        workPlanning ||
+        resolutionTaskId,
       ),
     onSnapshot: autoImportIcal,
   });
@@ -264,6 +269,7 @@ export function Workspace() {
     !habitEditing &&
     !planningEditing &&
     !workPlanning &&
+    !resolutionTaskId &&
     !account &&
     !googleOpen &&
     !resetOpen &&
@@ -321,6 +327,7 @@ export function Workspace() {
     setNewGoal(false);
     setStudioTaskDate(null);
     setWorkPlanning(null);
+    setResolutionTaskId(null);
     setGenerator(false);
     setAccount(false);
     setHelp(false);
@@ -347,7 +354,8 @@ export function Workspace() {
         careerEditing ||
         habitEditing ||
         planningEditing ||
-        workPlanning,
+        workPlanning ||
+        resolutionTaskId,
       ),
     );
     return () => setEditing(false);
@@ -364,6 +372,7 @@ export function Workspace() {
     habitEditing,
     planningEditing,
     workPlanning,
+    resolutionTaskId,
     setEditing,
   ]);
   const navigate = (v: View) => {
@@ -411,7 +420,7 @@ export function Workspace() {
   function updatePlan(plan: WeekPlan) {
     setData(
       (d) => (d ? { ...d, weeks: { ...d.weeks, [plan.week]: plan } } : d),
-      { undoLabel: "aktivitetsstatus" },
+      { undoLabel: "passstatus" },
     );
   }
   if (configured && authReady && !user)
@@ -552,6 +561,21 @@ export function Workspace() {
           description: "",
         }
       : undefined);
+  function setActivityStatus(activity: Activity, status: Activity["status"]) {
+    updatePlan({
+      ...plan,
+      activities: activities.map((a) =>
+        a.id === activity.id ? { ...a, status } : a,
+      ),
+    });
+    if (
+      status === "done" &&
+      activity.status !== "done" &&
+      activity.taskId &&
+      data!.tasks.some((t) => t.id === activity.taskId && !t.done)
+    )
+      setResolutionTaskId(activity.taskId);
+  }
   const openActivity = (a: Activity) =>
     a.routine ? setRoutineId(a.id) : setEditor({ activity: a, date: a.date });
   const currentWeek = week === monday(today());
@@ -638,7 +662,16 @@ export function Workspace() {
         ? {
             ...d,
             tasks: d.tasks.map((t) =>
-              t.id === id ? { ...t, done: !t.done } : t,
+              t.id === id
+                ? {
+                    ...t,
+                    done: !t.done,
+                    state: "open" as const,
+                    needsPlanning: false,
+                    waitingFor: undefined,
+                    reviewOn: undefined,
+                  }
+                : t,
             ),
           }
         : d,
@@ -707,7 +740,7 @@ export function Workspace() {
       notify(conflict.message);
       return;
     }
-    setData(next, { undoLabel: "flytt av aktivitet" });
+    setData(next, { undoLabel: "flytt av pass" });
     notify("Aktiviteten har flyttats.");
   }
   function saveActivity(
@@ -732,7 +765,7 @@ export function Workspace() {
         a.categoryId !== item.activity.categoryId
       ) {
         notify(
-          "Ombokningen kunde inte sparas. Kontrollera ursprungspassets status och välj samma livsområde.",
+          "Ombokningen kunde inte sparas. Kontrollera ursprungspassets status och välj samma område.",
         );
         return;
       }
@@ -829,15 +862,19 @@ export function Workspace() {
         return;
       }
     }
-    setData(
-      { ...current, weeks, recurring },
-      { undoLabel: "sparad aktivitet" },
-    );
+    setData({ ...current, weeks, recurring }, { undoLabel: "sparat pass" });
     setEditor(null);
+    if (
+      a.taskId &&
+      a.status === "done" &&
+      original?.status !== "done" &&
+      current.tasks.some((t) => t.id === a.taskId && !t.done)
+    )
+      setResolutionTaskId(a.taskId);
     notify(
       recurrence
-        ? "Aktiviteten och veckoregeln är sparade. Nya tillfällen läggs in när en vecka genereras."
-        : "Aktiviteten är sparad.",
+        ? "Passet och veckoregeln är sparade. Nya tillfällen läggs in när en vecka genereras."
+        : "Passet är sparat.",
     );
   }
   function deleteActivity(id: string, series: boolean) {
@@ -876,7 +913,7 @@ export function Workspace() {
     };
     setData(
       a.source !== "generated" ? replanAfterBookings(next, changedWeeks) : next,
-      { undoLabel: "borttagning av aktivitet" },
+      { undoLabel: "borttagning av pass" },
     );
     setEditor(null);
     notify(
@@ -902,7 +939,7 @@ export function Workspace() {
     const error = result.conflicts.find((c) => c.severity === "error");
     if (error) {
       notify(
-        `Veckan kunde inte ändras: ${error.message} Redigera berörd aktivitet först.`,
+        `Veckan kunde inte ändras: ${error.message} Redigera berört pass först.`,
       );
       return;
     }
@@ -1155,7 +1192,7 @@ export function Workspace() {
       onDelete={(id) => {
         if (
           window.confirm(
-            "Ta bort målet och dess uppgifter? Planerade aktiviteter bevaras.",
+            "Ta bort målet och dess uppgifter? Planerade pass bevaras.",
           )
         )
           setData({
@@ -1302,6 +1339,7 @@ export function Workspace() {
                 settings={weekData.settings}
                 activities={activities}
                 onCheck={(kind) => setRoutineId(`check:${kind}`)}
+                onPlan={() => setWorkPlanning({})}
                 onCreate={(date, start, end) => setEditor({ date, start, end })}
                 onEditing={setPlanningEditing}
               />
@@ -1343,6 +1381,7 @@ export function Workspace() {
                       )
                     }
                     onToggle={toggleTask}
+                    onReview={setResolutionTaskId}
                     onPlan={(taskId) => {
                       const task = data.tasks.find((t) => t.id === taskId);
                       if (task?.date && monday(task.date) !== week)
@@ -1383,6 +1422,12 @@ export function Workspace() {
                   />
                 </aside>
                 <div className="planner-calendar">
+                  <PlanningQueue
+                    data={data}
+                    week={week}
+                    onPlan={(scope) => setWorkPlanning(scope)}
+                    onReview={setResolutionTaskId}
+                  />
                   {mobile && calendarMode === "week" ? (
                     <StudioWeek
                       data={data}
@@ -1394,14 +1439,7 @@ export function Workspace() {
                       onWeek={changeWeek}
                       onOpen={openActivity}
                       onStatus={(activity, done) =>
-                        updatePlan({
-                          ...plan,
-                          activities: activities.map((item) =>
-                            item.id === activity.id
-                              ? { ...item, status: done ? "done" : "planned" }
-                              : item,
-                          ),
-                        })
+                        setActivityStatus(activity, done ? "done" : "planned")
                       }
                       onTask={toggleTask}
                       onCreate={(date) =>
@@ -1501,7 +1539,7 @@ export function Workspace() {
                                     <ListFilter size={16} />
                                     {mobileFiltersOpen
                                       ? "Dölj filter"
-                                      : "Filtrera aktiviteter"}
+                                      : "Filtrera pass"}
                                   </button>
                                   {calendarTools}
                                   <AppInstallButton className="text-button" />
@@ -1510,7 +1548,7 @@ export function Workspace() {
                             )}
                             <button
                               className="button primary new-session"
-                              aria-label="Ny aktivitet"
+                              aria-label="Nytt pass"
                               onClick={() =>
                                 setEditor({
                                   date: addDays(week, activeDay),
@@ -1586,14 +1624,7 @@ export function Workspace() {
                               onSwap={(a, target) => {
                                 swap(a.id, target.id);
                               }}
-                              onStatusChange={(activity, status) =>
-                                updatePlan({
-                                  ...plan,
-                                  activities: activities.map((a) =>
-                                    a.id === activity.id ? { ...a, status } : a,
-                                  ),
-                                })
-                              }
+                              onStatusChange={setActivityStatus}
                               onCreate={(date, start, end) =>
                                 setEditor({
                                   date,
@@ -1679,63 +1710,24 @@ export function Workspace() {
                             onSettings={() => navigate("settings")}
                             onEdit={openActivity}
                             onComplete={(activity) => {
-                              updatePlan({
-                                ...plan,
-                                activities: activities.map((a) =>
-                                  a.id === activity.id
-                                    ? { ...a, status: "done" }
-                                    : a,
-                                ),
-                              });
+                              setActivityStatus(activity, "done");
                               notify("Genomförd tid är sparad.");
                             }}
                           />
                         </details>
                       )}
-                      <div
-                        className={`conflicts-panel ${conflicts.length ? "has-conflicts" : ""}`}
-                      >
-                        <div className="conflict-icon">
-                          {conflicts.length ? (
-                            <AlertCircle size={20} />
-                          ) : (
-                            <ShieldCheck size={20} />
-                          )}
-                        </div>
-                        <div>
-                          <h3>
-                            {conflicts.length
-                              ? `${conflicts.length} saker att se över`
-                              : "Inga planeringskonflikter"}
-                          </h3>
-                          {conflicts.length ? (
-                            conflicts.map((c) => (
-                              <div className="conflict-message" key={c.id}>
-                                <strong>{c.message}</strong>
-                                <p>{c.suggestion}</p>
-                              </div>
-                            ))
-                          ) : (
-                            <p>Inga överlappningar eller saknade tidsmål.</p>
-                          )}
-                        </div>
-                        {conflicts.length > 0 && (
-                          <button
-                            className="text-button"
-                            onClick={() => navigate("settings")}
-                          >
-                            Justera veckan
-                            <ArrowRight size={15} />
-                          </button>
-                        )}
-                      </div>
+                      <PlanNotices
+                        conflicts={conflicts}
+                        onSettings={() => navigate("settings")}
+                      />
+
                       {view === "planner" && (
                         <details className="activity-list">
                           <summary>Alla veckans pass</summary>
-                          <h3>Veckans aktiviteter</h3>
+                          <h3>Veckans pass</h3>
                           <p className="muted">
-                            Öppna en aktivitet för att ändra tid, status, mål
-                            eller återkommande regel. Genomförd tid följs upp i
+                            Öppna ett pass för att ändra tid, status, mål eller
+                            återkommande regel. Genomförd tid följs upp i
                             veckoreflektionen.
                           </p>
                           <div className="activity-table">
@@ -2061,6 +2053,40 @@ export function Workspace() {
           onClose={() => setEditor(null)}
         />
       )}
+      {resolutionTaskId &&
+        data.tasks.find((t) => t.id === resolutionTaskId) && (
+          <TaskResolution
+            key={resolutionTaskId}
+            task={data.tasks.find((t) => t.id === resolutionTaskId)!}
+            completed={workBookings(data, "task", resolutionTaskId).some(
+              (a) => a.status === "done",
+            )}
+            onClose={() => setResolutionTaskId(null)}
+            onDecision={(decision) => {
+              setData(
+                (current) =>
+                  current
+                    ? decideTask(current, resolutionTaskId, decision)
+                    : current,
+                { undoLabel: "nästa steg för uppgift" },
+              );
+              const taskId = resolutionTaskId;
+              setResolutionTaskId(null);
+              if (decision.kind === "more") {
+                if (decision.date && monday(decision.date) !== week)
+                  changeWeek(monday(decision.date));
+                setWorkPlanning({ taskId });
+              } else
+                notify(
+                  decision.kind === "done"
+                    ? "Uppgiften är klar."
+                    : decision.kind === "waiting"
+                      ? "Bevakningen är sparad."
+                      : "Uppgiften är släppt.",
+                );
+            }}
+          />
+        )}
       {workPlanning && (
         <WeeklyWorkPlanner
           data={data}
@@ -2115,6 +2141,19 @@ export function Workspace() {
             )
           }
           onTask={toggleTask}
+          onReviewFinish={(ids) =>
+            setData(
+              (current) => (current ? reviewWeek(current, week, ids) : current),
+              { undoLabel: "fredagscheck och nästa vecka" },
+            )
+          }
+          onTaskDecision={(id, decision) =>
+            setData(
+              (current) =>
+                current ? decideTask(current, id, decision) : current,
+              { undoLabel: "uppgiftens nästa steg" },
+            )
+          }
           onComplete={() => {
             updatePlan({
               ...plan,
@@ -2209,8 +2248,8 @@ export function Workspace() {
             </label>
             <p>
               Oredigerade, planerade förslag ersätts. Dina egna, flyttade och
-              redan genomförda aktiviteter bevaras. Låsta åtaganden och
-              återkommande regler ligger till grund för den nya planen.
+              redan genomförda pass bevaras. Låsta åtaganden och återkommande
+              regler ligger till grund för den nya planen.
             </p>
             {automaticDraft && (
               <p>
@@ -2315,26 +2354,38 @@ export function Workspace() {
         <Modal title="Hjälp" onClose={() => setHelp(false)}>
           <div className="stack intro">
             <p>
-              <strong>1. Ange planeringsregler.</strong>
+              <strong>1. Välj veckans resultat.</strong>
               <br />
-              Under inställningar väljer du tider, musikförmiddagar,
-              träningspass och dina livsområden.
+              Skapa mål och konkreta uppgifter i veckovyn. Välj vanor som
+              stödjer veckan och ange tillgänglig tid under Inställningar.
             </p>
             <p>
-              <strong>2. Redigera aktiviteter.</strong>
+              <strong>2. Planera veckan.</strong>
               <br />
-              Klicka på ett pass för att ändra datum och tid. Dra flexibla
-              aktiviteter till en annan dag med samma starttid. Skyddad tid
-              hålls samman och låst tid flyttas aldrig med dra och släpp. Alla
-              tider går också att ändra med tangentbord i formuläret.
+              Använd Behöver planeras eller måndagschecken. Välj uppgifter,
+              tidsbehov och dagar, granska förslaget och lägg in passen. Du kan
+              också dra direkt i veckokalenderns tomma ytor.
             </p>
             <p>
-              <strong>3. Följ upp tid och uppgifter.</strong>
+              <strong>3. Genomför och följ upp.</strong>
               <br />
-              Skapa mål och bocka av konkreta uppgifter. Markera aktiviteter som
-              genomförda för att skilja på planerad och faktisk tid. Reflektera
-              när veckan är slut.
+              Efter ett uppgiftspass väljer du klart, mer tid eller väntar på
+              svar. Fredagschecken sparar resultaten och för valt arbete vidare
+              till nästa vecka.
             </p>
+            <details>
+              <summary>Mål, uppgift, pass och vana</summary>
+              <dl>
+                <dt>Mål</dt>
+                <dd>Det resultat du vill uppnå.</dd>
+                <dt>Uppgift</dt>
+                <dd>En konkret handling som leder mot målet.</dd>
+                <dt>Pass</dt>
+                <dd>Tid du avsätter i kalendern för arbetet.</dd>
+                <dt>Vana</dt>
+                <dd>Ett beteende du vill upprepa regelbundet.</dd>
+              </dl>
+            </details>
             <p>
               {configured
                 ? "Planen sparas automatiskt i ditt konto. Väntande ändringar har en separat kopia på den här enheten och skickas när anslutningen återkommer."

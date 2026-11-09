@@ -80,6 +80,10 @@ export type Task = {
   title: string;
   goalId: string;
   done: boolean;
+  state?: "open" | "waiting" | "dropped";
+  waitingFor?: string;
+  reviewOn?: string;
+  needsPlanning?: boolean;
   estimatedMinutes?: number;
   date?: string;
 };
@@ -92,6 +96,8 @@ export type Reflection = {
   updatedAt: string;
   startPlan?: string;
   goalReview?: string;
+  reviewSummary?: string;
+  reviewRecordedAt?: string;
 };
 export type Settings = {
   days: number[];

@@ -20,13 +20,13 @@ test("automatisk planering synkar bokningar och bevarar historiken i molnkontot"
     .click();
   await status(page, "Sparat i molnet");
   expect(f.documents.get(userA)!.data.settings.autoPlanning).toBe(true);
-  await page.getByRole("button", { name: "Ny aktivitet", exact: true }).click();
+  await page.getByRole("button", { name: "Nytt pass", exact: true }).click();
   await page.getByLabel("Namn", { exact: true }).fill("Bokat fredagsmöte");
   await page.getByLabel("Datum", { exact: true }).fill("2026-10-30");
   await page.getByLabel("Start", { exact: true }).fill("13:00");
   await page.getByLabel("Slut", { exact: true }).fill("13:30");
   await page
-    .getByRole("button", { name: "Spara aktivitet", exact: true })
+    .getByRole("button", { name: "Spara pass", exact: true })
     .click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await status(page, "Sparat i molnet");

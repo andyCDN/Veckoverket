@@ -187,7 +187,7 @@ async function renameFirst(page: Page, title: string) {
   if (await editRoutine.isVisible()) await editRoutine.click();
   await page.getByLabel("Namn", { exact: true }).fill(title);
   await page
-    .getByRole("button", { name: "Spara aktivitet", exact: true })
+    .getByRole("button", { name: "Spara pass", exact: true })
     .click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
 }

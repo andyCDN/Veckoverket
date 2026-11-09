@@ -44,6 +44,7 @@ export function HabitTracker({
   const [current, setCurrent] = useState(today);
   const [draft, setDraft] = useState<HabitDraft | null>(null);
   const [showPaused, setShowPaused] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   useEffect(() => {
     const timer = setInterval(() => setCurrent(today()), 60000);
     return () => clearInterval(timer);
@@ -53,10 +54,24 @@ export function HabitTracker({
     return () => onEditing(false);
   }, [Boolean(draft), onEditing]);
   const dates = Array.from({ length: 7 }, (_, day) => addDays(week, day));
-  const habits = (data.habits ?? []).filter(
+  const eligibleHabits = (data.habits ?? []).filter(
     (h) => h.createdOn <= dates[6] && (!h.paused || showPaused),
   );
-  const dueToday = habits.filter(
+  const sortedHabits = [...eligibleHabits].sort((a, b) => {
+    if (week !== monday(current)) return 0;
+    const rank = (h: Habit) =>
+      h.paused
+        ? 3
+        : habitWeek(h, week, data).percent === 100
+          ? 2
+          : habitPlanned(h, current) &&
+              !effectiveHabitChecks(h, data).includes(current)
+            ? 0
+            : 1;
+    return rank(a) - rank(b);
+  });
+  const habits = showAll ? sortedHabits : sortedHabits.slice(0, 3);
+  const dueToday = eligibleHabits.filter(
     (h) =>
       !h.paused &&
       habitPlanned(h, current) &&
@@ -297,6 +312,13 @@ export function HabitTracker({
           ) : null;
         })}
       </div>
+      {eligibleHabits.length > 3 && (
+        <button className="text-button" onClick={() => setShowAll(!showAll)}>
+          {showAll
+            ? "Visa färre vanor"
+            : `Visa alla ${eligibleHabits.length} vanor`}
+        </button>
+      )}
       <div className="habit-footnote">
         <span>Veckomål i ditt eget tempo</span>
         {(data.habits ?? []).some((h) => h.paused) && (

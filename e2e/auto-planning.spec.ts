@@ -53,13 +53,13 @@ test("automatisk mobilplanering flyttar förslag runt bokningar, sparas och kan 
   const slot = focus.find(
     (a: { categoryId: string }) => a.categoryId === "learning",
   );
-  await page.getByRole("button", { name: "Ny aktivitet", exact: true }).click();
+  await page.getByRole("button", { name: "Nytt pass", exact: true }).click();
   await page.getByLabel("Namn", { exact: true }).fill("Bokat intervjumöte");
   await page.getByLabel("Datum", { exact: true }).fill(slot.date);
   await page.getByLabel("Start", { exact: true }).fill(time(slot.start));
   await page.getByLabel("Slut", { exact: true }).fill(time(slot.end));
   await page
-    .getByRole("button", { name: "Spara aktivitet", exact: true })
+    .getByRole("button", { name: "Spara pass", exact: true })
     .click();
   await expect(dialog).not.toBeVisible();
   const after = await stored();
