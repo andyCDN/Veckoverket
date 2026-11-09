@@ -19,3 +19,9 @@ The default productive-time targets already use all 25 available hours. Adding t
 ## Verification
 
 `npm test` covers scheduling, buffers, protected data, duplicate prevention, historical boundaries, reset workspaces and backup validation. After `npm run build:pages`, `npm run test:pages` exercises the Monday and Friday dialogs at 320 px, note persistence, task completion, accessibility and next-week navigation. `npm run test:cloud` verifies account save and reload using the simulated Supabase service.
+
+### Skapa veckomål i måndagschecken
+
+Skriv ett önskat resultat per rad i Veckans startplan och välj **Ta fram veckomål från startplanen**. Varje rad blir ett redigerbart förslag med område och konkreta uppgifter. Uppgifter kan anges efter `|`, separerade med semikolon; annars används raden som en första uppgift som går att ändra.
+
+**Skapa valda veckomål** sparar målen i den valda veckan och kopplar uppgifterna till målen. Befintliga veckomål med samma namn bevaras utan dubbletter. Fortsätt med **Planera veckans mål och vanor** för att granska kalenderförslaget och boka tid. Inga pass bokas enbart genom att skapa mål.

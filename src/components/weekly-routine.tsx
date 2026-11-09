@@ -3,6 +3,8 @@ import type { Activity, AppData, Reflection } from "@/lib/types";
 import { addDays, fullDate, time, weekNumber } from "@/lib/date";
 import { WeekReview } from "./week-flow";
 import type { TaskDecision } from "@/lib/task-workflow";
+import { MondayGoals } from "./monday-goals";
+import type { MondayGoalDraft } from "@/lib/monday-goals";
 import { Modal } from "./modal";
 
 export function WeeklyRoutineModal({
@@ -18,6 +20,7 @@ export function WeeklyRoutineModal({
   onGoals,
   onNextWeek,
   onClose,
+  onCreateGoals,
   onPlanWeek,
   onReviewFinish,
   onTaskDecision,
@@ -34,6 +37,7 @@ export function WeeklyRoutineModal({
   onGoals: () => void;
   onNextWeek: () => void;
   onClose: () => void;
+  onCreateGoals: (drafts: MondayGoalDraft[]) => number;
   onPlanWeek: () => void;
   onReviewFinish: (ids: string[]) => void;
   onTaskDecision: (id: string, decision: TaskDecision) => void;
@@ -117,13 +121,13 @@ export function WeeklyRoutineModal({
         {start ? (
           <>
             <p>
-              Gå igenom veckans mål och fasta bokningar. Välj uppgifterna som
-              ska få tid i kalendern.
+              Bestäm veckans viktigaste resultat, skapa veckomål och välj sedan
+              vilka uppgifter som ska få tid i kalendern.
             </p>
             {field(
               "startPlan",
               "Veckans startplan",
-              "Skriv de viktigaste uppgifterna, när de ska göras och eventuella hinder.",
+              "Skriv ett önskat resultat per rad. Förslagen går att ändra innan målen skapas.",
             )}
           </>
         ) : (
@@ -139,6 +143,13 @@ export function WeeklyRoutineModal({
               "Vilka uppgifter återstår, och vad behöver bokas om?",
             )}
           </>
+        )}
+        {start && (
+          <MondayGoals
+            data={data}
+            text={reflection.startPlan ?? ""}
+            onCreate={onCreateGoals}
+          />
         )}
         {start && (
           <section className="routine-planning">

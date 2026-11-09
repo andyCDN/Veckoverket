@@ -84,6 +84,7 @@ import { AppInstallButton, useStandaloneMode } from "./app-install";
 import { ResetPlanningModal } from "./reset-planning";
 import { resetPlanning } from "@/lib/reset-planning";
 import { upgradeWeeklyRoutines } from "@/lib/weekly-routines";
+import { addMondayGoals } from "@/lib/monday-goals";
 import { WeeklyRoutineModal } from "./weekly-routine";
 import { LoadingScreen } from "./loading-screen";
 import { bookingConstraints, replanAfterBookings } from "@/lib/auto-planning";
@@ -2120,6 +2121,19 @@ export function Workspace() {
       {routineActivity && (
         <WeeklyRoutineModal
           activity={routineActivity}
+          onCreateGoals={(drafts) => {
+            let count = 0;
+            setData(
+              (current) => {
+                if (!current) return current;
+                const next = addMondayGoals(current, week, drafts);
+                count = next.goals.length - current.goals.length;
+                return next;
+              },
+              { undoLabel: "veckomål från måndagschecken" },
+            );
+            return count;
+          }}
           scheduled={activities.some((a) => a.id === routineActivity.id)}
           onPlanWeek={() => {
             setWorkPlanning({ returnCheck: routineId ?? undefined });
