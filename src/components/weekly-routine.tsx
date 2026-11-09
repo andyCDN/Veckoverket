@@ -5,6 +5,7 @@ import { Modal } from "./modal";
 
 export function WeeklyRoutineModal({
   activity,
+  scheduled = true,
   data,
   week,
   storageLabel,
@@ -17,6 +18,7 @@ export function WeeklyRoutineModal({
   onClose,
 }: {
   activity: Activity;
+  scheduled?: boolean;
   data: AppData;
   week: string;
   storageLabel: string;
@@ -68,8 +70,12 @@ export function WeeklyRoutineModal({
   );
   return (
     <Modal
-      title={activity.title}
-      description={`${fullDate(activity.date)} · ${time(activity.start)}–${time(activity.end)}`}
+      title={start ? "Måndagscheck" : "Fredagscheck"}
+      description={
+        scheduled
+          ? `${fullDate(activity.date)} · ${time(activity.start)}–${time(activity.end)}`
+          : fullDate(activity.date)
+      }
       onClose={onClose}
     >
       <div className="stack weekly-routine">
@@ -174,10 +180,16 @@ export function WeeklyRoutineModal({
           </>
         )}
         <div className="routine-actions">
-          <button className="text-button" onClick={onEdit}>
-            Ändra tid eller pass
-          </button>
-          {activity.status !== "done" ? (
+          {scheduled && (
+            <button className="text-button" onClick={onEdit}>
+              Ändra tid eller pass
+            </button>
+          )}
+          {!scheduled ? (
+            <button className="button primary" onClick={onClose}>
+              Klar
+            </button>
+          ) : activity.status !== "done" ? (
             <button className="button primary" onClick={onComplete}>
               Markera som genomförd
             </button>

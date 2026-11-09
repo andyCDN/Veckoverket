@@ -249,3 +249,51 @@
   width: 20px;
   height: 20px;
 }
+
+.planning-shortcuts {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0 20px;
+}
+.planning-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.planning-shortcuts .button {
+  min-height: 44px;
+  font-size: 11px;
+}
+.planning-range-dialog .time-range-picker {
+  margin: 0;
+}
+.planning-range-dialog .time-range-picker > p {
+  font-size: 12px;
+  line-height: 1.5;
+}
+@media (max-width: 600px) {
+  .planning-shortcuts {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .planning-checks {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .planning-shortcuts .button {
+    padding: 8px 5px;
+    font-size: 10px;
+  }
+}
+@media print {
+  .planning-shortcuts {
+    display: none;
+  }
+}
+/* Keep the centered dialog still when the selection status becomes shorter. */
+.planning-range-dialog .time-range-status {
+  min-height: 4.5em;
+}

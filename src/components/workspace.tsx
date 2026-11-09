@@ -63,6 +63,7 @@ import { bookDeadlineWork } from "@/lib/deadline-scheduling";
 import { DeadlinePlanning } from "./deadline-planning";
 import { DayFocus } from "./day-focus";
 import { Calendar } from "./calendar";
+import { PlanningShortcuts } from "./planning-shortcuts";
 import { HabitTracker } from "./habit-tracker";
 import { toggleHabit, saveHabit, pauseHabit } from "@/lib/habits";
 import { WeekFocus } from "./week-focus";
@@ -162,6 +163,7 @@ export function Workspace() {
     blockedSave,
     setBlockedSave,
   } = useWorkspaceStorage(newWorkspace);
+  const [planningEditing, setPlanningEditing] = useState(false);
   const [habitEditing, setHabitEditing] = useState(false);
   const [careerEditing, setCareerEditing] = useState(false);
   const [studioTaskDate, setStudioTaskDate] = useState<string | null>(null);
@@ -234,7 +236,8 @@ export function Workspace() {
         account ||
         view === "settings" ||
         careerEditing ||
-        habitEditing,
+        habitEditing ||
+        planningEditing,
       ),
     onSnapshot: autoImportIcal,
   });
@@ -252,6 +255,7 @@ export function Workspace() {
     !newGoal &&
     !studioTaskDate &&
     !habitEditing &&
+    !planningEditing &&
     !account &&
     !googleOpen &&
     !resetOpen &&
@@ -331,7 +335,8 @@ export function Workspace() {
         routineId ||
         view === "settings" ||
         careerEditing ||
-        habitEditing,
+        habitEditing ||
+        planningEditing,
       ),
     );
     return () => setEditing(false);
@@ -346,6 +351,7 @@ export function Workspace() {
     view,
     careerEditing,
     habitEditing,
+    planningEditing,
     setEditing,
   ]);
   const navigate = (v: View) => {
@@ -501,9 +507,39 @@ export function Workspace() {
     ) ??
     activities.find((a) => a.status === "planned" && a.blockType !== "locked");
   const goals = data.goals.filter((g) => g.week === week);
-  const routineActivity = activities.find(
-    (a) => a.id === routineId && a.routine,
-  );
+  const requestedRoutine =
+    routineId === "check:week-start"
+      ? "week-start"
+      : routineId === "check:week-review"
+        ? "week-review"
+        : undefined;
+  const routineActivity: Activity | undefined =
+    activities.find((a) =>
+      requestedRoutine
+        ? a.routine === requestedRoutine
+        : a.id === routineId && a.routine,
+    ) ??
+    (requestedRoutine
+      ? {
+          id: `check:${requestedRoutine}`,
+          routine: requestedRoutine,
+          title:
+            requestedRoutine === "week-start"
+              ? "Veckostart"
+              : "Veckoavstämning",
+          date: addDays(week, requestedRoutine === "week-start" ? 0 : 4),
+          start: data.settings.start,
+          end:
+            data.settings.start + (requestedRoutine === "week-start" ? 15 : 30),
+          estimatedMinutes: requestedRoutine === "week-start" ? 15 : 30,
+          categoryId: "weekly-planning",
+          blockType: "locked",
+          status: "planned",
+          source: "manual",
+          priority: 5,
+          description: "",
+        }
+      : undefined);
   const openActivity = (a: Activity) =>
     a.routine ? setRoutineId(a.id) : setEditor({ activity: a, date: a.date });
   const currentWeek = week === monday(today());
@@ -1243,6 +1279,16 @@ export function Workspace() {
           )}
           {view === "planner" && (
             <>
+              <PlanningShortcuts
+                key={`${user?.id ?? "local"}-${week}-${undoVersion}`}
+                week={week}
+                activeDay={activeDay}
+                settings={weekData.settings}
+                activities={activities}
+                onCheck={(kind) => setRoutineId(`check:${kind}`)}
+                onCreate={(date, start, end) => setEditor({ date, start, end })}
+                onEditing={setPlanningEditing}
+              />
               <WeekFocus
                 data={data}
                 onAction={(action) => {
@@ -1948,6 +1994,7 @@ export function Workspace() {
       {routineActivity && (
         <WeeklyRoutineModal
           activity={routineActivity}
+          scheduled={activities.some((a) => a.id === routineActivity.id)}
           data={data}
           week={week}
           storageLabel={

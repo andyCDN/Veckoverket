@@ -10,7 +10,9 @@ export function TimeRangePicker({
   end,
   activities,
   onCreate,
+  defaultOpen = false,
 }: {
+  defaultOpen?: boolean;
   date: string;
   start: number;
   end: number;
@@ -18,6 +20,7 @@ export function TimeRangePicker({
   onCreate: (date: string, start: number, end: number) => void;
 }) {
   const hintId = useId();
+  const [expanded, setExpanded] = useState(defaultOpen);
   const [selection, setSelection] = useState<{
     anchor: number;
     cursor: number;
@@ -52,7 +55,9 @@ export function TimeRangePicker({
   return (
     <details
       className="time-range-picker"
+      open={expanded}
       onToggle={(event) => {
+        setExpanded(event.currentTarget.open);
         if (!event.currentTarget.open) {
           pointer.current = null;
           setSelection(null);

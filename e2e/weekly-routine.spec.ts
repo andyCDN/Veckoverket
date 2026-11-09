@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { openToday } from "./navigation";
 import AxeBuilder from "@axe-core/playwright";
 
 test("måndagsplanering och fredagsövning sparas, följer rätt vecka och går att bocka av i mobilappen", async ({
@@ -10,11 +11,12 @@ test("måndagsplanering och fredagsövning sparas, följer rätt vecka och går 
   );
   await page.setViewportSize({ width: 320, height: 740 });
   await page.goto("./");
+  await openToday(page);
   const start = page
     .locator(".calendar-entry")
     .filter({ hasText: "Veckostart" });
   await start.locator(".calendar-block").click();
-  await expect(page.getByRole("dialog")).toHaveAccessibleName("Veckostart");
+  await expect(page.getByRole("dialog")).toHaveAccessibleName("Måndagscheck");
   await page
     .getByLabel(/^Veckans startplan/)
     .fill("Två ansökningar på måndag och projektarbete på onsdag.");
@@ -25,6 +27,7 @@ test("måndagsplanering och fredagsövning sparas, följer rätt vecka och går 
     start.getByRole("checkbox", { name: /^Genomförd:/ }),
   ).toBeChecked();
   await page.reload();
+  await openToday(page);
   await start.locator(".calendar-block").click();
   await expect(page.getByLabel(/^Veckans startplan/)).toHaveValue(
     "Två ansökningar på måndag och projektarbete på onsdag.",
@@ -36,7 +39,7 @@ test("måndagsplanering och fredagsövning sparas, följer rätt vecka och går 
     .filter({ hasText: "Veckoavstämning" });
   await review.locator(".calendar-block").click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog).toHaveAccessibleName("Veckoavstämning");
+  await expect(dialog).toHaveAccessibleName("Fredagscheck");
   await page
     .getByLabel(/^Sammanfattning av veckan/)
     .fill("Utbildningsmodulerna klara.");
@@ -73,6 +76,7 @@ test("måndagsplanering och fredagsövning sparas, följer rätt vecka och går 
     review.getByRole("checkbox", { name: /^Genomförd:/ }),
   ).toBeChecked();
   await page.reload();
+  await openToday(page);
   await page.getByRole("button", { name: /^Visa fredag/ }).click();
   await review.locator(".calendar-block").click();
   await expect(page.getByLabel(/^Bedömning av måluppfyllelse/)).toHaveValue(

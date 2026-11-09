@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { openToday } from "./navigation";
 import { createData } from "../src/lib/defaults";
 
 async function openPicker(page: Page, mobile = false) {
@@ -15,6 +16,7 @@ async function openPicker(page: Page, mobile = false) {
     localStorage.setItem("veckoverket.workspace.v1", JSON.stringify(value));
   }, data);
   await page.goto("./");
+  if (mobile) await openToday(page);
   if (!mobile)
     await page.getByRole("button", { name: "Dag", exact: true }).click();
   await page.getByText("Markera tid för nytt pass", { exact: true }).click();
