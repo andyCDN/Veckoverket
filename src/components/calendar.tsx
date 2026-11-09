@@ -223,23 +223,118 @@ function DayColumn({
   date,
   children,
   onCreate,
+  timeline,
 }: {
   date: string;
   children: React.ReactNode;
-  onCreate: () => void;
+  onCreate: (start?: number, end?: number) => void;
+  timeline?: ReturnType<typeof weekTimeline>;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: date });
+  const pointer = useRef<{
+    id: number;
+    y: number;
+    anchor: number;
+    dragged: boolean;
+  } | null>(null);
+  const [range, setRange] = useState<{ start: number; end: number } | null>(
+    null,
+  );
+  const at = (element: HTMLElement, y: number) =>
+    Math.max(
+      timeline!.start,
+      Math.min(
+        timeline!.end,
+        Math.round(
+          timeline!.minuteAt(y - element.getBoundingClientRect().top) / 15,
+        ) * 15,
+      ),
+    );
+  const selected = (anchor: number, cursor: number) => {
+    const start = Math.min(anchor, cursor);
+    return {
+      start,
+      end: Math.min(timeline!.end, Math.max(start + 15, anchor, cursor)),
+    };
+  };
+  const cancel = () => {
+    pointer.current = null;
+    setRange(null);
+  };
   return (
     <div
       ref={setNodeRef}
       className={`day-column ${isOver ? "drop-over" : ""}`}
+      data-date={date}
+      tabIndex={-1}
       onDoubleClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onCreate();
+        if (e.target === e.currentTarget) onCreate();
+      }}
+      onPointerDown={(event) => {
+        if (
+          !timeline ||
+          !event.isPrimary ||
+          event.button !== 0 ||
+          (event.target as Element).closest(
+            ".calendar-entry,button,input,a,summary",
+          )
+        )
+          return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.currentTarget.focus({ preventScroll: true });
+        event.currentTarget.setPointerCapture(event.pointerId);
+        pointer.current = {
+          id: event.pointerId,
+          y: event.clientY,
+          anchor: Math.min(
+            timeline.end - 15,
+            at(event.currentTarget, event.clientY),
+          ),
+          dragged: false,
+        };
+      }}
+      onPointerMove={(event) => {
+        const drag = pointer.current;
+        if (!drag || drag.id !== event.pointerId) return;
+        if (Math.abs(event.clientY - drag.y) >= 5) drag.dragged = true;
+        if (drag.dragged)
+          setRange(
+            selected(drag.anchor, at(event.currentTarget, event.clientY)),
+          );
+      }}
+      onPointerUp={(event) => {
+        const drag = pointer.current;
+        if (!drag || drag.id !== event.pointerId) return;
+        const value = drag.dragged
+          ? selected(drag.anchor, at(event.currentTarget, event.clientY))
+          : null;
+        cancel();
+        if (value) onCreate(value.start, value.end);
+      }}
+      onPointerCancel={cancel}
+      onLostPointerCapture={cancel}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          cancel();
         }
       }}
     >
       {children}
+      {range && timeline && (
+        <div
+          className="calendar-direct-selection"
+          role="status"
+          style={{
+            top: timeline.position(range.start),
+            height:
+              timeline.position(range.end) - timeline.position(range.start),
+          }}
+        >
+          {time(range.start)}–{time(range.end)}
+        </div>
+      )}
     </div>
   );
 }
@@ -365,6 +460,12 @@ export function Calendar({
         { "--timeline-height": `${timeline.height}px` } as React.CSSProperties
       }
     >
+      {!mobile && (
+        <p className="calendar-range-hint">
+          Dra i en tom yta i kalendern för att skapa ett pass. Tider avrundas
+          till 15 minuter.
+        </p>
+      )}
       <div className="calendar-display-filter">
         <label>
           <input
@@ -547,7 +648,11 @@ export function Calendar({
                     } as React.CSSProperties
                   }
                 >
-                  <DayColumn date={date} onCreate={() => onCreate(date)}>
+                  <DayColumn
+                    date={date}
+                    timeline={!mobile ? timeline : undefined}
+                    onCreate={(start, end) => onCreate(date, start, end)}
+                  >
                     {date === clock.date &&
                       clock.minute >= timeline.start &&
                       clock.minute <= timeline.end && (

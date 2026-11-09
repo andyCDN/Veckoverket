@@ -4,7 +4,7 @@ En svensk webbapp för veckoplanering, målhantering och uppföljning.
 
 Desktop och mobil delar samma risotryckspalett: naturpapper, marinblå text, kobolt, lime och korall. Logotyp, navigationsknappar och kort använder samma typografi och raka bläcklinjer med hårda tryckskuggor. Desktop behåller sin breda kalender och mobilen sin kompakta översikt.
 
-Ovanför veckovyn finns **Måndagscheck**, **Fredagscheck** och **Dra och boka**. Checkarna öppnar varsin popup med veckans planering respektive uppföljning, även utan bokat checkpass. **Dra och boka** låter dig välja dag och markera en tidsperiod med mus, pekdrag eller tangentbord innan passet sparas. Samma ingångar finns även i dagvyn.
+Ovanför veckovyn finns **Måndagscheck**, **Fredagscheck** och **Dra och boka**. Checkarna öppnar varsin popup med veckans planering respektive uppföljning, även utan bokat checkpass. I desktopens veckokalender kan du också dra direkt i en tom yta i dagkolumnen för att skapa ett pass med vald start och sluttid. Drag uppåt fungerar också; Escape avbryter och befintliga bokningar går att redigera och flytta som tidigare. **Dra och boka** låter dig välja dag och markera en tidsperiod med mus, pekdrag eller tangentbord innan passet sparas. Samma ingångar finns även i dagvyn.
 
 **Vanor** ligger ovanför kalendern och har egna veckomål: bestämda veckodagar eller valfritt antal dagar per vecka. Skapa en vana, välj startdatum och bocka av direkt i veckomatrisen. Framtida dagar kan inte markeras. Vanor kan redigeras eller pausas utan att avbockningar raderas; pausade vanor kan visas och återupptas. Första delveckans mål begränsas av startdatumet. Vanor ingår i arbetsytans sparning, säkerhetskopior, ångra och molnsynk. Kalenderpass påverkas inte.
 

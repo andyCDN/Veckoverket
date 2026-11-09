@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { openToday } from "./navigation";
 import { createData } from "../src/lib/defaults";
 import type { Activity } from "../src/lib/types";
 const week = "2026-11-02";
@@ -42,6 +43,7 @@ async function setup(page: Page) {
     },
   };
   await page.goto("./");
+  await openToday(page);
   await expect(page.locator(".calendar-grid")).toBeVisible();
   await page.evaluate(
     (data) =>
@@ -49,6 +51,7 @@ async function setup(page: Page) {
     data,
   );
   await page.reload();
+  await openToday(page);
   await expect(page.locator('[data-activity-id="Ansökan"]')).toBeVisible();
 }
 async function stored(page: Page) {
@@ -87,6 +90,7 @@ test("drag swaps both exact slots, persists links, protects history and can be u
   expect((await stored(page)).weeks[week]).toEqual(before.weeks[week]);
   await drag(page, first.id, second.id);
   await page.reload();
+  await openToday(page);
   expect((await stored(page)).weeks[week]).toEqual(after.weeks[week]);
   await drag(page, first.id, "Avklarat");
   await expect(page.locator(".toast")).toContainText("avklarade pass");

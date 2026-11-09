@@ -83,6 +83,16 @@ export function weekTimeline(activities: Activity[], settings: Settings) {
     start,
     end,
     position,
+    minuteAt: (offset: number) => {
+      if (offset <= 0) return start;
+      if (offset >= offsets.at(-1)!) return end;
+      const to = offsets.findIndex((value) => value > offset),
+        from = to - 1;
+      return (
+        points[from] +
+        ((offset - offsets[from]) / sizes[from]) * (points[to] - points[from])
+      );
+    },
     height: offsets.at(-1)! + 8,
     ticks: [...new Set([start, ...hours, end])].map((minute) => ({
       minute,

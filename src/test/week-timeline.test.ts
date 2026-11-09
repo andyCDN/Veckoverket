@@ -73,3 +73,14 @@ it("keeps the reference workday compact while positioning arbitrary clock minute
   const ten = result.ticks.find((t) => t.minute === 600)!.top;
   expect(result.position(570)).toBeCloseTo((nine + ten) / 2);
 });
+
+it("maps pixel positions back to clock times even where short bookings expand the time axis", () => {
+  const result = weekTimeline(
+    [activity("short", "2026-10-26", 510, 525)],
+    settings,
+  );
+  for (const minute of [480, 510, 515, 525, 660, 705, 1020])
+    expect(result.minuteAt(result.position(minute))).toBeCloseTo(minute, 6);
+  expect(result.minuteAt(-10)).toBe(result.start);
+  expect(result.minuteAt(result.height + 50)).toBe(result.end);
+});
