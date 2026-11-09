@@ -1,3 +1,33 @@
+.planner-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.planner-calendar {
+  min-width: 0;
+}
+.planner-habits {
+  min-width: 0;
+  container-type: inline-size;
+  container-name: habit-sidebar;
+}
+@media screen and (min-width: 951px) {
+  .mockup-workspace:not([data-mobile-design]) .planner-columns {
+    grid-template-columns: minmax(0, 1fr) clamp(320px, 26vw, 380px);
+  }
+  .mockup-workspace:not([data-mobile-design]) .planner-calendar {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .mockup-workspace:not([data-mobile-design]) .planner-habits {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .planner-habits .habit-tracker {
+    margin-top: 0;
+  }
+}
 .habit-tracker {
   margin: 12px 0 24px;
   padding: 18px;
@@ -216,7 +246,7 @@
   outline: 3px solid var(--blue);
   outline-offset: 3px;
 }
-@media (max-width: 600px) {
+@container habit-sidebar (max-width: 440px) {
   .habit-tracker {
     padding: 12px 8px;
   }
@@ -270,6 +300,12 @@
   }
 }
 @media print {
+  .planner-columns {
+    display: block;
+  }
+  .planner-habits {
+    container-type: normal;
+  }
   .habit-heading .button,
   .habit-week-controls button,
   .habit-footnote,

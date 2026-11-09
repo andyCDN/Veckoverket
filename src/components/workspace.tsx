@@ -1296,420 +1296,435 @@ export function Workspace() {
                   navigate(action.applicationId ? "career" : "network");
                 }}
               />
-              <HabitTracker
-                key={`${user?.id ?? "local"}-${undoVersion}`}
-                data={data}
-                week={week}
-                onWeek={changeWeek}
-                onEditing={setHabitEditing}
-                onToggle={(id, date) =>
-                  setData(
-                    (current) =>
-                      current ? toggleHabit(current, id, date) : current,
-                    { undoLabel: "avbockning av vana" },
-                  )
-                }
-                onSave={(draft) =>
-                  setData(
-                    (current) =>
-                      current ? saveHabit(current, draft) : current,
-                    { undoLabel: "vana" },
-                  )
-                }
-                onPause={(id) =>
-                  setData(
-                    (current) => (current ? pauseHabit(current, id) : current),
-                    { undoLabel: "paus av vana" },
-                  )
-                }
-              />
-              {mobile && calendarMode === "week" ? (
-                <StudioWeek
-                  data={data}
-                  week={week}
-                  activities={activities}
-                  activeDay={activeDay}
-                  onSelectDay={selectDay}
-                  onDay={() => setCalendarMode("day")}
-                  onWeek={changeWeek}
-                  onOpen={openActivity}
-                  onStatus={(activity, done) =>
-                    updatePlan({
-                      ...plan,
-                      activities: activities.map((item) =>
-                        item.id === activity.id
-                          ? { ...item, status: done ? "done" : "planned" }
-                          : item,
-                      ),
-                    })
-                  }
-                  onTask={toggleTask}
-                  onCreate={(date) =>
-                    setEditor({ date, start: weekData.settings.start })
-                  }
-                  onNewTask={setStudioTaskDate}
-                  onGoals={() => navigate("goals")}
-                />
-              ) : (
-                <>
-                  {mobile && (
-                    <div className="studio-today-heading">{dayFocus}</div>
-                  )}
-                  <section className="week-section">
-                    <div className="week-toolbar">
-                      <div className="toolbar-week-controls">
-                        {weekControls}
-                      </div>
-                      <button
-                        className="text-button this-week-button"
-                        onClick={() => changeWeek(monday(today()))}
-                      >
-                        {currentWeek
-                          ? mobile
-                            ? "Idag"
-                            : "Denna vecka"
-                          : "Till idag"}
-                      </button>
-                      {!mobile && (
-                        <div
-                          className="calendar-view-switch"
-                          role="group"
-                          aria-label="Kalendervy"
-                        >
-                          <button
-                            aria-pressed={calendarMode === "day"}
-                            onClick={() => setCalendarMode("day")}
-                          >
-                            Dag
-                          </button>
-                          <button
-                            aria-pressed={calendarMode === "week"}
-                            onClick={() => setCalendarMode("week")}
-                          >
-                            Vecka
-                          </button>
-                        </div>
+              <div className="planner-columns">
+                <aside className="planner-habits" aria-label="Vanospalt">
+                  <HabitTracker
+                    key={`${user?.id ?? "local"}-${undoVersion}`}
+                    data={data}
+                    week={week}
+                    onWeek={changeWeek}
+                    onEditing={setHabitEditing}
+                    onToggle={(id, date) =>
+                      setData(
+                        (current) =>
+                          current ? toggleHabit(current, id, date) : current,
+                        { undoLabel: "avbockning av vana" },
+                      )
+                    }
+                    onSave={(draft) =>
+                      setData(
+                        (current) =>
+                          current ? saveHabit(current, draft) : current,
+                        { undoLabel: "vana" },
+                      )
+                    }
+                    onPause={(id) =>
+                      setData(
+                        (current) =>
+                          current ? pauseHabit(current, id) : current,
+                        { undoLabel: "paus av vana" },
+                      )
+                    }
+                  />
+                </aside>
+                <div className="planner-calendar">
+                  {mobile && calendarMode === "week" ? (
+                    <StudioWeek
+                      data={data}
+                      week={week}
+                      activities={activities}
+                      activeDay={activeDay}
+                      onSelectDay={selectDay}
+                      onDay={() => setCalendarMode("day")}
+                      onWeek={changeWeek}
+                      onOpen={openActivity}
+                      onStatus={(activity, done) =>
+                        updatePlan({
+                          ...plan,
+                          activities: activities.map((item) =>
+                            item.id === activity.id
+                              ? { ...item, status: done ? "done" : "planned" }
+                              : item,
+                          ),
+                        })
+                      }
+                      onTask={toggleTask}
+                      onCreate={(date) =>
+                        setEditor({ date, start: weekData.settings.start })
+                      }
+                      onNewTask={setStudioTaskDate}
+                      onGoals={() => navigate("goals")}
+                    />
+                  ) : (
+                    <>
+                      {mobile && (
+                        <div className="studio-today-heading">{dayFocus}</div>
                       )}
-                      {!mobile && (
-                        <div className="toolbar-category-filters">
-                          <details className="calendar-filter-options">
-                            <summary>
-                              Filtrera pass
-                              {categoryFilter !== "all"
-                                ? ` · ${categoryLabel(data.categories.find((category) => category.id === categoryFilter))}`
-                                : ""}
-                            </summary>
-                            <div className="calendar-filter-options-panel">
-                              {categoryFilters}
-                            </div>
-                          </details>
-                        </div>
-                      )}
-                      <div className="week-actions">
-                        {mobile && (
-                          <details className="calendar-tools-menu">
-                            <summary>
-                              <MoreHorizontal size={19} aria-hidden="true" />{" "}
-                              Verktyg
-                            </summary>
+                      <section className="week-section">
+                        <div className="week-toolbar">
+                          <div className="toolbar-week-controls">
+                            {weekControls}
+                          </div>
+                          <button
+                            className="text-button this-week-button"
+                            onClick={() => changeWeek(monday(today()))}
+                          >
+                            {currentWeek
+                              ? mobile
+                                ? "Idag"
+                                : "Denna vecka"
+                              : "Till idag"}
+                          </button>
+                          {!mobile && (
                             <div
-                              className="calendar-menu-options"
-                              onClick={(event) => {
-                                if (
-                                  (event.target as Element).closest("button")
-                                ) {
-                                  const menu =
-                                    event.currentTarget.closest("details");
-                                  if (menu) menu.open = false;
-                                  menu?.querySelector("summary")?.focus();
-                                }
-                              }}
+                              className="calendar-view-switch"
+                              role="group"
+                              aria-label="Kalendervy"
                             >
                               <button
-                                className="text-button"
-                                aria-expanded={mobileFiltersOpen}
-                                aria-controls="calendar-category-filters"
-                                onClick={() =>
-                                  setMobileFiltersOpen((open) => !open)
-                                }
+                                aria-pressed={calendarMode === "day"}
+                                onClick={() => setCalendarMode("day")}
                               >
-                                <ListFilter size={16} />
-                                {mobileFiltersOpen
-                                  ? "Dölj filter"
-                                  : "Filtrera aktiviteter"}
+                                Dag
                               </button>
-                              {calendarTools}
-                              <AppInstallButton className="text-button" />
+                              <button
+                                aria-pressed={calendarMode === "week"}
+                                onClick={() => setCalendarMode("week")}
+                              >
+                                Vecka
+                              </button>
                             </div>
-                          </details>
-                        )}
-                        <button
-                          className="button primary new-session"
-                          aria-label="Ny aktivitet"
-                          onClick={() =>
-                            setEditor({
-                              date: addDays(week, activeDay),
-                              start: weekData.settings.start,
-                            })
-                          }
-                        >
-                          <Plus size={18} />
-                          Nytt pass
-                        </button>
-                      </div>
-                    </div>
-                    <div
-                      className={`week-layout ${view === "planner" ? "full-calendar" : ""}`}
-                    >
-                      <div className="week-board">
-                        {mobile && categoryFilter !== "all" && (
-                          <div className="mobile-active-filter">
-                            <span>
-                              Visar{" "}
-                              {categoryLabel(
-                                data.categories.find(
-                                  (c) => c.id === categoryFilter,
-                                ),
-                              )}
-                            </span>
+                          )}
+                          {!mobile && (
+                            <div className="toolbar-category-filters">
+                              <details className="calendar-filter-options">
+                                <summary>
+                                  Filtrera pass
+                                  {categoryFilter !== "all"
+                                    ? ` · ${categoryLabel(data.categories.find((category) => category.id === categoryFilter))}`
+                                    : ""}
+                                </summary>
+                                <div className="calendar-filter-options-panel">
+                                  {categoryFilters}
+                                </div>
+                              </details>
+                            </div>
+                          )}
+                          <div className="week-actions">
+                            {mobile && (
+                              <details className="calendar-tools-menu">
+                                <summary>
+                                  <MoreHorizontal
+                                    size={19}
+                                    aria-hidden="true"
+                                  />{" "}
+                                  Verktyg
+                                </summary>
+                                <div
+                                  className="calendar-menu-options"
+                                  onClick={(event) => {
+                                    if (
+                                      (event.target as Element).closest(
+                                        "button",
+                                      )
+                                    ) {
+                                      const menu =
+                                        event.currentTarget.closest("details");
+                                      if (menu) menu.open = false;
+                                      menu?.querySelector("summary")?.focus();
+                                    }
+                                  }}
+                                >
+                                  <button
+                                    className="text-button"
+                                    aria-expanded={mobileFiltersOpen}
+                                    aria-controls="calendar-category-filters"
+                                    onClick={() =>
+                                      setMobileFiltersOpen((open) => !open)
+                                    }
+                                  >
+                                    <ListFilter size={16} />
+                                    {mobileFiltersOpen
+                                      ? "Dölj filter"
+                                      : "Filtrera aktiviteter"}
+                                  </button>
+                                  {calendarTools}
+                                  <AppInstallButton className="text-button" />
+                                </div>
+                              </details>
+                            )}
                             <button
-                              className="text-button"
-                              onClick={() => setCategoryFilter("all")}
+                              className="button primary new-session"
+                              aria-label="Ny aktivitet"
+                              onClick={() =>
+                                setEditor({
+                                  date: addDays(week, activeDay),
+                                  start: weekData.settings.start,
+                                })
+                              }
                             >
-                              Visa alla
+                              <Plus size={18} />
+                              Nytt pass
                             </button>
                           </div>
-                        )}
-                        {mobile && (
-                          <div
-                            id="calendar-category-filters"
-                            className={`calendar-filters ${mobileFiltersOpen ? "is-open" : ""}`}
-                          >
-                            {categoryFilters}
-                          </div>
-                        )}
-                        {mobile && (
-                          <>
-                            <DeadlinePlanning
-                              data={data}
-                              date={addDays(week, activeDay)}
-                              onOpen={(activity) =>
-                                editInWeek(monday(activity.date), activity)
-                              }
-                              onBook={bookDeadline}
-                            />
-                            <FollowUpPanel
-                              data={data}
-                              week={week}
-                              onReschedule={reschedule}
-                              onEdit={editInWeek}
-                            />
-                          </>
-                        )}
-                        <Calendar
-                          mobile={mobile || calendarMode === "day"}
-                          showWeekends={weekendOpen}
-                          activeDay={activeDay}
-                          onSelectDay={selectDay}
-                          onDelete={(a) => deleteActivity(a.id, false)}
-                          week={week}
-                          data={weekData}
-                          activities={activities}
-                          categoryFilter={categoryFilter}
-                          onEdit={openActivity}
-                          onMove={move}
-                          onSwap={(a, target) => {
-                            swap(a.id, target.id);
-                          }}
-                          onStatusChange={(activity, status) =>
-                            updatePlan({
-                              ...plan,
-                              activities: activities.map((a) =>
-                                a.id === activity.id ? { ...a, status } : a,
-                              ),
-                            })
-                          }
-                          onCreate={(date, start, end) =>
-                            setEditor({
-                              date,
-                              start: start ?? weekData.settings.start,
-                              end,
-                            })
-                          }
-                        />
-                        {!mobile && (
-                          <WeekExtras
-                            data={data}
-                            week={week}
-                            activities={activities}
-                            weekendOpen={weekendOpen}
-                            onWeekend={() => {
-                              if (weekendOpen && activeDay > 4)
-                                selectDay(days.find((d) => d < 5) ?? 0);
-                              setWeekendOpen((open) => !open);
-                            }}
-                            onOpen={openActivity}
-                            onBook={bookDeadline}
-                            onCreate={() =>
-                              setEditor({
-                                date: addDays(week, activeDay),
-                                start: weekData.settings.start,
-                              })
-                            }
-                          />
-                        )}
-                        {!mobile && (
-                          <>
-                            <DeadlinePlanning
-                              data={data}
-                              date={addDays(week, activeDay)}
-                              onOpen={(activity) =>
-                                editInWeek(monday(activity.date), activity)
-                              }
-                              onBook={bookDeadline}
-                            />
-                            <FollowUpPanel
-                              data={data}
-                              week={week}
-                              onReschedule={reschedule}
-                              onEdit={editInWeek}
-                            />
-                          </>
-                        )}
-                        <div className="bottomstrip">
-                          <span>{time(weekData.settings.start)} / Start</span>
-                          <span
-                            className="registration-line"
-                            aria-hidden="true"
-                          />
-                          <span>{time(weekData.settings.end)} / Slut</span>
                         </div>
-                      </div>
-                    </div>
-                  </section>
-                  {!mobile && (
-                    <div className="calendar-secondary-controls">
-                      <div className="calendar-secondary-tools">
-                        {calendarTools}
-                        {calendarMode === "week" && dayFocus}
-                      </div>
-                    </div>
-                  )}
-                  {view === "planner" && (
-                    <details className="info-drawer">
-                      <summary>
-                        <span className="section-tag">[ Bilaga 01 ]</span>
-                        <strong>Planinfo / mål / tidsfördelning</strong>
-                        <span aria-hidden="true">＋</span>
-                      </summary>
-                      <EditorialSidebar
-                        data={weekData}
-                        plan={plan}
-                        goals={goals}
-                        focus={focus}
-                        onToggleTask={toggleTask}
-                        onGoalView={() => navigate("goals")}
-                        onSettings={() => navigate("settings")}
-                        onEdit={openActivity}
-                        onComplete={(activity) => {
-                          updatePlan({
-                            ...plan,
-                            activities: activities.map((a) =>
-                              a.id === activity.id
-                                ? { ...a, status: "done" }
-                                : a,
-                            ),
-                          });
-                          notify("Genomförd tid är sparad.");
-                        }}
-                      />
-                    </details>
-                  )}
-                  <div
-                    className={`conflicts-panel ${conflicts.length ? "has-conflicts" : ""}`}
-                  >
-                    <div className="conflict-icon">
-                      {conflicts.length ? (
-                        <AlertCircle size={20} />
-                      ) : (
-                        <ShieldCheck size={20} />
-                      )}
-                    </div>
-                    <div>
-                      <h3>
-                        {conflicts.length
-                          ? `${conflicts.length} saker att se över`
-                          : "Inga planeringskonflikter"}
-                      </h3>
-                      {conflicts.length ? (
-                        conflicts.map((c) => (
-                          <div className="conflict-message" key={c.id}>
-                            <strong>{c.message}</strong>
-                            <p>{c.suggestion}</p>
-                          </div>
-                        ))
-                      ) : (
-                        <p>Inga överlappningar eller saknade tidsmål.</p>
-                      )}
-                    </div>
-                    {conflicts.length > 0 && (
-                      <button
-                        className="text-button"
-                        onClick={() => navigate("settings")}
-                      >
-                        Justera veckan
-                        <ArrowRight size={15} />
-                      </button>
-                    )}
-                  </div>
-                  {view === "planner" && (
-                    <details className="activity-list">
-                      <summary>Alla veckans pass</summary>
-                      <h3>Veckans aktiviteter</h3>
-                      <p className="muted">
-                        Öppna en aktivitet för att ändra tid, status, mål eller
-                        återkommande regel. Genomförd tid följs upp i
-                        veckoreflektionen.
-                      </p>
-                      <div className="activity-table">
-                        {activities.map((a) => (
-                          <button
-                            key={a.id}
-                            onClick={() =>
-                              setEditor({ activity: a, date: a.date })
-                            }
-                          >
-                            <span
-                              className="activity-dot"
-                              style={{
-                                background: data.categories.find(
-                                  (c) => c.id === a.categoryId,
-                                )?.color,
+                        <div
+                          className={`week-layout ${view === "planner" ? "full-calendar" : ""}`}
+                        >
+                          <div className="week-board">
+                            {mobile && categoryFilter !== "all" && (
+                              <div className="mobile-active-filter">
+                                <span>
+                                  Visar{" "}
+                                  {categoryLabel(
+                                    data.categories.find(
+                                      (c) => c.id === categoryFilter,
+                                    ),
+                                  )}
+                                </span>
+                                <button
+                                  className="text-button"
+                                  onClick={() => setCategoryFilter("all")}
+                                >
+                                  Visa alla
+                                </button>
+                              </div>
+                            )}
+                            {mobile && (
+                              <div
+                                id="calendar-category-filters"
+                                className={`calendar-filters ${mobileFiltersOpen ? "is-open" : ""}`}
+                              >
+                                {categoryFilters}
+                              </div>
+                            )}
+                            {mobile && (
+                              <>
+                                <DeadlinePlanning
+                                  data={data}
+                                  date={addDays(week, activeDay)}
+                                  onOpen={(activity) =>
+                                    editInWeek(monday(activity.date), activity)
+                                  }
+                                  onBook={bookDeadline}
+                                />
+                                <FollowUpPanel
+                                  data={data}
+                                  week={week}
+                                  onReschedule={reschedule}
+                                  onEdit={editInWeek}
+                                />
+                              </>
+                            )}
+                            <Calendar
+                              mobile={mobile || calendarMode === "day"}
+                              showWeekends={weekendOpen}
+                              activeDay={activeDay}
+                              onSelectDay={selectDay}
+                              onDelete={(a) => deleteActivity(a.id, false)}
+                              week={week}
+                              data={weekData}
+                              activities={activities}
+                              categoryFilter={categoryFilter}
+                              onEdit={openActivity}
+                              onMove={move}
+                              onSwap={(a, target) => {
+                                swap(a.id, target.id);
                               }}
+                              onStatusChange={(activity, status) =>
+                                updatePlan({
+                                  ...plan,
+                                  activities: activities.map((a) =>
+                                    a.id === activity.id ? { ...a, status } : a,
+                                  ),
+                                })
+                              }
+                              onCreate={(date, start, end) =>
+                                setEditor({
+                                  date,
+                                  start: start ?? weekData.settings.start,
+                                  end,
+                                })
+                              }
                             />
-                            <strong>{a.title}</strong>
-                            <span>
-                              {a.date.slice(5)} · {time(a.start)}–{time(a.end)}
-                            </span>
-                            <span>
-                              {a.status === "done"
-                                ? "Genomförd"
-                                : a.status === "skipped"
-                                  ? "Blev inte av"
-                                  : a.blockType === "locked"
-                                    ? "Låst"
-                                    : a.blockType === "protected"
-                                      ? "Skyddad"
-                                      : "Flexibel"}
-                            </span>
-                            <ArrowUpRight size={15} />
+                            {!mobile && (
+                              <WeekExtras
+                                data={data}
+                                week={week}
+                                activities={activities}
+                                weekendOpen={weekendOpen}
+                                onWeekend={() => {
+                                  if (weekendOpen && activeDay > 4)
+                                    selectDay(days.find((d) => d < 5) ?? 0);
+                                  setWeekendOpen((open) => !open);
+                                }}
+                                onOpen={openActivity}
+                                onBook={bookDeadline}
+                                onCreate={() =>
+                                  setEditor({
+                                    date: addDays(week, activeDay),
+                                    start: weekData.settings.start,
+                                  })
+                                }
+                              />
+                            )}
+                            {!mobile && (
+                              <>
+                                <DeadlinePlanning
+                                  data={data}
+                                  date={addDays(week, activeDay)}
+                                  onOpen={(activity) =>
+                                    editInWeek(monday(activity.date), activity)
+                                  }
+                                  onBook={bookDeadline}
+                                />
+                                <FollowUpPanel
+                                  data={data}
+                                  week={week}
+                                  onReschedule={reschedule}
+                                  onEdit={editInWeek}
+                                />
+                              </>
+                            )}
+                            <div className="bottomstrip">
+                              <span>
+                                {time(weekData.settings.start)} / Start
+                              </span>
+                              <span
+                                className="registration-line"
+                                aria-hidden="true"
+                              />
+                              <span>{time(weekData.settings.end)} / Slut</span>
+                            </div>
+                          </div>
+                        </div>
+                      </section>
+                      {!mobile && (
+                        <div className="calendar-secondary-controls">
+                          <div className="calendar-secondary-tools">
+                            {calendarTools}
+                            {calendarMode === "week" && dayFocus}
+                          </div>
+                        </div>
+                      )}
+                      {view === "planner" && (
+                        <details className="info-drawer">
+                          <summary>
+                            <span className="section-tag">[ Bilaga 01 ]</span>
+                            <strong>Planinfo / mål / tidsfördelning</strong>
+                            <span aria-hidden="true">＋</span>
+                          </summary>
+                          <EditorialSidebar
+                            data={weekData}
+                            plan={plan}
+                            goals={goals}
+                            focus={focus}
+                            onToggleTask={toggleTask}
+                            onGoalView={() => navigate("goals")}
+                            onSettings={() => navigate("settings")}
+                            onEdit={openActivity}
+                            onComplete={(activity) => {
+                              updatePlan({
+                                ...plan,
+                                activities: activities.map((a) =>
+                                  a.id === activity.id
+                                    ? { ...a, status: "done" }
+                                    : a,
+                                ),
+                              });
+                              notify("Genomförd tid är sparad.");
+                            }}
+                          />
+                        </details>
+                      )}
+                      <div
+                        className={`conflicts-panel ${conflicts.length ? "has-conflicts" : ""}`}
+                      >
+                        <div className="conflict-icon">
+                          {conflicts.length ? (
+                            <AlertCircle size={20} />
+                          ) : (
+                            <ShieldCheck size={20} />
+                          )}
+                        </div>
+                        <div>
+                          <h3>
+                            {conflicts.length
+                              ? `${conflicts.length} saker att se över`
+                              : "Inga planeringskonflikter"}
+                          </h3>
+                          {conflicts.length ? (
+                            conflicts.map((c) => (
+                              <div className="conflict-message" key={c.id}>
+                                <strong>{c.message}</strong>
+                                <p>{c.suggestion}</p>
+                              </div>
+                            ))
+                          ) : (
+                            <p>Inga överlappningar eller saknade tidsmål.</p>
+                          )}
+                        </div>
+                        {conflicts.length > 0 && (
+                          <button
+                            className="text-button"
+                            onClick={() => navigate("settings")}
+                          >
+                            Justera veckan
+                            <ArrowRight size={15} />
                           </button>
-                        ))}
+                        )}
                       </div>
-                    </details>
+                      {view === "planner" && (
+                        <details className="activity-list">
+                          <summary>Alla veckans pass</summary>
+                          <h3>Veckans aktiviteter</h3>
+                          <p className="muted">
+                            Öppna en aktivitet för att ändra tid, status, mål
+                            eller återkommande regel. Genomförd tid följs upp i
+                            veckoreflektionen.
+                          </p>
+                          <div className="activity-table">
+                            {activities.map((a) => (
+                              <button
+                                key={a.id}
+                                onClick={() =>
+                                  setEditor({ activity: a, date: a.date })
+                                }
+                              >
+                                <span
+                                  className="activity-dot"
+                                  style={{
+                                    background: data.categories.find(
+                                      (c) => c.id === a.categoryId,
+                                    )?.color,
+                                  }}
+                                />
+                                <strong>{a.title}</strong>
+                                <span>
+                                  {a.date.slice(5)} · {time(a.start)}–
+                                  {time(a.end)}
+                                </span>
+                                <span>
+                                  {a.status === "done"
+                                    ? "Genomförd"
+                                    : a.status === "skipped"
+                                      ? "Blev inte av"
+                                      : a.blockType === "locked"
+                                        ? "Låst"
+                                        : a.blockType === "protected"
+                                          ? "Skyddad"
+                                          : "Flexibel"}
+                                </span>
+                                <ArrowUpRight size={15} />
+                              </button>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                    </>
                   )}
-                </>
-              )}
+                </div>
+              </div>
             </>
           )}
           {(view === "career" || view === "network") && (

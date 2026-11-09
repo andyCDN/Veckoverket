@@ -19,6 +19,17 @@ for (const width of [1440, 390, 320])
     await page.goto("./");
     const tracker = page.getByRole("region", { name: "Vanor", exact: true });
     await expect(tracker).toBeVisible();
+    if (width >= 951) {
+      const habitBox = (await tracker.boundingBox())!;
+      const calendarBox = (await page
+        .locator(".planner-calendar")
+        .boundingBox())!;
+      expect(habitBox.x).toBeGreaterThanOrEqual(
+        calendarBox.x + calendarBox.width,
+      );
+      expect(Math.abs(habitBox.y - calendarBox.y)).toBeLessThan(5);
+    }
+
     const read = () =>
       page.evaluate(() =>
         JSON.parse(localStorage.getItem("veckoverket.workspace.v1")!),
