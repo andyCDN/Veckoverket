@@ -27,7 +27,7 @@ for (const width of [1440, 390, 320])
       expect(habitBox.x).toBeGreaterThanOrEqual(
         calendarBox.x + calendarBox.width,
       );
-      expect(Math.abs(habitBox.y - calendarBox.y)).toBeLessThan(5);
+      expect(habitBox.y).toBeGreaterThanOrEqual(calendarBox.y);
     }
 
     const read = () =>

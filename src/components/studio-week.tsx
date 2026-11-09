@@ -112,11 +112,12 @@ export function StudioWeek({
     timeZone: "UTC",
   }).formatRange(new Date(`${week}T12:00:00Z`), new Date(`${end}T12:00:00Z`));
   const dayTasks = (date: string, entries: Activity[]) =>
-    model.tasks.filter(
-      (task) =>
-        task.date === date ||
-        (!task.date &&
-          entries.some((activity) => activity.goalId === task.goalId)),
+    model.tasks.filter((task) =>
+      model.activities.some((a) => a.taskId === task.id)
+        ? entries.some((a) => a.taskId === task.id)
+        : task.date === date ||
+          (!task.date &&
+            entries.some((activity) => activity.goalId === task.goalId)),
     );
   const block = (day: number) => {
     const date = addDays(week, day);
@@ -155,6 +156,7 @@ export function StudioWeek({
             {entries.map((activity) => (
               <li
                 key={activity.id}
+                data-activity-id={activity.id}
                 className={activity.status === "done" ? "is-done" : ""}
               >
                 <button onClick={() => onOpen(activity)}>

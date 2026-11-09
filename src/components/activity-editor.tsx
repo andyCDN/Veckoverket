@@ -98,6 +98,8 @@ export function ActivityEditor({
         ? {
             followUpOf: { week: followUp.week, activityId: followUp.source.id },
             goalId: followUp.source.goalId,
+            taskId: followUp.source.taskId,
+            habitId: followUp.source.habitId,
           }
         : {}),
     },
@@ -298,6 +300,35 @@ export function ActivityEditor({
       onClose={onClose}
     >
       <form onSubmit={submit} className="stack">
+        {(form.taskId || form.habitId) && (
+          <div className="activity-work-source">
+            {form.taskId && (
+              <p>
+                Uppgift:{" "}
+                <strong>
+                  {data.tasks.find((t) => t.id === form.taskId)?.title ??
+                    "Tidigare uppgift"}
+                </strong>
+              </p>
+            )}
+            {form.habitId && (
+              <p>
+                Vana:{" "}
+                <strong>
+                  {data.habits?.find((h) => h.id === form.habitId)?.title ??
+                    "Tidigare vana"}
+                </strong>
+              </p>
+            )}
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => patch({ taskId: undefined, habitId: undefined })}
+            >
+              Ta bort kopplingen till uppgift eller vana
+            </button>
+          </div>
+        )}
         {interview && onSaveInterview && (
           <button
             type="button"
@@ -453,13 +484,17 @@ export function ActivityEditor({
           <label>
             Koppla till mål
             <select
+              disabled={Boolean(form.taskId)}
               value={form.goalId ?? ""}
               onChange={(e) => patch({ goalId: e.target.value || undefined })}
             >
               <option value="">Inget mål</option>
               {data.goals
                 .filter(
-                  (g) => g.horizon === "long" || g.week === monday(form.date),
+                  (g) =>
+                    g.id === form.goalId ||
+                    g.horizon === "long" ||
+                    g.week === monday(form.date),
                 )
                 .map((g) => (
                   <option value={g.id} key={g.id}>

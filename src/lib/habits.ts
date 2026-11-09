@@ -19,6 +19,17 @@ export function validateHabits(
       typeof habit.title !== "string" ||
       !habit.title.trim() ||
       habit.title.length > 120 ||
+      (habit.categoryId !== undefined &&
+        (typeof habit.categoryId !== "string" ||
+          !habit.categoryId.trim() ||
+          habit.categoryId.length > 200)) ||
+      (habit.minutes !== undefined &&
+        (!Number.isInteger(habit.minutes) ||
+          habit.minutes < 15 ||
+          habit.minutes > 240 ||
+          habit.minutes % 15 !== 0 ||
+          typeof habit.categoryId !== "string" ||
+          !habit.categoryId.trim())) ||
       typeof habit.createdOn !== "string" ||
       !isLocalDate(habit.createdOn) ||
       (habit.paused !== undefined && typeof habit.paused !== "boolean") ||
@@ -60,14 +71,33 @@ export function habitPlanned(habit: Habit, date: string) {
       habit.schedule.days.includes(weekday(date)))
   );
 }
-export function habitWeek(habit: Habit, week: string) {
+export function effectiveHabitChecks(habit: Habit, data?: AppData) {
+  return [
+    ...new Set([
+      ...habit.checks,
+      ...Object.values(data?.weeks ?? {})
+        .flatMap((p) => p.activities)
+        .filter(
+          (a) =>
+            a.habitId === habit.id &&
+            a.status === "done" &&
+            a.date >= habit.createdOn &&
+            a.date <= today(),
+        )
+        .map((a) => a.date),
+    ]),
+  ];
+}
+export function habitWeek(habit: Habit, week: string, data?: AppData) {
   const dates = Array.from({ length: 7 }, (_, day) => addDays(week, day));
   const eligible = dates.filter((date) => habitPlanned(habit, date));
   const target =
     habit.schedule.kind === "weekly"
       ? Math.min(habit.schedule.target, eligible.length)
       : eligible.length;
-  const completed = dates.filter((date) => habit.checks.includes(date)).length;
+  const completed = dates.filter((date) =>
+    effectiveHabitChecks(habit, data).includes(date),
+  ).length;
   return {
     dates,
     target,
@@ -105,7 +135,10 @@ export function toggleHabit(
     ),
   };
 }
-export type HabitDraft = Pick<Habit, "id" | "title" | "schedule" | "createdOn">;
+export type HabitDraft = Pick<
+  Habit,
+  "id" | "title" | "schedule" | "createdOn" | "minutes" | "categoryId"
+>;
 export function saveHabit(data: AppData, draft: HabitDraft): AppData {
   const previous = data.habits?.find((h) => h.id === draft.id);
   const habit: Habit = {
@@ -119,6 +152,13 @@ export function saveHabit(data: AppData, draft: HabitDraft): AppData {
     ? data.habits!.map((h) => (h.id === habit.id ? habit : h))
     : [...(data.habits ?? []), habit];
   validateHabits(habits);
+  if (
+    habit.minutes &&
+    !data.categories.some(
+      (c) => c.id === habit.categoryId && c.id !== "google-calendar",
+    )
+  )
+    throw new Error("Välj ett giltigt område för vanans kalenderpass.");
   return { ...data, habits };
 }
 export function pauseHabit(data: AppData, id: string): AppData {

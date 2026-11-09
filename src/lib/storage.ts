@@ -139,6 +139,8 @@ export function decodeData(raw: string): AppData {
         !["locked", "protected", "flexible"].includes(String(a.blockType)) ||
         !["planned", "done", "skipped"].includes(String(a.status)) ||
         [
+          "taskId",
+          "habitId",
           "applicationId",
           "contactId",
           "careerActionId",
@@ -213,6 +215,10 @@ export function decodeData(raw: string): AppData {
       typeof t.id !== "string" ||
       typeof t.title !== "string" ||
       typeof t.done !== "boolean" ||
+      (t.estimatedMinutes !== undefined &&
+        (!Number.isInteger(t.estimatedMinutes) ||
+          t.estimatedMinutes < 5 ||
+          t.estimatedMinutes > 480)) ||
       (t.date !== undefined &&
         (typeof t.date !== "string" || !isLocalDate(t.date))) ||
       !d.goals.some((g: { id: string }) => g.id === t.goalId)
@@ -220,6 +226,11 @@ export function decodeData(raw: string): AppData {
       throw new Error("En uppgift är ogiltig.");
   for (const r of d.recurring)
     if (
+      ["taskId", "habitId"].some(
+        (k) =>
+          r[k] !== undefined &&
+          (typeof r[k] !== "string" || !r[k].trim() || r[k].length > 200),
+      ) ||
       r.external !== undefined ||
       typeof r.id !== "string" ||
       typeof r.title !== "string" ||

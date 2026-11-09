@@ -16,6 +16,7 @@ export function WeeklyRoutineModal({
   onGoals,
   onNextWeek,
   onClose,
+  onPlanWeek,
 }: {
   activity: Activity;
   scheduled?: boolean;
@@ -29,6 +30,7 @@ export function WeeklyRoutineModal({
   onGoals: () => void;
   onNextWeek: () => void;
   onClose: () => void;
+  onPlanWeek: () => void;
 }) {
   const start = activity.routine === "week-start";
   const reflection = data.reflections[week] ?? {
@@ -107,6 +109,18 @@ export function WeeklyRoutineModal({
               "Vilka uppgifter återstår, och vad behöver bokas om?",
             )}
           </>
+        )}
+        {start && (
+          <section className="routine-planning">
+            <h3>Från mål till veckoplan</h3>
+            <p>
+              Välj konkreta uppgifter och vanotillfällen, ange tidsbehov och
+              granska vad som ryms i den här veckan.
+            </p>
+            <button className="button primary" onClick={onPlanWeek}>
+              Planera veckans mål och vanor
+            </button>
+          </section>
         )}
         <section
           className="routine-goals"

@@ -39,6 +39,8 @@ export type Activity = {
   priority: number;
   status: "planned" | "done" | "skipped";
   goalId?: string;
+  taskId?: string;
+  habitId?: string;
   applicationId?: string;
   contactId?: string;
   careerActionId?: string;
@@ -78,6 +80,7 @@ export type Task = {
   title: string;
   goalId: string;
   done: boolean;
+  estimatedMinutes?: number;
   date?: string;
 };
 export type Reflection = {
@@ -223,6 +226,8 @@ export type Deadline = {
   steps: { id: string; title: string; minutes: number }[];
 };
 export type Habit = {
+  minutes?: number;
+  categoryId?: string;
   id: string;
   title: string;
   createdOn: string;

@@ -1,3 +1,4 @@
+import { weeklyGoals } from "./weekly-work";
 import { addDays, today } from "./date";
 import type { Activity, AppData } from "./types";
 
@@ -15,8 +16,8 @@ export function studioWeek(
       activity.date <= end &&
       activity.categoryId !== "family",
   );
-  const goals = data.goals.filter(
-    (goal) => goal.week === week && goal.categoryId !== "family",
+  const goals = weeklyGoals(data, week).filter(
+    (goal) => goal.categoryId !== "family",
   );
   const goalIds = new Set(goals.map((goal) => goal.id));
   const professionalGoalIds = new Set(
@@ -27,9 +28,10 @@ export function studioWeek(
   const tasks = data.tasks.filter(
     (task) =>
       professionalGoalIds.has(task.goalId) &&
-      (task.date
-        ? task.date >= week && task.date <= end
-        : goalIds.has(task.goalId)),
+      (professional.some((a) => a.taskId === task.id) ||
+        (task.date
+          ? task.date >= week && task.date <= end
+          : goalIds.has(task.goalId))),
   );
   const completed = tasks.filter((task) => task.done).length;
   const meetings = professional.filter(

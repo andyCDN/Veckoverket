@@ -317,3 +317,191 @@
     break-inside: avoid;
   }
 }
+
+.weekly-goal-panel {
+  padding: 14px 10px;
+  margin-bottom: 20px;
+  border: 1.5px solid var(--blue);
+  background: white;
+  box-shadow: 3px 3px 0 var(--blue);
+}
+.weekly-goal-panel header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+.weekly-goal-panel h2 {
+  margin: 3px 0 8px;
+  font: 400 26px/1.2 var(--display);
+  text-transform: uppercase;
+}
+.weekly-goal-panel small {
+  font: 9px/1.4 var(--mono);
+  color: var(--blue);
+}
+.weekly-goal-panel h3 {
+  font: 700 13px/1.4 var(--body);
+  margin-bottom: 5px;
+  overflow-wrap: anywhere;
+}
+.weekly-goal-panel p {
+  font-size: 11px;
+  line-height: 1.5;
+}
+.weekly-goal-panel ul {
+  list-style: none;
+  padding: 0;
+}
+.weekly-goal-panel li {
+  padding: 10px 0;
+  border-top: 1px dashed #1633a644;
+  display: grid;
+  gap: 6px;
+}
+.weekly-goal-panel li label {
+  display: flex;
+  align-items: start;
+  gap: 8px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.weekly-goal-panel li input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.weekly-goal-panel .text-button {
+  text-align: left;
+  font-size: 10px;
+}
+.weekly-goal-panel .button {
+  width: 100%;
+  font-size: 10px;
+}
+.habit-plan-button {
+  font-size: 8px;
+  text-align: left;
+  margin: 5px 0;
+}
+.habit-calendar-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.habit-calendar-toggle input {
+  width: 20px;
+  height: 20px;
+}
+.work-option {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid #1633a633;
+}
+.work-option > label:first-child {
+  flex: 1 1 240px;
+  display: flex;
+  align-items: start;
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+.work-option > label:first-child input {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.work-option > label:not(:first-child) {
+  flex: 0 1 180px;
+  font-size: 11px;
+  display: grid;
+  gap: 5px;
+}
+.work-preview {
+  padding: 12px;
+  border: 1.5px solid var(--blue);
+  background: var(--paper);
+}
+.work-preview li {
+  margin-bottom: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.habit-calendar-links details {
+  border-bottom: 1px dashed #1633a644;
+  padding-block: 5px;
+}
+.habit-calendar-links summary {
+  cursor: pointer;
+  min-height: 32px;
+  padding-block: 8px;
+  font: 700 10px/1.4 var(--mono);
+}
+.habit-calendar-links button {
+  display: block;
+  min-height: 32px;
+  font-size: 10px;
+  text-align: left;
+}
+.activity-work-source {
+  padding: 10px;
+  border-left: 3px solid var(--blue);
+  background: var(--paper);
+  font-size: 12px;
+}
+.habit-derived-check {
+  display: grid;
+  place-items: center;
+  position: relative;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1.5px solid var(--blue);
+  background: var(--blue);
+  color: white;
+  cursor: pointer;
+}
+.habit-check .habit-derived-check svg {
+  display: block;
+  position: static;
+}
+.habit-derived-check::after {
+  content: "↗";
+  position: absolute;
+  right: -3px;
+  bottom: -5px;
+  padding: 0 1px;
+  background: white;
+  color: var(--blue);
+  font: 700 9px var(--mono);
+}
+@container habit-sidebar (max-width:440px) {
+  .habit-derived-check {
+    width: 24px;
+    height: 24px;
+  }
+}
+.weekly-add-task summary {
+  padding: 8px 0;
+  cursor: pointer;
+  font-size: 10px;
+}
+.weekly-add-task form {
+  display: grid;
+  gap: 8px;
+  margin-block: 8px;
+}
+.weekly-add-task label {
+  display: grid;
+  gap: 5px;
+  font-size: 11px;
+}
+.weekly-goal-panel li > label,
+.work-option > label:first-child,
+.habit-calendar-toggle {
+  flex-direction: row;
+}

@@ -11,7 +11,13 @@ import {
   uid,
   weekNumber,
 } from "@/lib/date";
-import { habitPlanned, habitWeek, type HabitDraft } from "@/lib/habits";
+import {
+  habitPlanned,
+  habitWeek,
+  effectiveHabitChecks,
+  type HabitDraft,
+} from "@/lib/habits";
+import { workBookings } from "@/lib/weekly-work";
 import { Modal } from "./modal";
 
 export function HabitTracker({
@@ -22,7 +28,11 @@ export function HabitTracker({
   onSave,
   onPause,
   onEditing,
+  onPlan,
+  onOpen,
 }: {
+  onPlan: (id: string) => void;
+  onOpen: (activity: import("@/lib/types").Activity) => void;
   data: AppData;
   week: string;
   onWeek: (week: string) => void;
@@ -51,8 +61,8 @@ export function HabitTracker({
       !h.paused &&
       habitPlanned(h, current) &&
       (h.schedule.kind === "days" ||
-        habitWeek(h, week).completed < h.schedule.target ||
-        h.checks.includes(current)),
+        habitWeek(h, week, data).completed < h.schedule.target ||
+        effectiveHabitChecks(h, data).includes(current)),
   );
   const newHabit = () =>
     setDraft({
@@ -95,8 +105,12 @@ export function HabitTracker({
         </div>
         {week === monday(current) && dueToday.length > 0 && (
           <p className="habit-today">
-            {dueToday.filter((h) => h.checks.includes(current)).length} av{" "}
-            {dueToday.length} klara idag
+            {
+              dueToday.filter((h) =>
+                effectiveHabitChecks(h, data).includes(current),
+              ).length
+            }{" "}
+            av {dueToday.length} klara idag
           </p>
         )}
       </div>
@@ -141,7 +155,11 @@ export function HabitTracker({
           </thead>
           <tbody>
             {habits.map((habit) => {
-              const { completed, target, percent } = habitWeek(habit, week);
+              const { completed, target, percent } = habitWeek(
+                habit,
+                week,
+                data,
+              );
               return (
                 <tr
                   key={habit.id}
@@ -157,6 +175,8 @@ export function HabitTracker({
                           title: habit.title,
                           createdOn: habit.createdOn,
                           schedule: habit.schedule,
+                          minutes: habit.minutes,
+                          categoryId: habit.categoryId,
                         })
                       }
                     >
@@ -169,12 +189,32 @@ export function HabitTracker({
                           ? `${completed} av ${target} dagar klara`
                           : "Inga planerade dagar"}
                     </small>
+                    {habit.minutes && !habit.paused && (
+                      <button
+                        className="text-button habit-plan-button"
+                        onClick={() => onPlan(habit.id)}
+                      >
+                        Boka i veckan
+                      </button>
+                    )}
                     <span className="habit-progress" aria-hidden="true">
                       <i style={{ width: `${percent}%` }} />
                     </span>
                   </th>
                   {dates.map((date) => {
-                    const checked = habit.checks.includes(date);
+                    const checked = effectiveHabitChecks(habit, data).includes(
+                      date,
+                    );
+                    const source = !habit.checks.includes(date)
+                      ? Object.values(data.weeks)
+                          .flatMap((p) => p.activities)
+                          .find(
+                            (a) =>
+                              a.habitId === habit.id &&
+                              a.date === date &&
+                              a.status === "done",
+                          )
+                      : undefined;
                     const planned = habitPlanned(habit, date);
                     const disabled =
                       date > current ||
@@ -187,14 +227,28 @@ export function HabitTracker({
                       >
                         {planned || checked ? (
                           <span className="habit-check">
-                            <input
-                              type="checkbox"
-                              aria-label={`${habit.title}, ${fullDate(date)}`}
-                              checked={checked}
-                              disabled={disabled}
-                              onChange={() => onToggle(habit.id, date)}
-                            />
-                            <Check size={16} aria-hidden="true" />
+                            {source ? (
+                              <button
+                                className="habit-derived-check"
+                                type="button"
+                                title="Genomfört via kalenderpass. Öppna passet för att ändra."
+                                aria-label={`${habit.title} avklarad via kalendern, ${fullDate(date)}. Öppna passet`}
+                                onClick={() => onOpen(source)}
+                              >
+                                <Check size={16} aria-hidden="true" />
+                              </button>
+                            ) : (
+                              <>
+                                <input
+                                  type="checkbox"
+                                  aria-label={`${habit.title}, ${fullDate(date)}`}
+                                  checked={checked}
+                                  disabled={disabled}
+                                  onChange={() => onToggle(habit.id, date)}
+                                />
+                                <Check size={16} aria-hidden="true" />
+                              </>
+                            )}
                           </span>
                         ) : (
                           <span
@@ -217,6 +271,32 @@ export function HabitTracker({
           </tbody>
         </table>
       )}
+      <div className="habit-calendar-links">
+        {habits.map((habit) => {
+          const booked = workBookings(data, "habit", habit.id).filter(
+            (a) => monday(a.date) === week,
+          );
+          return booked.length ? (
+            <details key={habit.id}>
+              <summary>
+                {habit.title} · {booked.length} kalenderpass
+              </summary>
+              {booked.map((a) => (
+                <button
+                  key={a.id}
+                  className="text-button"
+                  onClick={() => onOpen(a)}
+                >
+                  {fullDate(a.date)} ·{" "}
+                  {String(Math.floor(a.start / 60)).padStart(2, "0")}:
+                  {String(a.start % 60).padStart(2, "0")} ·{" "}
+                  {a.status === "done" ? "Genomfört" : "Bokat"}
+                </button>
+              ))}
+            </details>
+          ) : null;
+        })}
+      </div>
       <div className="habit-footnote">
         <span>Veckomål i ditt eget tempo</span>
         {(data.habits ?? []).some((h) => h.paused) && (
@@ -235,6 +315,7 @@ export function HabitTracker({
           key={draft.id}
           value={draft}
           existing={data.habits?.find((h) => h.id === draft.id)}
+          data={data}
           onClose={() => setDraft(null)}
           onSave={(value) => {
             onSave(value);
@@ -252,12 +333,14 @@ export function HabitTracker({
 
 function HabitForm({
   value,
+  data,
   existing,
   onSave,
   onPause,
   onClose,
 }: {
   value: HabitDraft;
+  data: AppData;
   existing?: Habit;
   onSave: (value: HabitDraft) => void;
   onPause: () => void;
@@ -272,6 +355,13 @@ function HabitForm({
     value.schedule.kind === "weekly" ? value.schedule.target : 3,
   );
   const [start, setStart] = useState(value.createdOn);
+  const [timed, setTimed] = useState(Boolean(value.minutes));
+  const [minutes, setMinutes] = useState(value.minutes ?? 30);
+  const [categoryId, setCategoryId] = useState(
+    value.categoryId ??
+      data.categories.find((c) => c.id === "health")?.id ??
+      data.categories[0].id,
+  );
   const [error, setError] = useState("");
   return (
     <Modal title={existing ? "Redigera vana" : "Ny vana"} onClose={onClose}>
@@ -290,6 +380,8 @@ function HabitForm({
               id: value.id,
               title: title.trim(),
               createdOn: start,
+              minutes: timed ? minutes : undefined,
+              categoryId: timed ? categoryId : undefined,
               schedule:
                 kind === "days"
                   ? { kind, days: [...days].sort() }
@@ -356,6 +448,45 @@ function HabitForm({
               onChange={(e) => setTarget(Number(e.target.value))}
             />
           </label>
+        )}
+        <label className="habit-calendar-toggle">
+          <input
+            type="checkbox"
+            checked={timed}
+            onChange={(e) => setTimed(e.target.checked)}
+          />
+          Avsätt tid i kalendern
+        </label>
+        {timed && (
+          <div className="stack">
+            <label>
+              Minuter per tillfälle
+              <input
+                type="number"
+                min={15}
+                max={240}
+                step={15}
+                required
+                value={minutes}
+                onChange={(e) => setMinutes(Number(e.target.value))}
+              />
+            </label>
+            <label>
+              Område för kalenderpass
+              <select
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+              >
+                {data.categories
+                  .filter((c) => c.id !== "google-calendar")
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          </div>
         )}
         {!existing && (
           <label>
