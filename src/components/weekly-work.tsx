@@ -27,7 +27,6 @@ import { Modal } from "./modal";
 export function WeeklyGoals({
   data,
   week,
-  onNew,
   onAddTask,
   onToggle,
   onReview,
@@ -36,7 +35,6 @@ export function WeeklyGoals({
 }: {
   data: AppData;
   week: string;
-  onNew: () => void;
   onAddTask: (goalId: string, title: string) => void;
   onToggle: (id: string) => void;
   onReview: (id: string) => void;
@@ -77,14 +75,11 @@ export function WeeklyGoals({
           <small>V.{weekNumber(week)} · från mål till handling</small>
           <h2>Veckans mål</h2>
         </div>
-        <button className="text-button" onClick={onNew}>
-          Nytt veckomål
-        </button>
       </header>
       {!goals.length && (
         <p>
-          Välj vad veckan ska leda till. Lägg till ett mål och konkreta
-          uppgifter.
+          Måndagschecken hjälper dig välja mål och uppgifter. Du kan också
+          använda Lägg till.
         </p>
       )}
       {(showAll ? goals : goals.slice(0, 2)).map((goal) => {
@@ -213,15 +208,6 @@ export function WeeklyGoals({
           Visa klara och släppta uppgifter
         </label>
       )}
-      {goals.some((g) =>
-        data.tasks.some(
-          (t) => t.goalId === g.id && taskStage(data, t) === "unplanned",
-        ),
-      ) && (
-        <button className="button secondary" onClick={() => onPlan()}>
-          Planera veckans arbete
-        </button>
-      )}
     </section>
   );
 }
@@ -232,9 +218,11 @@ export function WeeklyWorkPlanner({
   scope,
   onClose,
   onApply,
+  embedded = false,
 }: {
   data: AppData;
   week: string;
+  embedded?: boolean;
   scope?: { taskId?: string; habitId?: string };
   onClose: () => void;
   onApply: (next: AppData, base: AppData) => boolean;
@@ -254,160 +242,165 @@ export function WeeklyWorkPlanner({
     setPreview(null);
     setError("");
   };
-  return (
-    <Modal title={`Planera vecka ${weekNumber(week)}`} onClose={onClose} wide>
-      <div className="stack weekly-work-planner">
+  const content = (
+    <div className="stack weekly-work-planner">
+      <p>
+        Välj uppgifter och vanotillfällen. Förslaget använder ledig tid och kan
+        ersätta obundna, genererade pass i samma område.
+      </p>
+      {!options.length && (
         <p>
-          Välj uppgifter och vanotillfällen. Förslaget använder ledig tid och
-          kan ersätta obundna, genererade pass i samma område.
+          Inga obokade uppgifter eller vanotillfällen att föreslå för denna
+          vecka. Kontrollera tidsbehov och planeringsdagar om något saknas.
         </p>
-        {!options.length && (
-          <p>
-            Inga obokade uppgifter eller vanotillfällen att föreslå för denna
-            vecka. Kontrollera tidsbehov och planeringsdagar om något saknas.
-          </p>
-        )}
-        {options.map((option) => (
-          <div key={option.key} className="work-option">
+      )}
+      {options.map((option) => (
+        <div key={option.key} className="work-option">
+          <label>
+            <input
+              type="checkbox"
+              checked={option.selected}
+              onChange={(e) =>
+                change(option.key, { selected: e.target.checked })
+              }
+            />
+            <span>{option.label}</span>
+          </label>
+          <label>
+            Minuter
+            <input
+              type="number"
+              min={15}
+              max={240}
+              step={15}
+              value={option.request.minutes}
+              onChange={(e) =>
+                change(option.key, {
+                  request: {
+                    ...option.request,
+                    minutes: Number(e.target.value),
+                  },
+                })
+              }
+            />
+          </label>
+          <label>
+            Prioritet
+            <select
+              value={option.request.priority ?? 2}
+              onChange={(e) =>
+                change(option.key, {
+                  request: {
+                    ...option.request,
+                    priority: Number(e.target.value),
+                  },
+                })
+              }
+            >
+              <option value={1}>Hög</option>
+              <option value={2}>Normal</option>
+              <option value={3}>Låg</option>
+            </select>
+          </label>
+          {option.request.kind === "task" && (
             <label>
-              <input
-                type="checkbox"
-                checked={option.selected}
-                onChange={(e) =>
-                  change(option.key, { selected: e.target.checked })
-                }
-              />
-              <span>{option.label}</span>
-            </label>
-            <label>
-              Minuter
-              <input
-                type="number"
-                min={15}
-                max={240}
-                step={15}
-                value={option.request.minutes}
-                onChange={(e) =>
-                  change(option.key, {
-                    request: {
-                      ...option.request,
-                      minutes: Number(e.target.value),
-                    },
-                  })
-                }
-              />
-            </label>
-            <label>
-              Prioritet
+              Dag
               <select
-                value={option.request.priority ?? 2}
+                value={option.request.date ?? ""}
                 onChange={(e) =>
                   change(option.key, {
                     request: {
                       ...option.request,
-                      priority: Number(e.target.value),
+                      date: e.target.value || undefined,
                     },
                   })
                 }
               >
-                <option value={1}>Hög</option>
-                <option value={2}>Normal</option>
-                <option value={3}>Låg</option>
+                <option value="">Första lediga tid i veckan</option>
+                {Array.from({ length: 7 }, (_, d) => addDays(week, d)).map(
+                  (date) => (
+                    <option key={date} value={date}>
+                      {fullDate(date)}
+                    </option>
+                  ),
+                )}
               </select>
             </label>
-            {option.request.kind === "task" && (
-              <label>
-                Dag
-                <select
-                  value={option.request.date ?? ""}
-                  onChange={(e) =>
-                    change(option.key, {
-                      request: {
-                        ...option.request,
-                        date: e.target.value || undefined,
-                      },
-                    })
-                  }
-                >
-                  <option value="">Första lediga tid i veckan</option>
-                  {Array.from({ length: 7 }, (_, d) => addDays(week, d)).map(
-                    (date) => (
-                      <option key={date} value={date}>
-                        {fullDate(date)}
-                      </option>
-                    ),
-                  )}
-                </select>
-              </label>
-            )}
-          </div>
-        ))}
-        <button
-          className="button secondary"
-          disabled={!options.some((o) => o.selected)}
-          onClick={() => {
-            setPreview({
-              base: data,
-              result: previewWeeklyWork(
-                data,
-                week,
-                options.filter((o) => o.selected).map((o) => o.request),
-              ),
-            });
-            setError("");
-          }}
-        >
-          Visa planeringsförslag
-        </button>
-        {preview && (
-          <section className="work-preview" aria-label="Planeringsförslag">
-            <h3>{preview.result.activities.length} pass kan läggas in</h3>
-            {preview.result.reused > 0 && (
-              <p>
-                {preview.result.reused} genererade tidsblock används för
-                konkreta uppgifter eller vanor.
-              </p>
-            )}
-            <ul>
-              {preview.result.activities.map((a) => (
-                <li key={a.id}>
-                  <strong>{a.title}</strong> · {fullDate(a.date)} ·{" "}
-                  {time(a.start)}–{time(a.end)}
-                </li>
-              ))}
-            </ul>
-            {preview.result.unplaced.length > 0 && (
-              <div role="status">
-                <h4>Behöver fortfarande planeras</h4>
-                <ul>
-                  {preview.result.unplaced.map((message, i) => (
-                    <li key={i}>{message}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {preview.result.alreadyBooked > 0 && (
-              <p>{preview.result.alreadyBooked} tillfällen är redan bokade.</p>
-            )}
-            <button
-              className="button primary"
-              disabled={!preview.result.activities.length}
-              onClick={() => {
-                if (onApply(preview.result.data, preview.base)) onClose();
-                else {
-                  setError(
-                    "Veckan har ändrats. Visa ett nytt förslag innan du lägger in passen.",
-                  );
-                  setPreview(null);
-                }
-              }}
-            >
-              Lägg in {preview.result.activities.length} pass i veckan
-            </button>
-          </section>
-        )}
-        {error && <p role="alert">{error}</p>}
-      </div>
+          )}
+        </div>
+      ))}
+      <button
+        className="button secondary"
+        disabled={!options.some((o) => o.selected)}
+        onClick={() => {
+          setPreview({
+            base: data,
+            result: previewWeeklyWork(
+              data,
+              week,
+              options.filter((o) => o.selected).map((o) => o.request),
+            ),
+          });
+          setError("");
+        }}
+      >
+        Visa planeringsförslag
+      </button>
+      {preview && (
+        <section className="work-preview" aria-label="Planeringsförslag">
+          <h3>{preview.result.activities.length} pass kan läggas in</h3>
+          {preview.result.reused > 0 && (
+            <p>
+              {preview.result.reused} genererade tidsblock används för konkreta
+              uppgifter eller vanor.
+            </p>
+          )}
+          <ul>
+            {preview.result.activities.map((a) => (
+              <li key={a.id}>
+                <strong>{a.title}</strong> · {fullDate(a.date)} ·{" "}
+                {time(a.start)}–{time(a.end)}
+              </li>
+            ))}
+          </ul>
+          {preview.result.unplaced.length > 0 && (
+            <div role="status">
+              <h4>Behöver fortfarande planeras</h4>
+              <ul>
+                {preview.result.unplaced.map((message, i) => (
+                  <li key={i}>{message}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {preview.result.alreadyBooked > 0 && (
+            <p>{preview.result.alreadyBooked} tillfällen är redan bokade.</p>
+          )}
+          <button
+            className="button primary"
+            disabled={!preview.result.activities.length}
+            onClick={() => {
+              if (onApply(preview.result.data, preview.base)) onClose();
+              else {
+                setError(
+                  "Veckan har ändrats. Visa ett nytt förslag innan du lägger in passen.",
+                );
+                setPreview(null);
+              }
+            }}
+          >
+            Lägg in {preview.result.activities.length} pass i veckan
+          </button>
+        </section>
+      )}
+      {error && <p role="alert">{error}</p>}
+    </div>
+  );
+  return embedded ? (
+    content
+  ) : (
+    <Modal title={`Planera vecka ${weekNumber(week)}`} onClose={onClose} wide>
+      {content}
     </Modal>
   );
 }

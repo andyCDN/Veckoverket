@@ -60,7 +60,6 @@ import { useWorkspaceStorage } from "@/lib/use-workspace-storage";
 import { StorageStatus, syncLabel } from "./storage-status";
 import { supabase } from "@/lib/supabase";
 import { bookDeadlineWork } from "@/lib/deadline-scheduling";
-import { DeadlinePlanning } from "./deadline-planning";
 import { DayFocus } from "./day-focus";
 import { Calendar } from "./calendar";
 import { PlanningShortcuts } from "./planning-shortcuts";
@@ -68,9 +67,14 @@ import { PlanningQueue, TaskResolution, PlanNotices } from "./week-flow";
 import { decideTask, reviewWeek } from "@/lib/task-workflow";
 import { workBookings } from "@/lib/weekly-work";
 import { WeeklyGoals, WeeklyWorkPlanner } from "./weekly-work";
-import { HabitTracker } from "./habit-tracker";
-import { toggleHabit, saveHabit, pauseHabit } from "@/lib/habits";
-import { WeekFocus } from "./week-focus";
+import { HabitTracker, HabitForm } from "./habit-tracker";
+import {
+  toggleHabit,
+  saveHabit,
+  pauseHabit,
+  type HabitDraft,
+} from "@/lib/habits";
+
 import { StudioHeader, StudioTaskForm, StudioWeek } from "./studio-week";
 import { WeekExtras } from "./week-extras";
 import { swapActivities } from "@/lib/activity-swap";
@@ -101,9 +105,10 @@ import {
   type GoogleCategoryChoices,
   type GoogleSnapshot,
 } from "@/lib/google-calendar";
-import { CareerView } from "./career";
+import { CareerView, BookingForm } from "./career";
 import { saveInterviewNotes } from "@/lib/application-interviews";
-import { FollowUpPanel } from "./follow-up";
+import { careerActions, type TrackedAction } from "@/lib/career-actions";
+import { resolveCareerTask } from "@/lib/career-task-resolution";
 import { followUps, type FollowUp } from "@/lib/follow-up";
 type View =
   "planner" | "goals" | "reflection" | "settings" | "career" | "network";
@@ -174,9 +179,15 @@ export function Workspace() {
     habitId?: string;
     returnCheck?: string;
   } | null>(null);
-  const [planningEditing, setPlanningEditing] = useState(false);
   const [habitEditing, setHabitEditing] = useState(false);
   const [careerEditing, setCareerEditing] = useState(false);
+  const [newHabit, setNewHabit] = useState<HabitDraft | null>(null);
+  const [queueAction, setQueueAction] = useState<
+    (TrackedAction & { minutes?: number }) | null
+  >(null);
+  const [resolutionCareerId, setResolutionCareerId] = useState<string | null>(
+    null,
+  );
   const [studioTaskDate, setStudioTaskDate] = useState<string | null>(null);
   const [careerEntry, setCareerEntry] = useState<{
     id: string;
@@ -240,6 +251,9 @@ export function Workspace() {
       Boolean(
         editor ||
         newGoal ||
+        newHabit ||
+        queueAction ||
+        resolutionCareerId ||
         generator ||
         googleOpen ||
         resetOpen ||
@@ -248,7 +262,6 @@ export function Workspace() {
         view === "settings" ||
         careerEditing ||
         habitEditing ||
-        planningEditing ||
         workPlanning ||
         resolutionTaskId,
       ),
@@ -266,9 +279,11 @@ export function Workspace() {
     !editor &&
     !generator &&
     !newGoal &&
+    !newHabit &&
+    !queueAction &&
+    !resolutionCareerId &&
     !studioTaskDate &&
     !habitEditing &&
-    !planningEditing &&
     !workPlanning &&
     !resolutionTaskId &&
     !account &&
@@ -326,6 +341,9 @@ export function Workspace() {
   useEffect(() => {
     setEditor(null);
     setNewGoal(false);
+    setNewHabit(null);
+    setQueueAction(null);
+    setResolutionCareerId(null);
     setStudioTaskDate(null);
     setWorkPlanning(null);
     setResolutionTaskId(null);
@@ -346,6 +364,9 @@ export function Workspace() {
       Boolean(
         editor ||
         newGoal ||
+        newHabit ||
+        queueAction ||
+        resolutionCareerId ||
         studioTaskDate ||
         generator ||
         googleOpen ||
@@ -354,7 +375,6 @@ export function Workspace() {
         view === "settings" ||
         careerEditing ||
         habitEditing ||
-        planningEditing ||
         workPlanning ||
         resolutionTaskId,
       ),
@@ -363,6 +383,9 @@ export function Workspace() {
   }, [
     editor,
     newGoal,
+    newHabit,
+    queueAction,
+    resolutionCareerId,
     studioTaskDate,
     generator,
     googleOpen,
@@ -371,7 +394,6 @@ export function Workspace() {
     view,
     careerEditing,
     habitEditing,
-    planningEditing,
     workPlanning,
     resolutionTaskId,
     setEditing,
@@ -576,6 +598,12 @@ export function Workspace() {
       data!.tasks.some((t) => t.id === activity.taskId && !t.done)
     )
       setResolutionTaskId(activity.taskId);
+    else if (
+      status === "done" &&
+      activity.status !== "done" &&
+      activity.careerActionId
+    )
+      setResolutionCareerId(activity.careerActionId);
   }
   const openActivity = (a: Activity) =>
     a.routine ? setRoutineId(a.id) : setEditor({ activity: a, date: a.date });
@@ -872,6 +900,12 @@ export function Workspace() {
       current.tasks.some((t) => t.id === a.taskId && !t.done)
     )
       setResolutionTaskId(a.taskId);
+    else if (
+      a.status === "done" &&
+      original?.status !== "done" &&
+      a.careerActionId
+    )
+      setResolutionCareerId(a.careerActionId);
     notify(
       recurrence
         ? "Passet och veckoregeln är sparade. Nya tillfällen läggs in när en vecka genereras."
@@ -1043,6 +1077,20 @@ export function Workspace() {
       </button>
     </div>
   );
+  const applyWorkPlan = (next: AppData, base: AppData) => {
+    let applied = false;
+    setData(
+      (current) => {
+        if (!current || JSON.stringify(current) !== JSON.stringify(base))
+          return current;
+        applied = true;
+        return next;
+      },
+      { undoLabel: "veckoplan från mål och vanor" },
+    );
+    if (applied) notify("Passen är kopplade till veckans uppgifter och vanor.");
+    return applied;
+  };
   const calendarTools = (
     <>
       <button
@@ -1067,10 +1115,10 @@ export function Workspace() {
       </button>
       <button
         className="text-button generate-button"
-        aria-label="Planera veckan"
+        aria-label="Fördela tid automatiskt"
         onClick={() => setGenerator(true)}
       >
-        <Sparkles size={16} /> Planera veckan
+        <Sparkles size={16} /> Fördela tid automatiskt
       </button>
       <button
         className="text-button google-calendar-button"
@@ -1183,7 +1231,7 @@ export function Workspace() {
       data={data}
       week={week}
       onToggle={toggleTask}
-      onNew={() => setNewGoal(true)}
+      onNew={() => setRoutineId("check:week-start")}
       onAddTask={(goalId, title) =>
         setData({
           ...data,
@@ -1335,20 +1383,23 @@ export function Workspace() {
             <>
               <PlanningShortcuts
                 key={`${user?.id ?? "local"}-${week}-${undoVersion}`}
-                week={week}
-                activeDay={activeDay}
-                settings={weekData.settings}
-                activities={activities}
                 onCheck={(kind) => setRoutineId(`check:${kind}`)}
-                onPlan={() => setWorkPlanning({})}
-                onCreate={(date, start, end) => setEditor({ date, start, end })}
-                onEditing={setPlanningEditing}
-              />
-              <WeekFocus
-                data={data}
-                onAction={(action) => {
-                  setCareerEntry({ id: action.id, tab: "actions" });
-                  navigate(action.applicationId ? "career" : "network");
+                onAdd={(kind) => {
+                  if (kind === "pass")
+                    setEditor({
+                      date: addDays(week, activeDay),
+                      start: weekData.settings.start,
+                    });
+                  if (kind === "task")
+                    setStudioTaskDate(addDays(week, activeDay));
+                  if (kind === "goal") setNewGoal(true);
+                  if (kind === "habit")
+                    setNewHabit({
+                      id: uid(),
+                      title: "",
+                      createdOn: today(),
+                      schedule: { kind: "days", days: [0, 1, 2, 3, 4] },
+                    });
                 }}
               />
               <div className="planner-columns">
@@ -1356,78 +1407,94 @@ export function Workspace() {
                   className="planner-habits"
                   aria-label="Veckans mål och vanor"
                 >
-                  <WeeklyGoals
-                    data={data}
-                    week={week}
-                    onNew={() => setNewGoal(true)}
-                    onAddTask={(goalId, title) =>
-                      setData(
-                        (current) =>
-                          current && current.goals.some((g) => g.id === goalId)
-                            ? {
-                                ...current,
-                                tasks: [
-                                  ...current.tasks,
-                                  {
-                                    id: uid(),
-                                    goalId,
-                                    title,
-                                    done: false,
-                                    estimatedMinutes: 60,
-                                  },
-                                ],
-                              }
-                            : current,
-                        { undoLabel: "uppgift för veckomål" },
-                      )
-                    }
-                    onToggle={toggleTask}
-                    onReview={setResolutionTaskId}
-                    onPlan={(taskId) => {
-                      const task = data.tasks.find((t) => t.id === taskId);
-                      if (task?.date && monday(task.date) !== week)
-                        changeWeek(monday(task.date));
-                      setWorkPlanning({ taskId });
-                    }}
-                    onOpen={(a) => editInWeek(monday(a.date), a)}
-                  />
-                  <HabitTracker
-                    key={`${user?.id ?? "local"}-${undoVersion}`}
-                    data={data}
-                    week={week}
-                    onWeek={changeWeek}
-                    onEditing={setHabitEditing}
-                    onPlan={(habitId) => setWorkPlanning({ habitId })}
-                    onOpen={(a) => editInWeek(monday(a.date), a)}
-                    onToggle={(id, date) =>
-                      setData(
-                        (current) =>
-                          current ? toggleHabit(current, id, date) : current,
-                        { undoLabel: "avbockning av vana" },
-                      )
-                    }
-                    onSave={(draft) =>
-                      setData(
-                        (current) =>
-                          current ? saveHabit(current, draft) : current,
-                        { undoLabel: "vana" },
-                      )
-                    }
-                    onPause={(id) =>
-                      setData(
-                        (current) =>
-                          current ? pauseHabit(current, id) : current,
-                        { undoLabel: "paus av vana" },
-                      )
-                    }
-                  />
+                  <details className="week-context" open={!mobile}>
+                    <summary>Mål och vanor</summary>
+                    <WeeklyGoals
+                      data={data}
+                      week={week}
+                      onAddTask={(goalId, title) =>
+                        setData(
+                          (current) =>
+                            current &&
+                            current.goals.some((g) => g.id === goalId)
+                              ? {
+                                  ...current,
+                                  tasks: [
+                                    ...current.tasks,
+                                    {
+                                      id: uid(),
+                                      goalId,
+                                      title,
+                                      done: false,
+                                      estimatedMinutes: 60,
+                                    },
+                                  ],
+                                }
+                              : current,
+                          { undoLabel: "uppgift för veckomål" },
+                        )
+                      }
+                      onToggle={toggleTask}
+                      onReview={setResolutionTaskId}
+                      onPlan={(taskId) => {
+                        const task = data.tasks.find((t) => t.id === taskId);
+                        if (task?.date && monday(task.date) !== week)
+                          changeWeek(monday(task.date));
+                        setWorkPlanning({ taskId });
+                      }}
+                      onOpen={(a) => editInWeek(monday(a.date), a)}
+                    />
+                    <HabitTracker
+                      key={`${user?.id ?? "local"}-${undoVersion}`}
+                      data={data}
+                      week={week}
+                      onWeek={changeWeek}
+                      onEditing={setHabitEditing}
+                      onPlan={(habitId) => setWorkPlanning({ habitId })}
+                      onOpen={(a) => editInWeek(monday(a.date), a)}
+                      onToggle={(id, date) =>
+                        setData(
+                          (current) =>
+                            current ? toggleHabit(current, id, date) : current,
+                          { undoLabel: "avbockning av vana" },
+                        )
+                      }
+                      onSave={(draft) =>
+                        setData(
+                          (current) =>
+                            current ? saveHabit(current, draft) : current,
+                          { undoLabel: "vana" },
+                        )
+                      }
+                      onPause={(id) =>
+                        setData(
+                          (current) =>
+                            current ? pauseHabit(current, id) : current,
+                          { undoLabel: "paus av vana" },
+                        )
+                      }
+                    />
+                  </details>
                 </aside>
                 <div className="planner-calendar">
                   <PlanningQueue
                     data={data}
                     week={week}
-                    onPlan={(scope) => setWorkPlanning(scope)}
-                    onReview={setResolutionTaskId}
+                    onAction={(item) => {
+                      if (item.kind === "plan") setWorkPlanning(item.scope);
+                      if (item.kind === "task") setResolutionTaskId(item.id);
+                      if (item.kind === "missed") reschedule(item.item);
+                      if (item.kind === "deadline") {
+                        const errors = bookDeadline(item.id);
+                        if (errors.length) notify(errors.join(" "));
+                      }
+                      if (item.kind === "career") {
+                        if (!item.followup) setQueueAction(item.action);
+                        else {
+                          setResolutionCareerId(item.action.id);
+                        }
+                      }
+                    }}
                   />
                   {mobile && calendarMode === "week" ? (
                     <StudioWeek
@@ -1442,12 +1509,9 @@ export function Workspace() {
                       onStatus={(activity, done) =>
                         setActivityStatus(activity, done ? "done" : "planned")
                       }
-                      onTask={toggleTask}
                       onCreate={(date) =>
                         setEditor({ date, start: weekData.settings.start })
                       }
-                      onNewTask={setStudioTaskDate}
-                      onGoals={() => navigate("goals")}
                     />
                   ) : (
                     <>
@@ -1547,19 +1611,6 @@ export function Workspace() {
                                 </div>
                               </details>
                             )}
-                            <button
-                              className="button primary new-session"
-                              aria-label="Nytt pass"
-                              onClick={() =>
-                                setEditor({
-                                  date: addDays(week, activeDay),
-                                  start: weekData.settings.start,
-                                })
-                              }
-                            >
-                              <Plus size={18} />
-                              Nytt pass
-                            </button>
                           </div>
                         </div>
                         <div
@@ -1591,24 +1642,6 @@ export function Workspace() {
                               >
                                 {categoryFilters}
                               </div>
-                            )}
-                            {mobile && (
-                              <>
-                                <DeadlinePlanning
-                                  data={data}
-                                  date={addDays(week, activeDay)}
-                                  onOpen={(activity) =>
-                                    editInWeek(monday(activity.date), activity)
-                                  }
-                                  onBook={bookDeadline}
-                                />
-                                <FollowUpPanel
-                                  data={data}
-                                  week={week}
-                                  onReschedule={reschedule}
-                                  onEdit={editInWeek}
-                                />
-                              </>
                             )}
                             <Calendar
                               mobile={mobile || calendarMode === "day"}
@@ -1646,32 +1679,7 @@ export function Workspace() {
                                   setWeekendOpen((open) => !open);
                                 }}
                                 onOpen={openActivity}
-                                onBook={bookDeadline}
-                                onCreate={() =>
-                                  setEditor({
-                                    date: addDays(week, activeDay),
-                                    start: weekData.settings.start,
-                                  })
-                                }
                               />
-                            )}
-                            {!mobile && (
-                              <>
-                                <DeadlinePlanning
-                                  data={data}
-                                  date={addDays(week, activeDay)}
-                                  onOpen={(activity) =>
-                                    editInWeek(monday(activity.date), activity)
-                                  }
-                                  onBook={bookDeadline}
-                                />
-                                <FollowUpPanel
-                                  data={data}
-                                  week={week}
-                                  onReschedule={reschedule}
-                                  onEdit={editInWeek}
-                                />
-                              </>
                             )}
                             <div className="bottomstrip">
                               <span>
@@ -1778,6 +1786,7 @@ export function Workspace() {
           {(view === "career" || view === "network") && (
             <CareerView
               key={`${view}-${user?.id ?? "local"}-${undoVersion}-${careerEntry?.id ?? ""}`}
+              onWeek={() => navigate("planner")}
               initialTab={careerEntry?.tab}
               initialActionId={careerEntry?.id}
               section={view === "network" ? "network" : "jobs"}
@@ -2098,24 +2107,7 @@ export function Workspace() {
             setWorkPlanning(null);
             if (check) setRoutineId(check);
           }}
-          onApply={(next, base) => {
-            let applied = false;
-            setData(
-              (current) => {
-                if (
-                  !current ||
-                  JSON.stringify(current) !== JSON.stringify(base)
-                )
-                  return current;
-                applied = true;
-                return next;
-              },
-              { undoLabel: "veckoplan från mål och vanor" },
-            );
-            if (applied)
-              notify("Passen är kopplade till veckans uppgifter och vanor.");
-            return applied;
-          }}
+          onApply={applyWorkPlan}
         />
       )}
       {routineActivity && (
@@ -2135,10 +2127,7 @@ export function Workspace() {
             return count;
           }}
           scheduled={activities.some((a) => a.id === routineActivity.id)}
-          onPlanWeek={() => {
-            setWorkPlanning({ returnCheck: routineId ?? undefined });
-            setRoutineId(null);
-          }}
+          onApplyPlan={applyWorkPlan}
           data={data}
           week={week}
           storageLabel={
@@ -2193,6 +2182,99 @@ export function Workspace() {
             navigate("planner");
           }}
           onClose={() => setRoutineId(null)}
+        />
+      )}
+      {resolutionCareerId &&
+        careerActions(data).find(
+          (a) => a.id === resolutionCareerId && a.status === "open",
+        ) &&
+        (() => {
+          const action = careerActions(data).find(
+            (a) => a.id === resolutionCareerId,
+          )!;
+          const completed = Object.values(data.weeks).some((p) =>
+            p.activities.some(
+              (a) => a.careerActionId === action.id && a.status === "done",
+            ),
+          );
+          return (
+            <TaskResolution
+              key={action.id}
+              allowDrop={false}
+              context={
+                action.applicationId
+                  ? `Jobb · ${data.applications?.find((a) => a.id === action.applicationId)?.organization ?? "Ansökan"}`
+                  : `Nätverk · ${data.contacts?.find((c) => c.id === action.contactId)?.name ?? "Kontakt"}`
+              }
+              task={{
+                id: action.id,
+                goalId: "",
+                title: action.title,
+                done: false,
+                waitingFor:
+                  action.kind === "waiting" ? action.owner : undefined,
+                reviewOn: action.date,
+              }}
+              completed={completed}
+              onClose={() => setResolutionCareerId(null)}
+              onDecision={(decision) => {
+                setData(
+                  (current) =>
+                    current
+                      ? resolveCareerTask(current, action.id, decision)
+                      : current,
+                  { undoLabel: "nästa steg för jobb och nätverk" },
+                );
+                setResolutionCareerId(null);
+                if (decision.kind === "more")
+                  setQueueAction({
+                    ...action,
+                    kind: "task",
+                    date: decision.date!,
+                    minutes: decision.minutes,
+                  });
+                else
+                  notify(
+                    decision.kind === "done"
+                      ? "Uppgiften är klar."
+                      : "Bevakningen är sparad.",
+                  );
+              }}
+            />
+          );
+        })()}
+      {newHabit && (
+        <HabitForm
+          value={newHabit}
+          data={data}
+          onClose={() => setNewHabit(null)}
+          onPause={() => setNewHabit(null)}
+          onSave={(draft) => {
+            setData(
+              (current) => (current ? saveHabit(current, draft) : current),
+              { undoLabel: "ny vana" },
+            );
+            setNewHabit(null);
+          }}
+        />
+      )}
+      {queueAction && (
+        <BookingForm
+          data={data}
+          value={{
+            title: queueAction.title,
+            date: queueAction.date || today(),
+            careerActionId: queueAction.id,
+            minutes: queueAction.minutes,
+            applicationId: queueAction.applicationId,
+            contactId: queueAction.contactId,
+          }}
+          onClose={() => setQueueAction(null)}
+          onSave={(next) => {
+            setData(next, { undoLabel: "pass för nästa steg" });
+            setQueueAction(null);
+            notify("Uppgiften är bokad i kalendern.");
+          }}
         />
       )}
       {newGoal && (
@@ -2370,15 +2452,16 @@ export function Workspace() {
             <p>
               <strong>1. Välj veckans resultat.</strong>
               <br />
-              Skapa mål och konkreta uppgifter i veckovyn. Välj vanor som
-              stödjer veckan och ange tillgänglig tid under Inställningar.
+              Öppna måndagschecken och gå igenom Bestäm mål, Välj uppgifter och
+              Boka tid. Använd Lägg till för ett nytt pass, en uppgift, ett mål
+              eller en vana.
             </p>
             <p>
               <strong>2. Planera veckan.</strong>
               <br />
-              Använd Behöver planeras eller måndagschecken. Välj uppgifter,
-              tidsbehov och dagar, granska förslaget och lägg in passen. Du kan
-              också dra direkt i veckokalenderns tomma ytor.
+              Nästa steg samlar det som behöver tid eller uppföljning. Granska
+              förslaget innan du lägger in passen. Du kan också dra direkt i
+              veckokalenderns tomma ytor.
             </p>
             <p>
               <strong>3. Genomför och följ upp.</strong>

@@ -1,3 +1,4 @@
+import { addItem, openContext } from "./navigation";
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { createData } from "../src/lib/defaults";
@@ -110,6 +111,7 @@ for (const width of [1440, 390])
         JSON.parse(localStorage.getItem("veckoverket.workspace.v1")!),
       );
     await page.goto("./");
+    await openContext(page);
     await page
       .getByRole("button", { name: "Måndagscheck", exact: true })
       .click();
@@ -122,12 +124,12 @@ for (const width of [1440, 390])
       .fill("Två jobbleveranser och rörelse på måndag.");
     await check
       .getByRole("button", {
-        name: "Planera veckans mål och vanor",
+        name: "3. Boka tid",
         exact: true,
       })
       .click();
     const planner = page.getByRole("dialog", {
-      name: "Planera vecka 46",
+      name: "Måndagscheck",
       exact: true,
     });
     const before = await stored();
@@ -156,10 +158,14 @@ for (const width of [1440, 390])
       .getByRole("button", { name: "Lägg in 3 pass i veckan", exact: true })
       .click();
     await expect(check).toBeVisible();
+    await check.getByRole("button", { name: "1. Bestäm mål" }).click();
     await expect(check.getByLabel(/^Veckans startplan/)).toHaveValue(
       "Två jobbleveranser och rörelse på måndag.",
     );
-    await check.getByRole("button", { name: "Klar", exact: true }).click();
+    if (await check.isVisible())
+      await check
+        .getByRole("button", { name: "Stäng dialog", exact: true })
+        .click();
     const saved = await stored();
     const passes = saved.weeks["2026-11-09"].activities;
     expect(passes.find((a: Activity) => a.taskId === "t1")).toMatchObject({
@@ -220,7 +226,7 @@ for (const width of [1440, 390])
     });
     await page
       .getByRole("dialog", { name: "Nästa steg efter passet", exact: true })
-      .getByRole("button", { name: "Uppgiften är klar", exact: true })
+      .getByRole("button", { name: "Klar", exact: true })
       .click();
     expect(
       (await stored()).tasks.find((t: { id: string }) => t.id === "t1").done,
@@ -230,7 +236,7 @@ for (const width of [1440, 390])
       .click();
     await check
       .getByRole("button", {
-        name: "Planera veckans mål och vanor",
+        name: "3. Boka tid",
         exact: true,
       })
       .click();
@@ -240,11 +246,15 @@ for (const width of [1440, 390])
     await planner
       .getByRole("button", { name: "Stäng dialog", exact: true })
       .click();
-    await check.getByRole("button", { name: "Klar", exact: true }).click();
+    if (await check.isVisible())
+      await check
+        .getByRole("button", { name: "Stäng dialog", exact: true })
+        .click();
     expect((await stored()).weeks["2026-11-09"].activities).toHaveLength(
       passes.length,
     );
     await page.reload();
+    await openContext(page);
     await expect(habitCheck).toBeChecked();
     await expect(goals).toContainText("1 av 1 uppgifter klara");
     expect(
@@ -291,13 +301,12 @@ test("nytt veckomål, konkreta uppgifter och en tidsatt vana skapas utan att lä
     data,
   );
   await page.goto("./");
+  await openContext(page);
   const goals = page.getByRole("region", {
     name: "Veckans mål i kalendern",
     exact: true,
   });
-  await goals
-    .getByRole("button", { name: "Nytt veckomål", exact: true })
-    .click();
+  await addItem(page, "Mål");
   let dialog = page.getByRole("dialog");
   await dialog.getByLabel("Mål", { exact: true }).fill("Skicka en bra ansökan");
   await dialog.getByRole("button", { name: "Skapa mål", exact: true }).click();
@@ -309,7 +318,7 @@ test("nytt veckomål, konkreta uppgifter och en tidsatt vana skapas utan att lä
     .fill("Anpassa CV till rollen");
   await goals.getByRole("button", { name: "Lägg till", exact: true }).click();
   const habits = page.getByRole("region", { name: "Vanor", exact: true });
-  await habits.getByRole("button", { name: "Ny vana", exact: true }).click();
+  await addItem(page, "Vana");
   await dialog.getByLabel("Vad vill du göra regelbundet?").fill("Promenad");
   await dialog
     .getByRole("combobox", { name: "Veckomål", exact: true })
@@ -326,9 +335,8 @@ test("nytt veckomål, konkreta uppgifter och en tidsatt vana skapas utan att lä
   await dialog
     .getByRole("button", { name: "Stäng dialog", exact: true })
     .click();
-  await goals
-    .getByRole("button", { name: "Planera veckans arbete", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Måndagscheck", exact: true }).click();
+  await dialog.getByRole("button", { name: "3. Boka tid" }).click();
   await dialog
     .getByRole("button", { name: "Visa planeringsförslag", exact: true })
     .click();

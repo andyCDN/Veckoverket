@@ -1,8 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { AppData, Conflict, Task } from "@/lib/types";
 import { addDays, fullDate, planningBoundary, today } from "@/lib/date";
-import { weeklyWorkOptions } from "@/lib/weekly-work";
+import { nextSteps, type NextStep } from "@/lib/next-steps";
 import { taskStage, weekTasks, type TaskDecision } from "@/lib/task-workflow";
 import { habitWeek } from "@/lib/habits";
 import { Modal } from "./modal";
@@ -10,129 +10,45 @@ import { Modal } from "./modal";
 export function PlanningQueue({
   data,
   week,
-  onPlan,
-  onReview,
+  onAction,
 }: {
   data: AppData;
   week: string;
-  onPlan: (scope: { taskId?: string; habitId?: string }) => void;
-  onReview: (id: string) => void;
+  onAction: (step: NextStep) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const pending = weeklyWorkOptions(data, week).filter((o) => o.selected);
-  const groups = new Map<
-    string,
-    {
-      title: string;
-      minutes: number;
-      count: number;
-      kind: "task" | "habit";
-      id: string;
-    }
-  >();
-  for (const option of pending) {
-    const key = `${option.request.kind}:${option.request.id}`;
-    const old = groups.get(key);
-    if (old) {
-      old.minutes += option.request.minutes;
-      old.count++;
-    } else
-      groups.set(key, {
-        title:
-          option.request.kind === "task"
-            ? (data.tasks.find((t) => t.id === option.request.id)?.title ??
-              option.label)
-            : (data.habits?.find((h) => h.id === option.request.id)?.title ??
-              option.label),
-        minutes: option.request.minutes,
-        count: 1,
-        kind: option.request.kind,
-        id: option.request.id,
-      });
-  }
-  const items = [...groups.values()];
-  const current = today();
-  const attention = weekTasks(data, week).filter(
-    (t) =>
-      taskStage(data, t) === "followup" ||
-      (t.state === "waiting" && t.reviewOn && t.reviewOn <= current),
-  );
-  if (!items.length && !attention.length) return null;
+  const [, refresh] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => refresh((n) => n + 1), 60000);
+    return () => clearInterval(timer);
+  }, []);
+  const items = nextSteps(data, week);
+  if (!items.length) return null;
   return (
-    <section className="week-action-queue" aria-label="Veckans nästa steg">
-      {items.length > 0 && (
-        <>
-          <header>
-            <h2>
-              Behöver planeras <small>{items.length}</small>
-            </h2>
-            <span>
-              {items.reduce((n, i) => n + i.minutes, 0)} min saknar avsatt tid
-            </span>
-          </header>
-          <ul>
-            {(expanded ? items : items.slice(0, 3)).map((item) => (
-              <li key={`${item.kind}:${item.id}`}>
-                <div>
-                  <strong>{item.title}</strong>
-                  <small>
-                    {item.kind === "habit"
-                      ? `${item.count} vanotillfällen`
-                      : "Uppgift"}{" "}
-                    · {item.minutes} min · saknar kalenderpass
-                  </small>
-                </div>
-                <button
-                  className="button secondary"
-                  onClick={() =>
-                    onPlan(
-                      item.kind === "task"
-                        ? { taskId: item.id }
-                        : { habitId: item.id },
-                    )
-                  }
-                >
-                  Planera
-                </button>
-              </li>
-            ))}
-          </ul>
-          {items.length > 3 && (
-            <button
-              className="text-button"
-              onClick={() => setExpanded(!expanded)}
-            >
-              {expanded ? "Visa färre" : "Visa alla"} ({items.length})
+    <section className="week-action-queue" aria-label="Nästa steg">
+      <header>
+        <h2>
+          Nästa steg <small>{items.length}</small>
+        </h2>
+        <span>Uppgifter, bevakningar och tid att boka</span>
+      </header>
+      <ul>
+        {(expanded ? items : items.slice(0, 4)).map((item) => (
+          <li key={item.key}>
+            <div>
+              <strong>{item.title}</strong>
+              <small>{item.detail}</small>
+            </div>
+            <button className="button secondary" onClick={() => onAction(item)}>
+              {item.label}
             </button>
-          )}
-        </>
-      )}
-      {attention.length > 0 && (
-        <section aria-label="Uppgifter att följa upp">
-          <h3>
-            Följ upp <small>{attention.length}</small>
-          </h3>
-          <ul>
-            {attention.map((task) => (
-              <li key={task.id}>
-                <div>
-                  <strong>{task.title}</strong>
-                  <small>
-                    {task.state === "waiting"
-                      ? `Bevakning: ${task.waitingFor} · ${task.reviewOn}`
-                      : "Passet är avslutat eller har passerat. Välj nästa steg."}
-                  </small>
-                </div>
-                <button
-                  className="button secondary"
-                  onClick={() => onReview(task.id)}
-                >
-                  Följ upp
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
+          </li>
+        ))}
+      </ul>
+      {items.length > 4 && (
+        <button className="text-button" onClick={() => setExpanded(!expanded)}>
+          {expanded ? "Visa färre" : `Visa alla ${items.length} nästa steg`}
+        </button>
       )}
     </section>
   );
@@ -143,7 +59,11 @@ export function TaskResolution({
   completed,
   onDecision,
   onClose,
+  allowDrop = true,
+  context,
 }: {
+  context?: string;
+  allowDrop?: boolean;
   task: Task;
   completed: boolean;
   onDecision: (decision: TaskDecision) => void;
@@ -168,6 +88,7 @@ export function TaskResolution({
   return (
     <Modal title="Nästa steg efter passet" onClose={onClose}>
       <div className="stack task-resolution">
+        {context && <p className="muted">{context}</p>}
         <h3>{task.title}</h3>
         <p>
           {completed
@@ -175,35 +96,37 @@ export function TaskResolution({
             : "Välj vad som ska hända med uppgiften härnäst."}
         </p>
         {!choice ? (
-          <>
+          <div className="task-resolution-options">
             <button
               className="button primary"
               onClick={() => decide({ kind: "done" })}
             >
-              Uppgiften är klar
+              Klar
             </button>
             <button
               className="button secondary"
               onClick={() => setChoice("more")}
             >
-              Mer tid behövs
+              Mer tid
             </button>
             <button
               className="button secondary"
               onClick={() => setChoice("waiting")}
             >
-              Väntar på svar
+              Väntar
             </button>
-            <details>
-              <summary>Fler alternativ</summary>
-              <button
-                className="text-button"
-                onClick={() => decide({ kind: "drop" })}
-              >
-                Släpp uppgiften
-              </button>
-            </details>
-          </>
+            {allowDrop && (
+              <details>
+                <summary>Fler alternativ</summary>
+                <button
+                  className="text-button"
+                  onClick={() => decide({ kind: "drop" })}
+                >
+                  Släpp uppgiften
+                </button>
+              </details>
+            )}
+          </div>
         ) : (
           <form
             className="stack"

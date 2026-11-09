@@ -25,3 +25,11 @@ The default productive-time targets already use all 25 available hours. Adding t
 Skriv ett önskat resultat per rad i Veckans startplan och välj **Ta fram veckomål från startplanen**. Varje rad blir ett redigerbart förslag med område och konkreta uppgifter. Uppgifter kan anges efter `|`, separerade med semikolon; annars används raden som en första uppgift som går att ändra.
 
 **Skapa valda veckomål** sparar målen i den valda veckan och kopplar uppgifterna till målen. Befintliga veckomål med samma namn bevaras utan dubbletter. Fortsätt med **Planera veckans mål och vanor** för att granska kalenderförslaget och boka tid. Inga pass bokas enbart genom att skapa mål.
+
+### Samlad veckoplanering
+
+Måndagschecken har tre steg i samma dialog: **Bestäm mål → Välj uppgifter → Boka tid**. Du kan använda befintliga uppgifter, gå tillbaka utan att tappa målförslagen och granska kalenderförslaget innan några pass läggs in. Fredagschecken behåller veckans sammanfattning och valda överföringar till nästa vecka.
+
+Veckovyn har en gemensam **Nästa steg** för obokade uppgifter, tidsatta vanor, jobb- och nätverksuppgifter, förfallna bevakningar, missade pass och deadlinearbete. Varje rad använder sin ursprungliga post; inga parallella uppgifter skapas. Listan döljs när den är tom. Framtida bevakningar dyker upp när deras datum nås.
+
+**Lägg till** samlar Pass, Uppgift, Mål och Vana. Dra i kalendern eller använd kalenderns tidsmarkering för att boka en specifik tid. Mål och vanor ligger i högerspalten på desktop och i en utfällbar panel på mobil. Efter uppgiftspass väljer du **Klar**, **Mer tid** eller **Väntar**; kontakt och uppföljningsdatum visas först när väntan väljs. Samma beslut uppdaterar uppgifter i Jobb och Nätverk.

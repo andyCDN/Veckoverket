@@ -26,6 +26,9 @@ for (const width of [1440, 390])
       .getByLabel("Veckomål", { exact: true })
       .scrollIntoViewIfNeeded();
     await page.screenshot({ path: `test-results/monday-goals-${width}.png` });
+    await dialog
+      .getByRole("button", { name: "Fortsätt med uppgifter", exact: true })
+      .click();
     await dialog.getByRole("button", { name: "Skapa valda veckomål" }).click();
     await expect(
       dialog.getByRole("status").filter({ hasText: "1 veckomål har skapats" }),
@@ -33,17 +36,19 @@ for (const width of [1440, 390])
     await expect(
       dialog.getByRole("region", { name: "Veckans mål", exact: true }),
     ).toContainText("Tre ansökningar skickade");
+    await dialog.getByRole("button", { name: "1. Bestäm mål" }).click();
     await dialog
       .getByLabel(/^Veckans startplan/)
       .fill("Tre ansökningar skickade | Anpassa CV; Skicka ansökningar");
     await dialog
       .getByRole("button", { name: "Ta fram veckomål från startplanen" })
       .click();
+    await dialog
+      .getByRole("button", { name: "Fortsätt med uppgifter", exact: true })
+      .click();
     await dialog.getByRole("button", { name: "Skapa valda veckomål" }).click();
     await expect(dialog.getByText(/^Inga nya mål skapades/)).toBeVisible();
-    await dialog
-      .getByRole("button", { name: "Planera veckans mål och vanor" })
-      .click();
+    await dialog.getByRole("button", { name: "3. Boka tid" }).click();
     await expect(page.getByRole("dialog")).toContainText("Anpassa CV");
     const stored = await page.evaluate(() =>
       JSON.parse(localStorage.getItem("veckoverket.workspace.v1")!),

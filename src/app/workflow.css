@@ -478,3 +478,121 @@
     display: none;
   }
 }
+
+/* One weekly process and one creation menu. */
+.workflow-caption {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #555567;
+}
+.add-menu {
+  position: relative;
+  margin-left: auto;
+}
+.add-menu > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.add-menu > summary::-webkit-details-marker {
+  display: none;
+}
+.add-menu-options {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 190px;
+  padding: 8px;
+  background: #faf7f2;
+  border: 2px solid #1633a6;
+  box-shadow: 4px 4px 0 #d4e84b;
+  z-index: 20;
+  display: grid;
+  gap: 4px;
+}
+.add-menu-options button {
+  text-align: left;
+  min-height: 44px;
+  padding: 10px;
+}
+.week-flow-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.week-flow-steps button {
+  white-space: normal;
+  min-width: 0;
+  padding: 10px 6px;
+}
+.week-context > summary {
+  cursor: pointer;
+  padding: 16px;
+  font-weight: 700;
+  border: 2px solid #1633a6;
+  background: #faf7f2;
+}
+.week-context[open] > summary {
+  margin-bottom: 16px;
+}
+.week-context .habit-tracker {
+  margin-top: 20px;
+}
+.task-resolution-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.task-resolution-options > button {
+  min-width: 0;
+  padding: 12px 8px;
+}
+.task-resolution-options details {
+  grid-column: 1 / -1;
+}
+.career-week-link {
+  align-self: start;
+}
+@media (min-width: 701px) {
+  .week-context > summary {
+    display: none;
+  }
+}
+@media (max-width: 700px) {
+  .planner-habits {
+    order: 2;
+  }
+  .planner-calendar {
+    order: 1;
+  }
+  .workflow-caption {
+    display: none;
+  }
+  .planning-shortcuts {
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .week-flow-steps {
+    gap: 4px;
+  }
+  .week-flow-steps button {
+    font-size: 0.65rem;
+  }
+  .week-context {
+    margin-bottom: 24px;
+  }
+}
+[data-mobile-design="studio"] .planner-habits {
+  order: 2;
+}
+[data-mobile-design="studio"] .planner-calendar {
+  order: 1;
+}
+[data-mobile-design="studio"] .week-context > summary {
+  display: list-item;
+}
+.week-context .habit-tracker {
+  margin-top: 20px;
+}
+.week-extras .weekend-summaries {
+  flex: 1;
+}

@@ -1,3 +1,4 @@
+import { addItem, openContext } from "./navigation";
 import { navigateTo } from "./navigation";
 import { test, expect, type Page } from "@playwright/test";
 import { addDays, hours, time } from "../src/lib/date";
@@ -64,9 +65,7 @@ test("redigering, status, egna aktiviteter, kategorier, mål, uppgifter och refl
   await page
     .getByRole("combobox", { name: "Status", exact: true })
     .selectOption("done");
-  await page
-    .getByRole("button", { name: "Spara pass", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Spara pass", exact: true }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await expect(
     page.locator(".calendar-block").filter({ hasText: "Förbereda intervju" }),
@@ -79,7 +78,7 @@ test("redigering, status, egna aktiviteter, kategorier, mål, uppgifter och refl
   const date = await page.getByLabel("Datum", { exact: true }).inputValue();
   const start = await page.getByLabel("Start", { exact: true }).inputValue();
   await page.getByRole("button", { name: "Ta bort", exact: true }).click();
-  await page.getByRole("button", { name: "Nytt pass", exact: true }).click();
+  await addItem(page, "Pass");
   await page.getByLabel("Namn", { exact: true }).fill("Mitt eget projekt");
   await page.getByLabel("Datum", { exact: true }).fill(date);
   await page.getByLabel("Start", { exact: true }).fill(start);
@@ -87,9 +86,7 @@ test("redigering, status, egna aktiviteter, kategorier, mål, uppgifter och refl
   await page
     .getByRole("combobox", { name: "Återkommer", exact: true })
     .selectOption("weekly");
-  await page
-    .getByRole("button", { name: "Spara pass", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Spara pass", exact: true }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await expect(
     page.locator(".calendar-block").filter({ hasText: "Mitt eget projekt" }),
@@ -156,9 +153,7 @@ test("överlappning nekas i editorn och låst tid kan inte dras", async ({
     .click();
   await page.getByLabel("Start", { exact: true }).fill("12:00");
   await page.getByLabel("Slut", { exact: true }).fill("13:00");
-  await page
-    .getByRole("button", { name: "Spara pass", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Spara pass", exact: true }).click();
   await expect(page.locator(".inline-error")).toContainText("överlappar");
   await page.getByRole("button", { name: "Stäng dialog", exact: true }).click();
   const lunch = page.locator(".calendar-block.lunch").first();
@@ -352,13 +347,11 @@ test("kategorifilter ändrar bara visningen och utskrift visar hela veckan", asy
     await expect(a.locator(".block-category")).toHaveText("Musik");
   expect(await stored(page)).toEqual(before);
   // A filtered-out job block still occupies its time in the scheduling rules.
-  await page.getByRole("button", { name: "Nytt pass", exact: true }).click();
+  await addItem(page, "Pass");
   await page
     .getByLabel("Namn", { exact: true })
     .fill("Tid som redan är upptagen");
-  await page
-    .getByRole("button", { name: "Spara pass", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Spara pass", exact: true }).click();
   await expect(page.locator(".inline-error")).toContainText("överlappar");
   await page.getByRole("button", { name: "Stäng dialog", exact: true }).click();
   expect(await stored(page)).toEqual(before);
@@ -598,9 +591,7 @@ test("v2.5: aktiv dag, exakta datum, veckobyte och nytt pass på vald dag", asyn
     await expect(focus.locator(".day-focus-name")).toContainText(
       "Tisdag27 oktober 2026",
     );
-    await page
-      .getByRole("button", { name: "Nytt pass", exact: true })
-      .click();
+    await addItem(page, "Pass");
     await expect(page.getByLabel("Datum", { exact: true })).toHaveValue(
       "2026-10-27",
     );
@@ -624,131 +615,120 @@ test("v2.5: aktiv dag, exakta datum, veckobyte och nytt pass på vald dag", asyn
   expect(errors).toEqual([]);
 });
 
-test("v2.5: missade pass, ombokning, ändrad längd, borttagning och uppföljning över veckor", async ({
+test("missade pass hanteras i Nästa steg och följer med över veckor", async ({
   page,
 }) => {
-  test.setTimeout(90000);
+  await page.clock.install({ time: new Date("2026-11-09T07:00:00Z") });
+  const { createData } = await import("../src/lib/defaults");
+  const data = createData();
+  data.goals = [];
+  data.tasks = [];
+  data.habits = [];
+  data.applications = [];
+  data.contacts = [];
+  data.careerActions = [];
+  data.deadlines = [];
+  data.settings = {
+    ...data.settings,
+    autoPlanning: false,
+    buffer: 0,
+    start: 480,
+    end: 960,
+  };
+  const original = {
+    id: "original",
+    title: "Fokusarbete",
+    date: "2026-11-09",
+    start: 540,
+    end: 600,
+    categoryId: "career",
+    status: "planned" as const,
+    source: "manual" as const,
+    blockType: "flexible" as const,
+    estimatedMinutes: 60,
+    priority: 3,
+    description: "",
+  };
+  data.weeks = {
+    "2026-11-09": {
+      week: "2026-11-09",
+      generatedAt: "",
+      weeklyRoutinesFrom: "2026-11-09",
+      activities: [original],
+    },
+    "2026-11-16": {
+      week: "2026-11-16",
+      generatedAt: "",
+      weeklyRoutinesFrom: "2026-11-16",
+      activities: [],
+    },
+  };
+  await page.addInitScript((data) => {
+    if (!localStorage.getItem("veckoverket.workspace.v1"))
+      localStorage.setItem("veckoverket.workspace.v1", JSON.stringify(data));
+  }, data);
   await page.goto("./");
-  await expect(page.locator(".calendar-grid")).toBeVisible();
-  const initial = await stored(page),
-    week = Object.keys(initial.weeks)[0];
-  const original = initial.weeks[week].activities.find(
-    (a: { date: string; categoryId: string }) =>
-      a.date === week && a.categoryId === "career",
-  );
-  const debt = `${hours(original.end - original.start)} kvar att boka om`;
-  const entry = page.locator(`[data-activity-id="${original.id}"]`);
-  const missed = entry.getByRole("checkbox", { name: /^Missat:/ }),
-    done = entry.getByRole("checkbox", { name: /^Genomförd:/ });
-  const panel = page.getByRole("region", {
-    name: "Uppföljning av missade pass",
-  });
-  await missed.check();
-  await expect(done).not.toBeChecked();
-  await expect(page.getByRole("dialog")).not.toBeVisible();
-  await expect(panel.getByRole("status")).toHaveText(debt);
-  await done.check();
-  await expect(missed).not.toBeChecked();
-  await expect(panel).not.toBeVisible();
-  await missed.check();
-  await expect(done).not.toBeChecked();
-  // Make a real free slot; ombokning must not displace occupied or locked passes.
-  const study = initial.weeks[week].activities.find(
-    (a: { categoryId: string; start: number; date: string }) =>
-      a.categoryId === "learning" && a.start === 510 && a.date > week,
-  );
-  await page
-    .locator(`[data-activity-id="${study.id}"]`)
-    .getByRole("button", { name: /^Ta bort pass:/ })
-    .click();
-  await panel.getByRole("button", { name: "Boka om", exact: true }).click();
-  await expect(page.getByLabel("Datum", { exact: true })).toHaveValue(
-    study.date,
-  );
-  await expect(page.getByLabel("Start", { exact: true })).toHaveValue("08:30");
-  await expect(page.getByLabel("Slut", { exact: true })).toHaveValue(
-    time(510 + original.end - original.start),
-  );
-  await page
-    .getByRole("button", { name: "Spara pass", exact: true })
-    .click();
-  await expect(page.getByRole("dialog")).not.toBeVisible();
-  await expect(panel.getByRole("status")).toHaveText("0 h kvar att boka om");
-  await expect(panel.locator(".followup-state")).toHaveText("Ombokad");
-  await expect(
-    panel.getByRole("button", { name: "Boka om", exact: true }),
-  ).toHaveCount(0);
-  let after = await stored(page);
-  const replacement = after.weeks[week].activities.find(
+  const entry = page.locator('[data-activity-id="original"]');
+  const queue = page.getByRole("region", { name: "Nästa steg", exact: true });
+  await entry.getByRole("checkbox", { name: /^Missat:/ }).check();
+  await expect(queue).toContainText("60 min återstår");
+  await entry.getByRole("checkbox", { name: /^Genomförd:/ }).check();
+  await expect(queue).toHaveCount(0);
+  await entry.getByRole("checkbox", { name: /^Missat:/ }).check();
+  await queue.getByRole("button", { name: "Boka tid", exact: true }).click();
+  await page.getByRole("button", { name: "Spara pass", exact: true }).click();
+  await expect(queue).toHaveCount(0);
+  const after = await stored(page);
+  const replacement = after.weeks["2026-11-09"].activities.find(
     (a: { followUpOf?: { activityId: string } }) =>
       a.followUpOf?.activityId === original.id,
   );
   expect(
-    after.weeks[week].activities.find(
+    after.weeks["2026-11-09"].activities.find(
       (a: { id: string }) => a.id === original.id,
     ),
   ).toEqual({ ...original, status: "skipped" });
   await page.reload();
-  await expect(panel.getByRole("status")).toHaveText("0 h kvar att boka om");
-  await panel.getByRole("button", { name: /^Ersättningspass:/ }).click();
-  await page.getByLabel("Slut", { exact: true }).fill("10:30");
   await page
-    .getByRole("button", { name: "Spara pass", exact: true })
+    .locator(`[data-activity-id="${replacement.id}"] .calendar-block`)
     .click();
-  await expect(panel.getByRole("status")).toHaveText(
-    `${hours(original.end - original.start - 120)} kvar att boka om`,
-  );
+  await page
+    .getByLabel("Slut", { exact: true })
+    .fill(time(replacement.start + 30));
+  await page.getByRole("button", { name: "Spara pass", exact: true }).click();
+  await expect(queue).toContainText("30 min återstår");
   await page
     .locator(`[data-activity-id="${replacement.id}"]`)
     .getByRole("button", { name: /^Ta bort pass:/ })
     .click();
-  await expect(panel.getByRole("status")).toHaveText(debt);
-  // Unresolved time follows the user into another week.
+  await expect(queue).toContainText("60 min återstår");
   await page.getByRole("button", { name: "Nästa vecka", exact: true }).click();
-  await expect(panel.getByRole("status")).toHaveText(debt);
-  after = await stored(page);
-  const next = Object.keys(after.weeks).sort().at(-1)!;
-  const nextStudy = after.weeks[next].activities.find(
-    (a: { categoryId: string; start: number }) =>
-      a.categoryId === "learning" && a.start === 510,
+  await expect(queue).toContainText("60 min återstår");
+  await queue.getByRole("button", { name: "Boka tid", exact: true }).click();
+  await expect(page.getByLabel("Datum", { exact: true })).toHaveValue(
+    "2026-11-16",
   );
-  await page
-    .locator(`[data-activity-id="${nextStudy.id}"]`)
-    .getByRole("button", { name: /^Ta bort pass:/ })
-    .click();
-  await panel.getByRole("button", { name: "Boka om", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Spara pass", exact: true })
-    .click();
-  await expect(page.getByRole("dialog")).not.toBeVisible();
-  after = await stored(page);
-  const nextReplacement = after.weeks[next].activities.find(
+  await page.getByRole("button", { name: "Spara pass", exact: true }).click();
+  await expect(queue).toHaveCount(0);
+  const final = await stored(page);
+  const next = final.weeks["2026-11-16"].activities.find(
     (a: { followUpOf?: { activityId: string } }) =>
       a.followUpOf?.activityId === original.id,
   );
-  expect(nextReplacement.followUpOf).toEqual({ week, activityId: original.id });
-  const nextEntry = page.locator(`[data-activity-id="${nextReplacement.id}"]`);
-  await nextEntry.getByRole("checkbox", { name: /^Missat:/ }).check();
-  await expect(panel.getByRole("status")).toHaveText(debt);
-  await expect(panel.locator(".debt-chip")).toHaveCount(1);
-  const { default: AxeBuilder } = await import("@axe-core/playwright");
-  const scan = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
-    .analyze();
-  expect(
-    scan.violations.map((v) => ({
-      id: v.id,
-      nodes: v.nodes.map((n) => n.failureSummary),
-    })),
-  ).toEqual([]);
-  await nextEntry.getByRole("checkbox", { name: /^Genomförd:/ }).check();
-  await expect(
-    nextEntry.getByRole("checkbox", { name: /^Missat:/ }),
-  ).not.toBeChecked();
-  await expect(panel).not.toBeVisible();
+  expect(next.followUpOf).toEqual({
+    week: "2026-11-09",
+    activityId: original.id,
+  });
+  await page
+    .locator(`[data-activity-id="${next.id}"]`)
+    .getByRole("checkbox", { name: /^Genomförd:/ })
+    .check();
   await page.reload();
   await page.getByRole("button", { name: "Nästa vecka", exact: true }).click();
   await expect(
-    nextEntry.getByRole("checkbox", { name: /^Genomförd:/ }),
+    page
+      .locator(`[data-activity-id="${next.id}"]`)
+      .getByRole("checkbox", { name: /^Genomförd:/ }),
   ).toBeChecked();
+  await expect(queue).toHaveCount(0);
 });

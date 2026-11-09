@@ -1,3 +1,4 @@
+import { openToday } from "./navigation";
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { createData } from "../src/lib/defaults";
@@ -31,7 +32,7 @@ for (const width of [1440, 390, 320])
     }, data);
     await page.goto("./");
     const shortcuts = page.getByRole("region", {
-      name: "Planera och checka in",
+      name: "Veckans arbetsflöde",
     });
     await shortcuts
       .getByRole("button", { name: "Måndagscheck", exact: true })
@@ -41,7 +42,9 @@ for (const width of [1440, 390, 320])
     await dialog
       .getByLabel(/^Veckans startplan/)
       .fill("Fokus på två viktiga leveranser.");
-    await dialog.getByRole("button", { name: "Klar", exact: true }).click();
+    await dialog
+      .getByRole("button", { name: "Stäng dialog", exact: true })
+      .click();
     await shortcuts
       .getByRole("button", { name: "Fredagscheck", exact: true })
       .click();
@@ -66,15 +69,12 @@ for (const width of [1440, 390, 320])
     await dialog
       .getByRole("button", { name: "Stäng dialog", exact: true })
       .click();
-    await shortcuts.getByText("Fler alternativ", { exact: true }).click();
-    await shortcuts
-      .getByRole("button", { name: "Dra och boka", exact: true })
-      .click();
-    await expect(dialog).toHaveAccessibleName("Dra och boka");
-    await dialog
-      .getByRole("combobox", { name: "Välj dag", exact: true })
-      .selectOption("2026-11-03");
-    const surface = dialog.getByRole("group", { name: "Markera tidsperiod" });
+    await openToday(page);
+    if (width === 1440)
+      await page.getByRole("button", { name: "Dag", exact: true }).click();
+    await page.getByRole("button", { name: /^Visa tisdag/ }).click();
+    await page.getByText("Markera tid för nytt pass", { exact: true }).click();
+    const surface = page.getByRole("group", { name: "Markera tidsperiod" });
     await surface.scrollIntoViewIfNeeded();
     const box = (await surface.boundingBox())!;
     const x = box.x + box.width / 2;

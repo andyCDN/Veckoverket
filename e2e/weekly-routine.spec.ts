@@ -20,6 +20,7 @@ test("måndagsplanering och fredagsövning sparas, följer rätt vecka och går 
   await page
     .getByLabel(/^Veckans startplan/)
     .fill("Två ansökningar på måndag och projektarbete på onsdag.");
+  await page.getByRole("button", { name: "3. Boka tid" }).click();
   await page
     .getByRole("button", { name: "Markera som genomförd", exact: true })
     .click();

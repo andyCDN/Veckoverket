@@ -1,11 +1,5 @@
 "use client";
-import {
-  Check,
-  Plus,
-  Printer,
-  SlidersHorizontal,
-  UserRound,
-} from "lucide-react";
+import { Check, Printer, SlidersHorizontal, UserRound } from "lucide-react";
 import { useState } from "react";
 import {
   addDays,
@@ -83,10 +77,7 @@ export function StudioWeek({
   onWeek,
   onOpen,
   onStatus,
-  onTask,
   onCreate,
-  onNewTask,
-  onGoals,
 }: {
   data: AppData;
   week: string;
@@ -97,10 +88,7 @@ export function StudioWeek({
   onWeek: (week: string) => void;
   onOpen: (activity: Activity) => void;
   onStatus: (activity: Activity, done: boolean) => void;
-  onTask: (id: string) => void;
   onCreate: (date: string) => void;
-  onNewTask: (date: string) => void;
-  onGoals: () => void;
 }) {
   const model = studioWeek(data, week, activities);
   const current = today();
@@ -111,21 +99,12 @@ export function StudioWeek({
     year: "numeric",
     timeZone: "UTC",
   }).formatRange(new Date(`${week}T12:00:00Z`), new Date(`${end}T12:00:00Z`));
-  const dayTasks = (date: string, entries: Activity[]) =>
-    model.tasks.filter((task) =>
-      model.activities.some((a) => a.taskId === task.id)
-        ? entries.some((a) => a.taskId === task.id)
-        : task.date === date ||
-          (!task.date &&
-            entries.some((activity) => activity.goalId === task.goalId)),
-    );
   const block = (day: number) => {
     const date = addDays(week, day);
     const entries = model.activities
       .filter((activity) => activity.date === date)
       .sort((a, b) => a.start - b.start);
     const selected = day === activeDay;
-    const tasks = dayTasks(date, entries);
     return (
       <article
         key={date}
@@ -184,25 +163,6 @@ export function StudioWeek({
               </li>
             ))}
           </ul>
-          {tasks.length > 0 && (
-            <ul
-              className="studio-task-list"
-              aria-label={`Uppgifter ${DAY_NAMES[day].toLowerCase()}`}
-            >
-              {tasks.map((task) => (
-                <li key={task.id}>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={task.done}
-                      onChange={() => onTask(task.id)}
-                    />
-                    <span>{task.title}</span>
-                  </label>
-                </li>
-              ))}
-            </ul>
-          )}
           {model.deadlines
             .filter((deadline) => deadline.date === date)
             .map((deadline) => (
@@ -213,19 +173,9 @@ export function StudioWeek({
                 </strong>
               </div>
             ))}
-          {selected && (
-            <button className="studio-add-task" onClick={() => onNewTask(date)}>
-              <Plus size={15} /> Ny uppgift
-            </button>
-          )}
-          {!selected && (
-            <button
-              className="studio-add-inline"
-              onClick={() => onCreate(date)}
-            >
-              + Lägg till block
-            </button>
-          )}
+          <button className="studio-add-inline" onClick={() => onCreate(date)}>
+            Boka tid här
+          </button>
         </div>
       </article>
     );
@@ -359,60 +309,14 @@ export function StudioWeek({
                   className="studio-add-inline"
                   onClick={() => onCreate(date)}
                 >
-                  + Lägg till block
+                  Boka tid här
                 </button>
               </div>
             );
           })}
         </section>
       </div>
-      <section
-        className="studio-goals"
-        aria-label="Veckans mål och prioriteringar"
-      >
-        <header>
-          <h2>■ Veckans mål & prioriteringar</h2>
-          <span>
-            {model.goals.length} AV {model.goals.length} SATT
-          </span>
-        </header>
-        {model.goals.slice(0, 3).map((goal, index) => {
-          const tasks = model.tasks.filter((task) => task.goalId === goal.id);
-          const done = tasks.filter((task) => task.done).length;
-          return (
-            <article className="studio-goal" key={goal.id}>
-              <b>{String(index + 1).padStart(2, "0")}</b>
-              <div>
-                <span className="studio-tag">
-                  {data.categories.find(
-                    (category) => category.id === goal.categoryId,
-                  )?.name || "Mål"}
-                </span>
-                <button onClick={onGoals}>{goal.title}</button>
-                {goal.description && <p>{goal.description}</p>}
-                <div className="studio-progress" aria-hidden="true">
-                  {tasks.slice(0, 10).map((task) => (
-                    <i key={task.id} className={task.done ? "is-done" : ""} />
-                  ))}
-                </div>
-                <small>
-                  {done} av {tasks.length} uppgifter klara
-                </small>
-              </div>
-            </article>
-          );
-        })}
-        {!model.goals.length && <p>Inga mål satta för veckan.</p>}
-        <button className="studio-add-inline" onClick={onGoals}>
-          {model.goals.length
-            ? "Visa alla mål och uppgifter"
-            : "Sätt veckans mål"}
-        </button>
-      </section>
       <div className="studio-footer-actions">
-        <button onClick={() => onCreate(addDays(week, activeDay))}>
-          <Plus size={18} /> Lägg till block
-        </button>
         <button
           aria-label="Skriv ut veckoöversikten"
           onClick={() => window.print()}

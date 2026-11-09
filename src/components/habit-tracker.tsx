@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useLayoutEffect, useState } from "react";
-import { Check, Plus } from "lucide-react";
+import { Check } from "lucide-react";
 import type { AppData, Habit } from "@/lib/types";
 import {
   addDays,
@@ -8,7 +8,6 @@ import {
   fullDate,
   monday,
   today,
-  uid,
   weekNumber,
 } from "@/lib/date";
 import {
@@ -79,13 +78,6 @@ export function HabitTracker({
         habitWeek(h, week, data).completed < h.schedule.target ||
         effectiveHabitChecks(h, data).includes(current)),
   );
-  const newHabit = () =>
-    setDraft({
-      id: uid(),
-      title: "",
-      createdOn: current,
-      schedule: { kind: "days", days: [0, 1, 2, 3, 4] },
-    });
   return (
     <section className="habit-tracker" aria-label="Vanor">
       <header className="habit-heading">
@@ -93,10 +85,6 @@ export function HabitTracker({
           <span className="habit-kicker">Små steg, vecka för vecka</span>
           <h2>Vanor</h2>
         </div>
-        <button className="button primary" onClick={newHabit}>
-          <Plus size={15} aria-hidden="true" />
-          Ny vana
-        </button>
       </header>
       <div className="habit-week-bar">
         <div className="habit-week-controls">
@@ -136,11 +124,7 @@ export function HabitTracker({
               ? "Inga aktiva vanor för den här veckan."
               : "Vad vill du göra regelbundet? Börja med en vana och ett rimligt veckomål."}
           </p>
-          {!data.habits?.length && (
-            <button className="text-button" onClick={newHabit}>
-              Skapa din första vana
-            </button>
-          )}
+          {!data.habits?.length && <p>Välj Lägg till → Vana för att börja.</p>}
         </div>
       ) : (
         <table className="habit-matrix">
@@ -353,7 +337,7 @@ export function HabitTracker({
   );
 }
 
-function HabitForm({
+export function HabitForm({
   value,
   data,
   existing,

@@ -68,6 +68,7 @@ import {
 
 const statuses = APPLICATION_STATUSES;
 type Props = {
+  onWeek: () => void;
   initialActionId?: string;
   initialTab?: "actions";
   section: "jobs" | "network";
@@ -85,6 +86,7 @@ export function CareerView({
   section,
   initialActionId,
   initialTab,
+  onWeek,
 }: Props) {
   const [materialsId, setMaterialsId] = useState<string | null>(null);
   const [actionEditing, setActionEditing] = useState(false);
@@ -240,9 +242,12 @@ export function CareerView({
     >
       <p>
         {section === "network"
-          ? "Dina kontakter, samtal och uppföljningar. Öppna Jobb för att arbeta med ansökningar."
-          : "Dina ansökningar och nästa steg. Öppna Nätverk för kontakter och samtalslogg."}
+          ? "Hantera kontakter och samtal här. Uppgifter och bevakningar följer med till Nästa steg i veckovyn."
+          : "Hantera ansökningar här. Uppgifter och bevakningar följer med till Nästa steg i veckovyn."}
       </p>
+      <button className="text-button career-week-link" onClick={onWeek}>
+        Till veckans arbete →
+      </button>
       <div className="career-tabs" role="group" aria-label="Visa jobböversikt">
         {(section === "network"
           ? [
@@ -1690,7 +1695,7 @@ function DeadlineForm({
   );
 }
 
-function BookingForm({
+export function BookingForm({
   data,
   value,
   onSave,
@@ -1703,6 +1708,7 @@ function BookingForm({
     applicationId?: string;
     contactId?: string;
     careerActionId?: string;
+    minutes?: number;
   };
   onSave: (v: AppData) => void;
   onClose: () => void;
@@ -1712,7 +1718,7 @@ function BookingForm({
     : undefined;
   const [date, setDate] = useState(value.date),
     [start, setStart] = useState("09:00"),
-    [minutes, setMinutes] = useState(30),
+    [minutes, setMinutes] = useState(value.minutes ?? 30),
     [title, setTitle] = useState(value.title),
     [category, setCategory] = useState(
       data.categories.find(

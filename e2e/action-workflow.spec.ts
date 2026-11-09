@@ -111,12 +111,14 @@ for (const mobile of [false, true]) {
     const data = fixture();
     data.applications = [];
     data.contacts = [];
+    data.goals = [];
+    data.tasks = [];
     await setup(page, data);
     await expect(
       page.getByRole("navigation", { name: "Huvudnavigation" }),
     ).toBeVisible();
     await expect(
-      page.getByRole("region", { name: "Att följa upp" }),
+      page.getByRole("region", { name: "Nästa steg", exact: true }),
     ).toHaveCount(0);
     await expect(page.locator(".week-focus")).toHaveCount(0);
   });
@@ -125,7 +127,7 @@ for (const mobile of [false, true]) {
   }) => {
     if (mobile) await page.setViewportSize({ width: 390, height: 844 });
     await setup(page);
-    const focus = page.getByRole("region", { name: "Att följa upp" });
+    const focus = page.getByRole("region", { name: "Nästa steg", exact: true });
     await expect(page.locator(".week-focus-next")).toHaveCount(0);
     await expect(focus).not.toContainText("Pågår nu");
     await expect(focus).toContainText("Skicka arbetsprov");
@@ -139,15 +141,20 @@ for (const mobile of [false, true]) {
       fullPage: true,
     });
     const before = await stored(page);
-    await focus.getByRole("button", { name: /Skicka arbetsprov/ }).click();
+    await focus
+      .getByRole("listitem")
+      .filter({ hasText: "Skicka arbetsprov" })
+      .getByRole("button", { name: "Boka tid" })
+      .click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    expect((await stored(page)).weeks).toEqual(before.weeks);
+    await page
+      .getByRole("button", { name: "Stäng dialog", exact: true })
+      .click();
+    await nav(page, "Jobb");
     const queue = page.getByRole("region", {
       name: "Nästa steg för ansökningar",
     });
-    await expect(
-      queue.getByRole("heading", { name: "Skicka arbetsprov", exact: true }),
-    ).toBeVisible();
-    expect((await stored(page)).weeks).toEqual(before.weeks);
-    await nav(page, "Jobb");
     const card = page.locator(".career-cards > article").filter({
       has: page.getByRole("heading", {
         name: "Utredare · Stadshuset",
@@ -203,6 +210,10 @@ for (const mobile of [false, true]) {
     expect((await stored(page)).applications![0].nextAction).toBe(
       "Skicka arbetsprov",
     );
+    await page
+      .getByRole("dialog", { name: "Nästa steg efter passet" })
+      .getByRole("button", { name: "Stäng dialog", exact: true })
+      .click();
     await nav(page, "Jobb");
     await card
       .getByRole("button", { name: "Markera nästa steg klart", exact: true })
@@ -272,6 +283,6 @@ test("vänteläge bevakas med datum och bokas tidigast då utan automatisk kalen
   });
   await page.reload();
   await expect(
-    page.getByRole("region", { name: "Att följa upp" }),
+    page.getByRole("region", { name: "Nästa steg", exact: true }),
   ).not.toContainText("Svar på arbetsprovet");
 });

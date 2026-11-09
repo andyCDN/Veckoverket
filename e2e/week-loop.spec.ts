@@ -1,3 +1,4 @@
+import { openContext } from "./navigation";
 import { test, expect } from "@playwright/test";
 import { createData } from "../src/lib/defaults";
 import type { Activity } from "../src/lib/types";
@@ -81,10 +82,10 @@ for (const width of [1440, 390])
       );
     await page.goto("./");
     const queue = page.getByRole("region", {
-      name: "Veckans nästa steg",
+      name: "Nästa steg",
       exact: true,
     });
-    await expect(queue).toContainText("Behöver planeras");
+    await expect(queue).toContainText("Nästa steg");
     if (width >= 951)
       await expect(page.locator(".plan-info")).toHaveJSProperty("open", false);
     await page
@@ -95,9 +96,7 @@ for (const width of [1440, 390])
       name: "Nästa steg efter passet",
       exact: true,
     });
-    await dialog
-      .getByRole("button", { name: "Mer tid behövs", exact: true })
-      .click();
+    await dialog.getByRole("button", { name: "Mer tid", exact: true }).click();
     await dialog.getByLabel("Återstående minuter").fill("45");
     await dialog
       .getByRole("button", { name: "Planera återstående arbete", exact: true })
@@ -127,9 +126,7 @@ for (const width of [1440, 390])
       name: "Nästa steg efter passet",
       exact: true,
     });
-    await dialog
-      .getByRole("button", { name: "Väntar på svar", exact: true })
-      .click();
+    await dialog.getByRole("button", { name: "Väntar", exact: true }).click();
     await dialog.getByLabel("Vem väntar du på?").fill("Kim");
     await dialog.getByLabel("Följ upp datum").fill("2026-11-10");
     await dialog
@@ -143,6 +140,7 @@ for (const width of [1440, 390])
       waitingFor: "Kim",
       reviewOn: "2026-11-10",
     });
+    await openContext(page);
     await expect(
       page.getByRole("region", {
         name: "Veckans mål i kalendern",
@@ -199,12 +197,12 @@ for (const width of [1440, 390])
     );
     await monday
       .getByRole("button", {
-        name: "Planera veckans mål och vanor",
+        name: "3. Boka tid",
         exact: true,
       })
       .click();
     planner = page.getByRole("dialog", {
-      name: "Planera vecka 47",
+      name: "Måndagscheck",
       exact: true,
     });
     await planner

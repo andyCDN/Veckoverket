@@ -13,21 +13,23 @@ test("automatisk planering synkar bokningar och bevarar historiken i molnkontot"
   await page.goto("./");
   await login(page);
   await page
-    .getByRole("button", { name: "Planera veckan", exact: true })
+    .getByRole("button", { name: "Fördela tid automatiskt", exact: true })
     .click();
   await page
     .getByRole("button", { name: "Aktivera och använd planen", exact: true })
     .click();
   await status(page, "Sparat i molnet");
   expect(f.documents.get(userA)!.data.settings.autoPlanning).toBe(true);
-  await page.getByRole("button", { name: "Nytt pass", exact: true }).click();
+  await page.locator(".add-menu > summary").click();
+  await page
+    .locator(".add-menu")
+    .getByRole("button", { name: "Pass", exact: true })
+    .click();
   await page.getByLabel("Namn", { exact: true }).fill("Bokat fredagsmöte");
   await page.getByLabel("Datum", { exact: true }).fill("2026-10-30");
   await page.getByLabel("Start", { exact: true }).fill("13:00");
   await page.getByLabel("Slut", { exact: true }).fill("13:30");
-  await page
-    .getByRole("button", { name: "Spara pass", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Spara pass", exact: true }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await status(page, "Sparat i molnet");
   const saved = f.documents.get(userA)!.data;

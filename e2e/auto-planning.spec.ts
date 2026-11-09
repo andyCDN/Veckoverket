@@ -1,3 +1,4 @@
+import { addItem, openToday } from "./navigation";
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { time } from "../src/lib/date";
@@ -11,6 +12,7 @@ test("automatisk mobilplanering flyttar förslag runt bokningar, sparas och kan 
   );
   await page.setViewportSize({ width: 320, height: 740 });
   await page.goto("./");
+  await openToday(page);
   const stored = () =>
     page.evaluate(() =>
       JSON.parse(localStorage.getItem("veckoverket.workspace.v1")!),
@@ -18,7 +20,7 @@ test("automatisk mobilplanering flyttar förslag runt bokningar, sparas och kan 
   const open = async () => {
     await page.locator(".calendar-tools-menu > summary").click();
     await page
-      .getByRole("button", { name: "Planera veckan", exact: true })
+      .getByRole("button", { name: "Fördela tid automatiskt", exact: true })
       .click();
   };
   await open();
@@ -53,14 +55,12 @@ test("automatisk mobilplanering flyttar förslag runt bokningar, sparas och kan 
   const slot = focus.find(
     (a: { categoryId: string }) => a.categoryId === "learning",
   );
-  await page.getByRole("button", { name: "Nytt pass", exact: true }).click();
+  await addItem(page, "Pass");
   await page.getByLabel("Namn", { exact: true }).fill("Bokat intervjumöte");
   await page.getByLabel("Datum", { exact: true }).fill(slot.date);
   await page.getByLabel("Start", { exact: true }).fill(time(slot.start));
   await page.getByLabel("Slut", { exact: true }).fill(time(slot.end));
-  await page
-    .getByRole("button", { name: "Spara pass", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Spara pass", exact: true }).click();
   await expect(dialog).not.toBeVisible();
   const after = await stored();
   const booking = after.weeks[week].activities.find(
@@ -79,6 +79,7 @@ test("automatisk mobilplanering flyttar förslag runt bokningar, sparas och kan 
       ),
   ).toBe(true);
   await page.reload();
+  await openToday(page);
   await expect(
     page.locator(".calendar-block").filter({ hasText: "Bokat intervjumöte" }),
   ).toBeVisible();

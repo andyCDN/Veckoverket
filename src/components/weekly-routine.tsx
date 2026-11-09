@@ -1,4 +1,6 @@
 "use client";
+import { useState } from "react";
+import { WeeklyWorkPlanner } from "./weekly-work";
 import type { Activity, AppData, Reflection } from "@/lib/types";
 import { addDays, fullDate, time, weekNumber } from "@/lib/date";
 import { WeekReview } from "./week-flow";
@@ -21,7 +23,7 @@ export function WeeklyRoutineModal({
   onNextWeek,
   onClose,
   onCreateGoals,
-  onPlanWeek,
+  onApplyPlan,
   onReviewFinish,
   onTaskDecision,
 }: {
@@ -38,10 +40,12 @@ export function WeeklyRoutineModal({
   onNextWeek: () => void;
   onClose: () => void;
   onCreateGoals: (drafts: MondayGoalDraft[]) => number;
-  onPlanWeek: () => void;
+  onApplyPlan: (next: AppData, base: AppData) => boolean;
   onReviewFinish: (ids: string[]) => void;
   onTaskDecision: (id: string, decision: TaskDecision) => void;
 }) {
+  const [step, setStep] = useState(0);
+  const [planned, setPlanned] = useState(false);
   const start = activity.routine === "week-start";
   const reflection = data.reflections[week] ?? {
     week,
@@ -118,8 +122,26 @@ export function WeeklyRoutineModal({
             </p>
           </details>
         )}
+        {start && (
+          <nav className="week-flow-steps" aria-label="Veckoplanering">
+            {["Bestäm mål", "Välj uppgifter", "Boka tid"].map(
+              (label, index) => (
+                <button
+                  key={label}
+                  className={
+                    step === index ? "button primary" : "button secondary"
+                  }
+                  aria-current={step === index ? "step" : undefined}
+                  onClick={() => setStep(index)}
+                >
+                  {index + 1}. {label}
+                </button>
+              ),
+            )}
+          </nav>
+        )}
         {start ? (
-          <>
+          <div hidden={step !== 0}>
             <p>
               Bestäm veckans viktigaste resultat, skapa veckomål och välj sedan
               vilka uppgifter som ska få tid i kalendern.
@@ -129,7 +151,7 @@ export function WeeklyRoutineModal({
               "Veckans startplan",
               "Skriv ett önskat resultat per rad. Förslagen går att ändra innan målen skapas.",
             )}
-          </>
+          </div>
         ) : (
           <>
             {field(
@@ -145,29 +167,48 @@ export function WeeklyRoutineModal({
           </>
         )}
         {start && (
-          <MondayGoals
-            data={data}
-            text={reflection.startPlan ?? ""}
-            onCreate={onCreateGoals}
-          />
-        )}
-        {start && (
-          <section className="routine-planning">
-            <h3>Från mål till veckoplan</h3>
-            <p>
-              Välj konkreta uppgifter och vanotillfällen, ange tidsbehov och
-              granska vad som ryms i den här veckan.
-            </p>
-            <button className="button primary" onClick={onPlanWeek}>
-              Planera veckans mål och vanor
-            </button>
-          </section>
+          <>
+            <div hidden={step === 2}>
+              <MondayGoals
+                data={data}
+                text={reflection.startPlan ?? ""}
+                onCreate={onCreateGoals}
+                step={step}
+                onNext={() => setStep(1)}
+              />
+            </div>
+            {step === 2 &&
+              (planned ? (
+                <p role="status">
+                  Veckan är planerad. Passen är kopplade till dina uppgifter och
+                  vanor.
+                </p>
+              ) : (
+                <WeeklyWorkPlanner
+                  embedded
+                  data={data}
+                  week={week}
+                  onApply={onApplyPlan}
+                  onClose={() => setPlanned(true)}
+                />
+              ))}
+            {step < 2 && (
+              <button
+                className="button secondary"
+                onClick={() => setStep(step + 1)}
+              >
+                {step === 0
+                  ? "Fortsätt med befintliga uppgifter"
+                  : "Fortsätt till Boka tid"}
+              </button>
+            )}
+          </>
         )}
         <section
           className="routine-goals"
           aria-label={start ? "Veckans mål" : "Måluppfyllelse"}
         >
-          <details open={start}>
+          <details>
             <summary>{start ? "Veckans mål" : "Måluppfyllelse"}</summary>
             <p>Avbockade uppgifter visar genomförandet för respektive mål.</p>
             {goals.map((goal) => {
@@ -247,6 +288,10 @@ export function WeeklyRoutineModal({
           {!start ? (
             <button className="button secondary" onClick={onClose}>
               Stäng checken
+            </button>
+          ) : step !== 2 ? (
+            <button className="button secondary" onClick={onClose}>
+              Fortsätt senare
             </button>
           ) : !scheduled ? (
             <button className="button secondary" onClick={onClose}>

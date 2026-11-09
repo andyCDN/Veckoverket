@@ -1,3 +1,4 @@
+import { addItem, openContext } from "./navigation";
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { createData } from "../src/lib/defaults";
@@ -17,6 +18,7 @@ for (const width of [1440, 390, 320])
         localStorage.setItem("veckoverket.workspace.v1", JSON.stringify(data));
     }, data);
     await page.goto("./");
+    await openContext(page);
     const tracker = page.getByRole("region", { name: "Vanor", exact: true });
     await expect(tracker).toBeVisible();
     if (width >= 951) {
@@ -35,7 +37,7 @@ for (const width of [1440, 390, 320])
         JSON.parse(localStorage.getItem("veckoverket.workspace.v1")!),
       );
     const before = await read();
-    await tracker.getByRole("button", { name: "Ny vana", exact: true }).click();
+    await addItem(page, "Vana");
     const dialog = page.getByRole("dialog");
     await dialog
       .getByLabel("Vad vill du göra regelbundet?")
@@ -68,7 +70,7 @@ for (const width of [1440, 390, 320])
         exact: true,
       }),
     ).toHaveCount(0);
-    await tracker.getByRole("button", { name: "Ny vana", exact: true }).click();
+    await addItem(page, "Vana");
     await dialog.getByLabel("Vad vill du göra regelbundet?").fill("Rörelse");
     await dialog
       .getByRole("combobox", { name: "Veckomål", exact: true })
@@ -126,6 +128,7 @@ for (const width of [1440, 390, 320])
       .click();
     await expect(first).toBeChecked();
     await page.reload();
+    await openContext(page);
     await expect(first).toBeChecked();
     await expect(tracker).toContainText("3 av 3 dagar klara");
     expect(

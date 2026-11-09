@@ -17,3 +17,18 @@ export async function openToday(page: Page) {
       .getByRole("button", { name: "Visa dagplanering", exact: true })
       .click();
 }
+
+export async function addItem(
+  page: Page,
+  name: "Pass" | "Uppgift" | "Mål" | "Vana",
+) {
+  const menu = page.locator(".add-menu");
+  if (!(await menu.evaluate((el) => el.hasAttribute("open"))))
+    await menu.locator("summary").click();
+  await menu.getByRole("button", { name, exact: true }).click();
+}
+export async function openContext(page: Page) {
+  const context = page.locator(".week-context");
+  if (!(await context.evaluate((el) => el.hasAttribute("open"))))
+    await context.locator(":scope > summary").click();
+}
