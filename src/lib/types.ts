@@ -117,6 +117,8 @@ export type Settings = {
   autoPlanning?: boolean;
 };
 export type WeekPlan = {
+  gentleDays?: string[];
+  gentleFocus?: Record<string, string>;
   rules?: Settings;
   targets?: Record<string, number>;
   week: string;

@@ -4,10 +4,12 @@ import { generateWeek } from "./planner";
 
 export function canReplanActivity(
   activity: Activity,
-  data: Pick<AppData, "categories" | "settings">,
+  data: Pick<AppData, "categories" | "settings"> &
+    Partial<Pick<AppData, "weeks">>,
   boundary = planningBoundary(),
 ) {
   if (
+    data.weeks?.[monday(activity.date)]?.gentleDays?.includes(activity.date) ||
     activity.source !== "generated" ||
     activity.status !== "planned" ||
     activity.external ||

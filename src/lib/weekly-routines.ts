@@ -67,6 +67,7 @@ export function addWeeklyRoutines(
         ? Math.max(settings.start, notBefore.minute)
         : settings.start;
     if (
+      plan.gentleDays?.includes(date) ||
       !settings.days.includes(routine.day) ||
       date < from ||
       activities.some((a) => a.routine === routine.kind)
@@ -183,6 +184,7 @@ export function routineConflicts(
   return WEEKLY_ROUTINES.filter(
     (r) =>
       settings.days.includes(r.day) &&
+      !plan.gentleDays?.includes(addDays(plan.week, r.day)) &&
       addDays(plan.week, r.day) >= plan.weeklyRoutinesFrom! &&
       !plan.activities.some((a) => a.routine === r.kind),
   ).map((r) => ({

@@ -1,3 +1,4 @@
+import { addDays } from "./date";
 import { validateHabits } from "./habits";
 import { separateJobCategories } from "./job-categories";
 import { validateCareerData } from "./career-planning";
@@ -124,6 +125,38 @@ export function decodeData(raw: string): AppData {
       (typeof routinesFrom !== "string" || !isLocalDate(routinesFrom))
     )
       throw new Error("Veckoplaneringens startdatum är ogiltigt.");
+    const gentleDays = (plan as { gentleDays?: unknown }).gentleDays;
+    if (
+      gentleDays !== undefined &&
+      (!Array.isArray(gentleDays) ||
+        gentleDays.length > 7 ||
+        new Set(gentleDays).size !== gentleDays.length ||
+        gentleDays.some(
+          (d) =>
+            typeof d !== "string" ||
+            !isLocalDate(d) ||
+            d < week ||
+            d > addDays(week, 6),
+        ))
+    )
+      throw new Error("Dagar med anpassad planering är ogiltiga.");
+    const gentleFocus = (plan as { gentleFocus?: unknown }).gentleFocus;
+    if (
+      gentleFocus !== undefined &&
+      (!gentleFocus ||
+        typeof gentleFocus !== "object" ||
+        Array.isArray(gentleFocus) ||
+        Object.entries(gentleFocus).some(
+          ([date, id]) =>
+            !isLocalDate(date) ||
+            date < week ||
+            date > addDays(week, 6) ||
+            typeof id !== "string" ||
+            !id.trim() ||
+            id.length > 200,
+        ))
+    )
+      throw new Error("Dagens valda insats är ogiltig.");
     const activityIds = new Set();
     for (const a of plan.activities) {
       if (

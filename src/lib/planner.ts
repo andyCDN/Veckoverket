@@ -209,8 +209,11 @@ export function generateWeek(
       (a.date < boundary.date ||
         (a.date === boundary.date && a.start < boundary.minute)),
     );
+  const gentleDays = existing?.gentleDays ?? [];
   const schedulingDays = plannedDays(s).filter(
-    (day) => !boundary || addDays(week, day) >= boundary.date,
+    (day) =>
+      (!boundary || addDays(week, day) >= boundary.date) &&
+      !gentleDays.includes(addDays(week, day)),
   );
   const focusFirst = s.autoPlanning === true;
   const days = plannedDays(s),
@@ -239,7 +242,11 @@ export function generateWeek(
   // Preserve explicitly entered/moved activities and logged outcomes; regenerate only unedited suggestions.
   activities.push(
     ...(existing?.activities.filter(
-      (a) => a.source !== "generated" || a.status !== "planned" || started(a),
+      (a) =>
+        a.source !== "generated" ||
+        a.status !== "planned" ||
+        started(a) ||
+        gentleDays.includes(a.date),
     ) ?? []),
   );
   // Without explicit permission, existing protected music retains its original place.
@@ -253,6 +260,7 @@ export function generateWeek(
   let retainMusic = Math.max(0, s.musicMornings - heldMusic);
   for (const a of existing?.activities ?? []) {
     if (
+      activities.includes(a) ||
       a.source !== "generated" ||
       started(a) ||
       a.status !== "planned" ||
@@ -386,7 +394,12 @@ export function generateWeek(
   // sessions before distributing the remaining focus budgets across mornings.
   if (focusFirst && categories.some((c) => c.id === ROUTINE_CATEGORY.id)) {
     const routinePlan = addWeeklyRoutines(
-      { week, activities, generatedAt: "" },
+      {
+        week,
+        activities,
+        generatedAt: "",
+        ...(existing?.gentleDays ? { gentleDays } : {}),
+      },
       s,
       categories,
       boundary?.date ?? week,
@@ -592,6 +605,10 @@ export function generateWeek(
           });
   // Associate generated blocks with suitable goals in the presentation layer, not the engine.
   const basePlan: WeekPlan = {
+    ...(existing?.gentleDays ? { gentleDays: [...existing.gentleDays] } : {}),
+    ...(existing?.gentleFocus
+      ? { gentleFocus: { ...existing.gentleFocus } }
+      : {}),
     week,
     activities: activities.sort(
       (a, b) => a.date.localeCompare(b.date) || a.start - b.start,

@@ -60,6 +60,7 @@ import { useWorkspaceStorage } from "@/lib/use-workspace-storage";
 import { StorageStatus, syncLabel } from "./storage-status";
 import { supabase } from "@/lib/supabase";
 import { bookDeadlineWork } from "@/lib/deadline-scheduling";
+import { DailyStart, GentleDayModal } from "./daily-start";
 import { DayFocus } from "./day-focus";
 import { Calendar } from "./calendar";
 import { PlanningShortcuts } from "./planning-shortcuts";
@@ -179,6 +180,7 @@ export function Workspace() {
     habitId?: string;
     returnCheck?: string;
   } | null>(null);
+  const [gentleOpen, setGentleOpen] = useState(false);
   const [habitEditing, setHabitEditing] = useState(false);
   const [careerEditing, setCareerEditing] = useState(false);
   const [newHabit, setNewHabit] = useState<HabitDraft | null>(null);
@@ -251,6 +253,7 @@ export function Workspace() {
       Boolean(
         editor ||
         newGoal ||
+        gentleOpen ||
         newHabit ||
         queueAction ||
         resolutionCareerId ||
@@ -279,6 +282,7 @@ export function Workspace() {
     !editor &&
     !generator &&
     !newGoal &&
+    !gentleOpen &&
     !newHabit &&
     !queueAction &&
     !resolutionCareerId &&
@@ -341,6 +345,7 @@ export function Workspace() {
   useEffect(() => {
     setEditor(null);
     setNewGoal(false);
+    setGentleOpen(false);
     setNewHabit(null);
     setQueueAction(null);
     setResolutionCareerId(null);
@@ -364,6 +369,7 @@ export function Workspace() {
       Boolean(
         editor ||
         newGoal ||
+        gentleOpen ||
         newHabit ||
         queueAction ||
         resolutionCareerId ||
@@ -383,6 +389,7 @@ export function Workspace() {
   }, [
     editor,
     newGoal,
+    gentleOpen,
     newHabit,
     queueAction,
     resolutionCareerId,
@@ -1477,6 +1484,16 @@ export function Workspace() {
                   </details>
                 </aside>
                 <div className="planner-calendar">
+                  <DailyStart
+                    data={data}
+                    week={week}
+                    onOpen={(a) => {
+                      selectDay(weekday(a.date));
+                      openActivity(a);
+                    }}
+                    onPlan={(taskId) => setWorkPlanning({ taskId })}
+                    onGentle={() => setGentleOpen(true)}
+                  />
                   <PlanningQueue
                     data={data}
                     week={week}
@@ -2068,6 +2085,13 @@ export function Workspace() {
           <TaskResolution
             key={resolutionTaskId}
             task={data.tasks.find((t) => t.id === resolutionTaskId)!}
+            nextBooking={workBookings(data, "task", resolutionTaskId).find(
+              (a) =>
+                a.status === "planned" &&
+                (a.date > planningBoundary().date ||
+                  (a.date === planningBoundary().date &&
+                    a.end > planningBoundary().minute)),
+            )}
             completed={workBookings(data, "task", resolutionTaskId).some(
               (a) => a.status === "done",
             )}
@@ -2097,6 +2121,30 @@ export function Workspace() {
             }}
           />
         )}
+      {gentleOpen && (
+        <GentleDayModal
+          data={data}
+          onClose={() => setGentleOpen(false)}
+          onApply={(next, base) => {
+            let applied = false;
+            setData(
+              (current) => {
+                if (
+                  !current ||
+                  JSON.stringify(current) !== JSON.stringify(base)
+                )
+                  return current;
+                applied = true;
+                return next;
+              },
+              { undoLabel: "lättare plan för idag" },
+            );
+            if (applied)
+              notify("Dagens plan är anpassad. Uppgifterna finns kvar.");
+            return applied;
+          }}
+        />
+      )}
       {workPlanning && (
         <WeeklyWorkPlanner
           data={data}

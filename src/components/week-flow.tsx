@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import type { AppData, Conflict, Task } from "@/lib/types";
-import { addDays, fullDate, planningBoundary, today } from "@/lib/date";
+import type { Activity, AppData, Conflict, Task } from "@/lib/types";
+import { addDays, fullDate, time, planningBoundary, today } from "@/lib/date";
 import { nextSteps, type NextStep } from "@/lib/next-steps";
 import { taskStage, weekTasks, type TaskDecision } from "@/lib/task-workflow";
 import { habitWeek } from "@/lib/habits";
@@ -61,7 +61,9 @@ export function TaskResolution({
   onClose,
   allowDrop = true,
   context,
+  nextBooking,
 }: {
+  nextBooking?: Activity;
   context?: string;
   allowDrop?: boolean;
   task: Task;
@@ -70,7 +72,12 @@ export function TaskResolution({
   onClose: () => void;
 }) {
   const [choice, setChoice] = useState<"more" | "waiting" | null>(null);
-  const [minutes, setMinutes] = useState(task.estimatedMinutes ?? 30);
+  const [minutes, setMinutes] = useState(
+    Math.max(
+      15,
+      Math.min(240, Math.ceil((task.estimatedMinutes ?? 30) / 15) * 15),
+    ),
+  );
   const [date, setDate] = useState(today());
   const [review, setReview] = useState(task.reviewOn ?? addDays(today(), 2));
   const [owner, setOwner] = useState(task.waitingFor ?? "");
@@ -126,6 +133,24 @@ export function TaskResolution({
                 </button>
               </details>
             )}
+          </div>
+        ) : choice === "more" && nextBooking ? (
+          <div className="stack">
+            <p>
+              Du har redan tid för nästa steg. Uppgiften är fortfarande öppen.
+            </p>
+            <p>
+              <strong>{nextBooking.title}</strong>
+              <br />
+              {fullDate(nextBooking.date)} · {time(nextBooking.start)}–
+              {time(nextBooking.end)}
+            </p>
+            <button className="button primary" onClick={onClose}>
+              Behåll nästa bokade pass
+            </button>
+            <button className="text-button" onClick={() => setChoice(null)}>
+              Tillbaka
+            </button>
           </div>
         ) : (
           <form
