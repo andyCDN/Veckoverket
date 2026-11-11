@@ -1,4 +1,7 @@
 import { spawn } from "node:child_process";
+const functionName = process.env.LINKEDIN_JOB_FUNCTION || "quick-responder";
+if (!["quick-responder", "linkedin-job"].includes(functionName))
+  throw new Error("Ogiltigt funktionsnamn.");
 const project = process.env.SUPABASE_PROJECT_REF || "cefzxeproambftvhcgme";
 if (!process.env.SUPABASE_ACCESS_TOKEN?.trim()) {
   console.error(
@@ -15,7 +18,7 @@ const child = spawn(
     "supabase",
     "functions",
     "deploy",
-    "linkedin-job",
+    functionName,
     "--project-ref",
     project,
     "--use-api",
