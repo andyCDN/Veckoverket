@@ -8,6 +8,7 @@ import {
   type GentlePreview,
 } from "@/lib/daily-start";
 import { fullDate, monday, planningBoundary, time } from "@/lib/date";
+import { checkInPlan, CHECK_IN_MOODS } from "@/lib/daily-check-in";
 import { Modal } from "./modal";
 export function DailyStart({
   data,
@@ -15,12 +16,14 @@ export function DailyStart({
   onOpen,
   onPlan,
   onGentle,
+  onCheckIn,
 }: {
   data: AppData;
   week: string;
   onOpen: (a: Activity) => void;
   onPlan: (taskId: string) => void;
   onGentle: () => void;
+  onCheckIn: () => void;
 }) {
   const [boundary, setBoundary] = useState(planningBoundary);
   useEffect(() => {
@@ -41,6 +44,17 @@ export function DailyStart({
           Låg ork idag
         </button>
       </header>
+      <div className="daily-check-in-invitation">
+        <button className="button secondary" onClick={onCheckIn}>
+          {model.checkIn ? "Ändra dagsincheck" : "Dagsincheck · ca 20 sek"}
+        </button>
+        {model.checkIn && (
+          <div>
+            <small>Incheckad · {CHECK_IN_MOODS[model.checkIn.mood]}</small>
+            <p>{checkInPlan(model.checkIn)}</p>
+          </div>
+        )}
+      </div>
       {model.gentle && (
         <p className="daily-gentle-note">Dagen är anpassad efter din ork.</p>
       )}
@@ -68,11 +82,15 @@ export function DailyStart({
         </div>
       ) : (
         <p>
-          {model.gentleDone
-            ? "Dagens lilla insats är genomförd. Du behöver inte välja något nytt här."
-            : model.gentle
-              ? "Befintliga åtaganden får vara dagens plan. Resten av arbetet finns kvar för senare."
-              : "Ingen uppgift behöver väljas just nu. Du kan låta dagen vara som den är, eller välja något i måndagschecken."}
+          {model.checkIn?.focus.kind === "recovery"
+            ? "Återhämtning är ditt valda steg. Du behöver inte lägga till en arbetsuppgift här."
+            : model.checkIn
+              ? "Ditt valda steg är inte längre väntande i dagsstarten. Du kan låta det räcka eller ändra din incheck."
+              : model.gentleDone
+                ? "Dagens lilla insats är genomförd. Du behöver inte välja något nytt här."
+                : model.gentle
+                  ? "Befintliga åtaganden får vara dagens plan. Resten av arbetet finns kvar för senare."
+                  : "Ingen uppgift behöver väljas just nu. Du kan låta dagen vara som den är, eller välja något i måndagschecken."}
         </p>
       )}
       {model.next && model.next.id !== choice?.activity?.id && (

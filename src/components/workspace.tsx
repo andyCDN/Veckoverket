@@ -60,6 +60,8 @@ import { useWorkspaceStorage } from "@/lib/use-workspace-storage";
 import { StorageStatus, syncLabel } from "./storage-status";
 import { supabase } from "@/lib/supabase";
 import { bookDeadlineWork } from "@/lib/deadline-scheduling";
+import { DailyCheckInModal } from "./daily-check-in";
+import { saveDailyCheckIn, removeDailyCheckIn } from "@/lib/daily-check-in";
 import { DailyStart, GentleDayModal } from "./daily-start";
 import { DayFocus } from "./day-focus";
 import { Calendar } from "./calendar";
@@ -180,6 +182,7 @@ export function Workspace() {
     habitId?: string;
     returnCheck?: string;
   } | null>(null);
+  const [checkInDate, setCheckInDate] = useState<string | null>(null);
   const [gentleOpen, setGentleOpen] = useState(false);
   const [habitEditing, setHabitEditing] = useState(false);
   const [careerEditing, setCareerEditing] = useState(false);
@@ -253,6 +256,7 @@ export function Workspace() {
       Boolean(
         editor ||
         newGoal ||
+        checkInDate ||
         gentleOpen ||
         newHabit ||
         queueAction ||
@@ -282,6 +286,7 @@ export function Workspace() {
     !editor &&
     !generator &&
     !newGoal &&
+    !checkInDate &&
     !gentleOpen &&
     !newHabit &&
     !queueAction &&
@@ -369,6 +374,7 @@ export function Workspace() {
       Boolean(
         editor ||
         newGoal ||
+        checkInDate ||
         gentleOpen ||
         newHabit ||
         queueAction ||
@@ -389,6 +395,7 @@ export function Workspace() {
   }, [
     editor,
     newGoal,
+    checkInDate,
     gentleOpen,
     newHabit,
     queueAction,
@@ -1492,6 +1499,7 @@ export function Workspace() {
                       openActivity(a);
                     }}
                     onPlan={(taskId) => setWorkPlanning({ taskId })}
+                    onCheckIn={() => setCheckInDate(today())}
                     onGentle={() => setGentleOpen(true)}
                   />
                   <PlanningQueue
@@ -2121,6 +2129,50 @@ export function Workspace() {
             }}
           />
         )}
+      {checkInDate && (
+        <DailyCheckInModal
+          key={checkInDate}
+          data={data}
+          date={checkInDate}
+          onClose={() => setCheckInDate(null)}
+          onRemove={() => {
+            setData(
+              (current) =>
+                current ? removeDailyCheckIn(current, checkInDate) : current,
+              { undoLabel: "radering av dagsincheck" },
+            );
+            setCheckInDate(null);
+          }}
+          onSave={(value) => {
+            if (today() !== checkInDate)
+              return "Dagen har ändrats. Stäng och öppna dagens incheck igen.";
+            let error: string | undefined;
+            setData(
+              (current) => {
+                if (!current) {
+                  error = "Planen kunde inte läsas.";
+                  return current;
+                }
+                try {
+                  return saveDailyCheckIn(current, checkInDate, value);
+                } catch (reason) {
+                  error =
+                    reason instanceof Error
+                      ? reason.message
+                      : "Incheckningen kunde inte sparas.";
+                  return current;
+                }
+              },
+              { undoLabel: "dagsincheck" },
+            );
+            if (!error) {
+              setCheckInDate(null);
+              notify("Dagens incheck är sparad.");
+            }
+            return error;
+          }}
+        />
+      )}
       {gentleOpen && (
         <GentleDayModal
           data={data}

@@ -244,7 +244,15 @@ export type Habit = {
   checks: string[];
   paused?: boolean;
 };
+export type DailyCheckIn = {
+  mood: "heavy" | "okay" | "good";
+  focus: { kind: "task" | "activity" | "recovery"; id: string; title: string };
+  cue: "now" | "after-break" | "after-booking";
+  cueTitle?: string;
+  updatedAt: string;
+};
 export type AppData = {
+  dailyCheckIns?: Record<string, DailyCheckIn>;
   version: 1;
   habits?: Habit[];
   applications?: JobApplication[];
