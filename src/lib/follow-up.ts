@@ -1,4 +1,5 @@
 import type { Activity, AppData } from "./types";
+import { obsoleteApplicationWork } from "./application-deadlines";
 
 export function canFollowUp(activity: Activity) {
   return (
@@ -34,6 +35,7 @@ export function followUps(data: AppData): FollowUp[] {
   }
   return all
     .filter(({ activity }) => {
+      if (obsoleteApplicationWork(data, activity)) return false;
       if (activity.status !== "skipped" || !canFollowUp(activity)) return false;
       if (activity.taskId && data.tasks.some((t) => t.id === activity.taskId))
         return false;

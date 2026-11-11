@@ -1,3 +1,4 @@
+import { applicationDeadlineActive } from "./application-deadlines";
 import { validateApplicationMaterials } from "./application-materials";
 import { validateCareerAction } from "./career-actions";
 import {
@@ -206,6 +207,7 @@ export function planDeadline(
   deadline: Deadline,
   boundary = planningBoundary(),
   options: {
+    purpose?: "submission" | "interview";
     reuseGenerated?: boolean;
     onlyMissing?: boolean;
     fallbackDeadlineId?: string;
@@ -216,6 +218,13 @@ export function planDeadline(
     activities: [],
     errors: [message],
   });
+  if (
+    options.purpose !== "interview" &&
+    !applicationDeadlineActive(data, deadline.applicationId)
+  )
+    return fail(
+      "Ansökan är inte längre ett utkast. Planera eventuell uppföljning eller intervju från ansökan i stället.",
+    );
   if (
     !isLocalDate(deadline.date) ||
     deadline.date < boundary.date ||

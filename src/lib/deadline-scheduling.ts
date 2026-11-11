@@ -1,5 +1,6 @@
 import type { Activity, AppData, Deadline } from "./types";
 import { addDays, monday, planningBoundary } from "./date";
+import { applicationDeadlineActive } from "./application-deadlines";
 import { isLocalDate } from "./google-time";
 import { planDeadline, type PlanningPreview } from "./career-planning";
 
@@ -25,7 +26,9 @@ export type DeadlineWork = {
  * Explicit steps replace the fallback work item, avoiding duplicate reservations. */
 export function deadlineWork(data: AppData): DeadlineWork[] {
   const all = Object.values(data.weeks).flatMap((week) => week.activities);
-  const explicit = data.deadlines ?? [];
+  const explicit = (data.deadlines ?? []).filter((d) =>
+    applicationDeadlineActive(data, d.applicationId),
+  );
   const covered = new Set(explicit.map((d) => d.applicationId));
   const derived: Deadline[] = (data.applications ?? [])
     .filter(
