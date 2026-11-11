@@ -58,6 +58,7 @@ import { ActionControl, ActionKindSelector } from "./action-control";
 import { actionNeedsAttention } from "@/lib/action-workflow";
 import { NetworkContacts, ContactLogForm } from "./network-contacts";
 import { logContact } from "@/lib/network-overview";
+import { CvAgent } from "./cv-agent";
 import { ApplicationMessage } from "./application-message";
 import { applyApplicationMessage } from "@/lib/application-message";
 import { LinkedInImport } from "./linkedin-import";
@@ -92,6 +93,7 @@ export function CareerView({
   initialTab,
   onWeek,
 }: Props) {
+  const [cvId, setCvId] = useState<string | null>(null);
   const [messageOpen, setMessageOpen] = useState(false);
   const [linkedinOpen, setLinkedinOpen] = useState(false);
   const [materialsId, setMaterialsId] = useState<string | null>(null);
@@ -126,6 +128,7 @@ export function CareerView({
     label: string;
   } | null>(null);
   const editing = Boolean(
+    cvId ||
     messageOpen ||
     linkedinOpen ||
     actionEditing ||
@@ -211,6 +214,7 @@ export function CareerView({
       },
       data,
     );
+  const cvApplication = applications.find((a) => a.id === cvId);
   const materialApplication = applications.find((a) => a.id === materialsId);
   const bookingApplication = applications.find(
     (a) => a.id === interviewBookingId,
@@ -532,6 +536,14 @@ export function CareerView({
                         )}
                       </div>
                     )}
+                  </div>
+                  <div className="career-actions">
+                    <button
+                      className="button secondary"
+                      onClick={() => setCvId(a.id)}
+                    >
+                      Skapa CV för jobbet ↗
+                    </button>
                   </div>
                   <details className="application-details">
                     <summary>Dokument, intervjuer och historik</summary>
@@ -914,6 +926,9 @@ export function CareerView({
           Förhandsvisa dagens omplanering
         </button>
       </section>
+      {cvApplication && (
+        <CvAgent application={cvApplication} onClose={() => setCvId(null)} />
+      )}
       {materialApplication && (
         <ApplicationMaterials
           value={materialApplication}
