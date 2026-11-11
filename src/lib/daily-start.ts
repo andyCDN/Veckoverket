@@ -3,6 +3,7 @@ import { addDays, monday, planningBoundary, uid, weekday } from "./date";
 import { plannedDays, validatePlan } from "./planner";
 import { tasksInWeek, workBookings } from "./weekly-work";
 import { blocksTime } from "./external-calendar";
+import { obsoleteApplicationWork } from "./application-deadlines";
 import { careerActions } from "./career-actions";
 export type DailyChoice = {
   key: string;
@@ -21,6 +22,7 @@ export function dailyChoices(
       (a) =>
         a.date === boundary.date &&
         a.status === "planned" &&
+        !obsoleteApplicationWork(data, a) &&
         a.end > boundary.minute &&
         !a.external &&
         !a.routine &&

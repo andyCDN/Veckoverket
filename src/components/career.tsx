@@ -1,4 +1,5 @@
 "use client";
+import { applicationDeadlineActive } from "@/lib/application-deadlines";
 import { orderedCategories, categoryLabel } from "@/lib/presentation";
 import { useLayoutEffect, useState } from "react";
 import type {
@@ -612,26 +613,28 @@ export function CareerView({
                         >
                           Visa historik
                         </button>
-                        <button
-                          className="button secondary"
-                          onClick={() =>
-                            setDeadline({
-                              id: uid(),
-                              title: `${a.role} · ${a.organization}`,
-                              date: nextDate(a.deadline),
-                              minute: data.settings.end,
-                              categoryId: data.categories.some(
-                                (c) => c.id === "career",
-                              )
-                                ? "career"
-                                : data.categories[0].id,
-                              applicationId: a.id,
-                              steps: [],
-                            })
-                          }
-                        >
-                          Planera från deadline
-                        </button>
+                        {a.status === "draft" && (
+                          <button
+                            className="button secondary"
+                            onClick={() =>
+                              setDeadline({
+                                id: uid(),
+                                title: `${a.role} · ${a.organization}`,
+                                date: nextDate(a.deadline),
+                                minute: data.settings.end,
+                                categoryId: data.categories.some(
+                                  (c) => c.id === "career",
+                                )
+                                  ? "career"
+                                  : data.categories[0].id,
+                                applicationId: a.id,
+                                steps: [],
+                              })
+                            }
+                          >
+                            Planera från deadline
+                          </button>
+                        )}
                       </div>
                       {!!a.interviews?.length && (
                         <section
@@ -868,22 +871,31 @@ export function CareerView({
                 >
                   Redigera deadline
                 </button>
-                {!linked("deadlineId", d.id).length && (
-                  <button
-                    className="button secondary"
-                    onClick={() =>
-                      showPreview(
-                        planDeadline(data, d, planningBoundary(), {
-                          reuseGenerated: true,
-                        }),
-                        "Bakåtplanering",
-                      )
-                    }
-                  >
-                    Förhandsvisa bakåtplanering
-                  </button>
+                {!applicationDeadlineActive(data, d.applicationId) && (
+                  <p>
+                    Ansökan är inte längre ett utkast. Ansökningsplaneringen är
+                    bevarad som historik. Planera eventuell uppföljning eller
+                    intervju från ansökan.
+                  </p>
                 )}
-                {linked("deadlineId", d.id).length > 0 &&
+                {applicationDeadlineActive(data, d.applicationId) &&
+                  !linked("deadlineId", d.id).length && (
+                    <button
+                      className="button secondary"
+                      onClick={() =>
+                        showPreview(
+                          planDeadline(data, d, planningBoundary(), {
+                            reuseGenerated: true,
+                          }),
+                          "Bakåtplanering",
+                        )
+                      }
+                    >
+                      Förhandsvisa bakåtplanering
+                    </button>
+                  )}
+                {applicationDeadlineActive(data, d.applicationId) &&
+                  linked("deadlineId", d.id).length > 0 &&
                   d.steps.some(
                     (step) =>
                       !linked("deadlineId", d.id).some(

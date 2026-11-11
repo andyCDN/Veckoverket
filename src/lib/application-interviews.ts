@@ -122,6 +122,7 @@ export function scheduleApplicationInterview(
         ],
       },
       boundary,
+      { purpose: "interview" },
     );
     if (prepared.errors.length)
       return fail(
