@@ -11,3 +11,13 @@ import_map = "./functions/deno.json"
 [functions.recording-worker]
 verify_jwt = false
 import_map = "./functions/deno.json"
+
+[functions.linkedin-job]
+verify_jwt = false
+import_map = "./functions/deno.json"
+
+# Existing function installed through the Supabase dashboard.
+[functions.quick-responder]
+verify_jwt = false
+import_map = "./functions/deno.json"
+entrypoint = "./functions/linkedin-job/index.ts"

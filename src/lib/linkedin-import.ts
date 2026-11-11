@@ -1,3 +1,5 @@
+import { linkedInJobUrl } from "../../supabase/functions/_shared/linkedin-job-url";
+export { linkedInJobUrl };
 import type { AppData, JobApplication } from "./types";
 import { saveApplication } from "./applications";
 import { today, uid } from "./date";
@@ -13,35 +15,14 @@ export type LinkedInDraft = {
   followUpDate: string;
   selected: boolean;
   issue?: string;
+  notes?: string;
+  advertisementText?: string;
+  readSource?: "link" | "paste";
+  editedFields?: string[];
+  fetchState?: "loading" | "ready" | "partial" | "error";
+  fetchMessage?: string;
 };
-export function linkedInJobUrl(raw: string): string | null {
-  try {
-    const value = raw.trim();
-    const u = new URL(
-      /^(?:www\.)?linkedin\.com\//i.test(value) ? `https://${value}` : value,
-    );
-    if (
-      !["https:", "http:"].includes(u.protocol) ||
-      u.username ||
-      u.password ||
-      u.port ||
-      !(u.hostname === "linkedin.com" || u.hostname.endsWith(".linkedin.com"))
-    )
-      return null;
-    const path = u.pathname.match(
-      /^\/(?:comm\/)?jobs\/view\/(?:[^/]*-)?(\d+)\/?$/i,
-    );
-    const id =
-      path?.[1] ??
-      (/^\/jobs(?:\/|$)/i.test(u.pathname)
-        ? u.searchParams.get("currentJobId")
-        : null);
-    if (!id || !/^[1-9]\d{0,23}$/.test(id)) return null;
-    return `https://www.linkedin.com/jobs/view/${id}/`;
-  } catch {
-    return null;
-  }
-}
+
 export function linkedInDrafts(
   text: string,
   applications: JobApplication[],
@@ -128,8 +109,11 @@ export function importLinkedInJobs(data: AppData, drafts: LinkedInDraft[]) {
         followUpDate: draft.nextAction ? draft.followUpDate : "",
         nextActionKind: "task",
         nextActionOwner: "Jag",
-        notes: "",
-        advertisement: { url, text: "" },
+        notes: (draft.notes ?? "").slice(0, 4000),
+        advertisement: {
+          url,
+          text: (draft.advertisementText ?? "").slice(0, 20000),
+        },
       }),
     );
     seen.add(url);

@@ -14,7 +14,9 @@
     "preview:pages": "node scripts/preview-pages.mjs",
     "test:pages": "playwright test --config=playwright.pages.config.ts",
     "test:cloud": "playwright test --config=playwright.cloud.config.ts",
-    "deploy:recording": "node scripts/deploy-recording.mjs"
+    "deploy:recording": "node scripts/deploy-recording.mjs",
+    "deploy:linkedin-job": "node scripts/deploy-linkedin-job.mjs",
+    "test:linkedin": "playwright test --config=playwright.linkedin.config.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
