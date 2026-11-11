@@ -244,7 +244,22 @@ export type Habit = {
   checks: string[];
   paused?: boolean;
 };
+export type DailyFocus = {
+  kind: "application" | "contact" | "task" | "activity" | "none";
+  id: string;
+  title: string;
+  contactEntryId?: string;
+};
+export type DailyCheckIn = {
+  applicationIds: string[];
+  contactIds: string[];
+  completedKeys?: string[];
+  deferredKeys?: string[];
+  focus: DailyFocus;
+  updatedAt: string;
+};
 export type AppData = {
+  dailyCheckIns?: Record<string, DailyCheckIn>;
   version: 1;
   habits?: Habit[];
   applications?: JobApplication[];

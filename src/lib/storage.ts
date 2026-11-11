@@ -1,3 +1,4 @@
+import { validateDailyCheckIns } from "./daily-check-in";
 import { addDays } from "./date";
 import { validateHabits } from "./habits";
 import { separateJobCategories } from "./job-categories";
@@ -28,6 +29,7 @@ export function decodeData(raw: string): AppData {
     throw new Error(
       "Filen är inte en giltig Veckoverket-säkerhetskopia (version 1).",
     );
+  validateDailyCheckIns(d.dailyCheckIns);
   for (const s of [
     d.settings,
     ...Object.values(d.weeks)

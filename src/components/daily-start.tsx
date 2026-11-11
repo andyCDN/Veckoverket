@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import type { Activity, AppData } from "@/lib/types";
+import type { Activity, AppData, DailyCheckIn } from "@/lib/types";
 import {
   dailyStart,
   gentleChoices,
@@ -8,6 +8,8 @@ import {
   type GentlePreview,
 } from "@/lib/daily-start";
 import { fullDate, monday, planningBoundary, time } from "@/lib/date";
+import { dailyTodoPlan } from "@/lib/daily-check-in";
+import { DailyTodos } from "./daily-todos";
 import { Modal } from "./modal";
 export function DailyStart({
   data,
@@ -15,12 +17,20 @@ export function DailyStart({
   onOpen,
   onPlan,
   onGentle,
+  onCheckIn,
+  onUpdateTodos,
 }: {
   data: AppData;
   week: string;
   onOpen: (a: Activity) => void;
   onPlan: (taskId: string) => void;
   onGentle: () => void;
+  onCheckIn: () => void;
+  onUpdateTodos: (
+    value: DailyCheckIn,
+    start: boolean,
+    date: string,
+  ) => string | undefined;
 }) {
   const [boundary, setBoundary] = useState(planningBoundary);
   useEffect(() => {
@@ -30,6 +40,8 @@ export function DailyStart({
   if (week !== monday(boundary.date)) return null;
   const model = dailyStart(data, boundary),
     choice = model.recommendation;
+  const todos = dailyTodoPlan(data, boundary.date);
+  const hasDailyTodos = todos.items.length > 0;
   return (
     <section className="daily-start" aria-label="Din dagstart">
       <header>
@@ -41,40 +53,54 @@ export function DailyStart({
           Låg ork idag
         </button>
       </header>
+      {!model.gentle && (
+        <DailyTodos
+          data={data}
+          date={boundary.date}
+          compact
+          onUpdate={onUpdateTodos}
+        />
+      )}
+      <div className="daily-check-in-invitation">
+        <button className="button secondary" onClick={onCheckIn}>
+          Visa dagens att göra
+        </button>
+      </div>
       {model.gentle && (
         <p className="daily-gentle-note">Dagen är anpassad efter din ork.</p>
       )}
-      {choice ? (
-        <div className="daily-recommendation">
-          <div>
-            <span>En sak att börja med</span>
-            <h3>{choice.title}</h3>
-            <p>
-              {choice.activity
-                ? `${time(choice.activity.start)}–${time(choice.activity.end)} · bokat idag`
-                : `${choice.minutes} min uppskattad tid · behöver bokas`}
-            </p>
+      {(!hasDailyTodos || model.gentle) &&
+        (choice ? (
+          <div className="daily-recommendation">
+            <div>
+              <span>En sak att börja med</span>
+              <h3>{choice.title}</h3>
+              <p>
+                {choice.activity
+                  ? `${time(choice.activity.start)}–${time(choice.activity.end)} · bokat idag`
+                  : `${choice.minutes} min uppskattad tid · behöver bokas`}
+              </p>
+            </div>
+            <button
+              className="button primary"
+              onClick={() =>
+                choice.activity
+                  ? onOpen(choice.activity)
+                  : onPlan(choice.task!.id)
+              }
+            >
+              {choice.activity ? "Öppna pass" : "Boka tid"}
+            </button>
           </div>
-          <button
-            className="button primary"
-            onClick={() =>
-              choice.activity
-                ? onOpen(choice.activity)
-                : onPlan(choice.task!.id)
-            }
-          >
-            {choice.activity ? "Öppna pass" : "Boka tid"}
-          </button>
-        </div>
-      ) : (
-        <p>
-          {model.gentleDone
-            ? "Dagens lilla insats är genomförd. Du behöver inte välja något nytt här."
-            : model.gentle
-              ? "Befintliga åtaganden får vara dagens plan. Resten av arbetet finns kvar för senare."
-              : "Ingen uppgift behöver väljas just nu. Du kan låta dagen vara som den är, eller välja något i måndagschecken."}
-        </p>
-      )}
+        ) : (
+          <p>
+            {model.gentleDone
+              ? "Dagens lilla insats är genomförd. Du behöver inte välja något nytt här."
+              : model.gentle
+                ? "Befintliga åtaganden får vara dagens plan. Resten av arbetet finns kvar för senare."
+                : "Ingen uppgift behöver väljas just nu. Du kan låta dagen vara som den är, eller välja något i måndagschecken."}
+          </p>
+        ))}
       {model.next && model.next.id !== choice?.activity?.id && (
         <div className="daily-next">
           <span>

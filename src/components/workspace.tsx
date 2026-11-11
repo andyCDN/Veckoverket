@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import type {
   Activity,
+  DailyFocus,
+  DailyCheckIn,
   AppData,
   Category,
   Goal,
@@ -60,6 +62,13 @@ import { useWorkspaceStorage } from "@/lib/use-workspace-storage";
 import { StorageStatus, syncLabel } from "./storage-status";
 import { supabase } from "@/lib/supabase";
 import { bookDeadlineWork } from "@/lib/deadline-scheduling";
+import { DailyCheckInModal } from "./daily-check-in";
+import {
+  saveDailyCheckIn,
+  removeDailyCheckIn,
+  dailyFocusStep,
+  currentDailyFocus,
+} from "@/lib/daily-check-in";
 import { DailyStart, GentleDayModal } from "./daily-start";
 import { DayFocus } from "./day-focus";
 import { Calendar } from "./calendar";
@@ -180,6 +189,7 @@ export function Workspace() {
     habitId?: string;
     returnCheck?: string;
   } | null>(null);
+  const [checkInDate, setCheckInDate] = useState<string | null>(null);
   const [gentleOpen, setGentleOpen] = useState(false);
   const [habitEditing, setHabitEditing] = useState(false);
   const [careerEditing, setCareerEditing] = useState(false);
@@ -193,7 +203,12 @@ export function Workspace() {
   const [studioTaskDate, setStudioTaskDate] = useState<string | null>(null);
   const [careerEntry, setCareerEntry] = useState<{
     id: string;
-    tab: "actions";
+    tab?: "actions";
+    record?: {
+      kind: "application" | "contact";
+      id: string;
+      instruction: string;
+    };
   } | null>(null);
   const [calendarMode, setCalendarMode] = useState<"week" | "day">("week");
   const [weekendOpen, setWeekendOpen] = useState(false);
@@ -253,6 +268,7 @@ export function Workspace() {
       Boolean(
         editor ||
         newGoal ||
+        checkInDate ||
         gentleOpen ||
         newHabit ||
         queueAction ||
@@ -282,6 +298,7 @@ export function Workspace() {
     !editor &&
     !generator &&
     !newGoal &&
+    !checkInDate &&
     !gentleOpen &&
     !newHabit &&
     !queueAction &&
@@ -369,6 +386,7 @@ export function Workspace() {
       Boolean(
         editor ||
         newGoal ||
+        checkInDate ||
         gentleOpen ||
         newHabit ||
         queueAction ||
@@ -389,6 +407,7 @@ export function Workspace() {
   }, [
     editor,
     newGoal,
+    checkInDate,
     gentleOpen,
     newHabit,
     queueAction,
@@ -410,6 +429,73 @@ export function Workspace() {
     requestAnimationFrame(() =>
       window.scrollTo({ top: 0, behavior: "instant" }),
     );
+  };
+  const startDailyFocus = (focus: DailyFocus) => {
+    if (!data) return;
+    if (focus.kind === "application" || focus.kind === "contact") {
+      setCareerEntry({
+        id: `${focus.kind}:${focus.id}`,
+        record: {
+          kind: focus.kind,
+          id: focus.id,
+          instruction: dailyFocusStep(focus, data),
+        },
+      });
+      navigate(focus.kind === "application" ? "career" : "network");
+    } else if (focus.kind === "task") {
+      const booked = Object.values(data.weeks)
+        .flatMap((w) => w.activities)
+        .find(
+          (a) =>
+            a.taskId === focus.id &&
+            a.date === today() &&
+            a.status === "planned" &&
+            a.end > planningBoundary().minute,
+        );
+      if (booked) editInWeek(monday(booked.date), booked);
+      else setWorkPlanning({ taskId: focus.id });
+    } else if (focus.kind === "activity") {
+      const booked = Object.values(data.weeks)
+        .flatMap((w) => w.activities)
+        .find((a) => a.id === focus.id && a.date === today());
+      if (booked) editInWeek(monday(booked.date), booked);
+    }
+  };
+  const updateDailyTodos = (
+    value: DailyCheckIn,
+    start: boolean,
+    date: string,
+  ) => {
+    if (today() !== date)
+      return "Dagen har ändrats. Stäng och öppna dagens lista igen.";
+    let error: string | undefined;
+    let focusToStart: DailyFocus | undefined;
+    setData(
+      (current) => {
+        if (!current) {
+          error = "Planen kunde inte läsas.";
+          return current;
+        }
+        try {
+          const next = saveDailyCheckIn(current, date, value);
+          if (start)
+            focusToStart = currentDailyFocus(next, next.dailyCheckIns![date]);
+          return next;
+        } catch (reason) {
+          error =
+            reason instanceof Error
+              ? reason.message
+              : "Listan kunde inte sparas.";
+          return current;
+        }
+      },
+      { undoLabel: "dagens att göra" },
+    );
+    if (!error && start && focusToStart) {
+      setCheckInDate(null);
+      startDailyFocus(focusToStart);
+    }
+    return error;
   };
   const navigateAndReveal = (v: View, target: string) => {
     navigate(v);
@@ -1492,6 +1578,8 @@ export function Workspace() {
                       openActivity(a);
                     }}
                     onPlan={(taskId) => setWorkPlanning({ taskId })}
+                    onUpdateTodos={updateDailyTodos}
+                    onCheckIn={() => setCheckInDate(today())}
                     onGentle={() => setGentleOpen(true)}
                   />
                   <PlanningQueue
@@ -1805,7 +1893,10 @@ export function Workspace() {
               key={`${view}-${user?.id ?? "local"}-${undoVersion}-${careerEntry?.id ?? ""}`}
               onWeek={() => navigate("planner")}
               initialTab={careerEntry?.tab}
-              initialActionId={careerEntry?.id}
+              initialActionId={
+                careerEntry?.tab === "actions" ? careerEntry.id : undefined
+              }
+              initialRecord={careerEntry?.record}
               section={view === "network" ? "network" : "jobs"}
               data={data}
               onEditing={setCareerEditing}
@@ -2121,6 +2212,23 @@ export function Workspace() {
             }}
           />
         )}
+      {checkInDate && (
+        <DailyCheckInModal
+          key={checkInDate}
+          data={data}
+          date={checkInDate}
+          onClose={() => setCheckInDate(null)}
+          onRemove={() => {
+            setData(
+              (current) =>
+                current ? removeDailyCheckIn(current, checkInDate) : current,
+              { undoLabel: "återställning av dagens lista" },
+            );
+            setCheckInDate(null);
+          }}
+          onSave={(value, start) => updateDailyTodos(value, start, checkInDate)}
+        />
+      )}
       {gentleOpen && (
         <GentleDayModal
           data={data}

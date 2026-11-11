@@ -3,6 +3,7 @@ import { addDays, monday, planningBoundary, uid, weekday } from "./date";
 import { plannedDays, validatePlan } from "./planner";
 import { tasksInWeek, workBookings } from "./weekly-work";
 import { blocksTime } from "./external-calendar";
+import { currentDailyFocus } from "./daily-check-in";
 import { obsoleteApplicationWork } from "./application-deadlines";
 import { careerActions } from "./career-actions";
 export type DailyChoice = {
@@ -81,19 +82,33 @@ export function dailyStart(data: AppData, boundary = planningBoundary()) {
     choices = dailyChoices(data, boundary);
   const gentle = plan?.gentleDays?.includes(boundary.date) ?? false,
     focusId = plan?.gentleFocus?.[boundary.date];
+  const checkIn = data.dailyCheckIns?.[boundary.date];
   return {
     date: boundary.date,
     gentle,
     gentleDone: Boolean(
       focusId && passes.some((a) => a.id === focusId && a.status === "done"),
     ),
+    checkIn,
+    firstStep:
+      checkIn && !gentle
+        ? currentDailyFocus(data, checkIn, boundary)
+        : undefined,
     recommendation: gentle
       ? choices.find((c) => c.activity?.id === focusId)
-      : (choices.find(
-          (c) => c.activity?.taskId || c.activity?.careerActionId,
-        ) ??
-        choices.find((c) => c.task) ??
-        choices[0]),
+      : checkIn && checkIn.focus.kind !== "none"
+        ? choices.find((c) =>
+            checkIn.focus.kind === "task"
+              ? c.task?.id === checkIn.focus.id ||
+                c.activity?.taskId === checkIn.focus.id
+              : checkIn.focus.kind === "activity" &&
+                c.activity?.id === checkIn.focus.id,
+          )
+        : (choices.find(
+            (c) => c.activity?.taskId || c.activity?.careerActionId,
+          ) ??
+          choices.find((c) => c.task) ??
+          choices[0]),
     next: passes
       .filter(
         (a) =>

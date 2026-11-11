@@ -3992,3 +3992,32 @@ body {
 .recording-diagnostics p {
   font-size: 13px;
 }
+
+.daily-check-in-invitation {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-block: 12px;
+}
+.daily-check-in-invitation p { margin: 4px 0; }
+.daily-check-in fieldset { padding: 0; border: 0; }
+.daily-check-in legend { font-weight: 700; margin-bottom: 8px; }
+.check-in-plan { border-left: 4px solid var(--blue, #1932b6); padding-left: 12px; }
+.check-in-evidence { font-size: .85rem; }
+
+
+.daily-todos ul { list-style: none; padding: 0; margin: 0; }
+.daily-todos section + section { margin-top: 16px; }
+.daily-todos .daily-todo { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px dashed #1633a6; padding-block: 12px; }
+.daily-todos .daily-todo-label { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; min-width: 0; min-height: 44px; margin: 0; font: inherit; text-transform: none; letter-spacing: normal; }
+.daily-todos .daily-todo-label input { width: 20px; height: 20px; min-width: 20px; margin: 2px 0; accent-color: #1633a6; }
+.daily-todo-label > span { min-width: 0; overflow-wrap: anywhere; }
+.daily-todo-source, .daily-todo-label small { display: block; margin-top: 4px; }
+.daily-todo-label small { font-size: .75rem; font-weight: normal; }
+.daily-todo-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+.daily-todos details { margin-top: 12px; }
+@media (max-width: 600px) {
+  .daily-todos .daily-todo { flex-wrap: wrap; }
+  .daily-todo-actions { flex-direction: row; width: 100%; justify-content: flex-end; align-items: center; }
+}
