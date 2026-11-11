@@ -164,7 +164,7 @@
       <div><small>USA / U.S. Senate / 2026</small><h1>Två val. Ett läge.</h1></div>
       <div class="snapshot" id="snapshot">Ögonblicksbild<br>7 november 2026</div>
     </div>
-    <div class="status"><span><span class="dot" aria-hidden="true"></span><span id="race-status">Båda ej avgjorda i ögonblicksbilden</span></span><span class="quiet" id="refresh-feedback" role="status" aria-live="polite">Tryck på Uppdatera för nya siffror</span></div>
+    <div class="status"><span><span class="dot" aria-hidden="true"></span><span id="race-status">Båda ej avgjorda i ögonblicksbilden</span></span><span class="quiet" id="refresh-feedback" role="status" aria-live="polite">Hämtar senaste siffrorna automatiskt…</span></div>
     <main class="cards" aria-label="Senatsvalens resultat">
       <article class="card" data-race="alaska" aria-labelledby="alaska-heading">
         <div class="heading"><div class="state"><span class="ordinal">01</span><h2 id="alaska-heading">ALASKA</h2></div><span class="undecided">Preliminärt</span></div>
@@ -187,7 +187,7 @@
         <div class="foot"><div class="next"><span class="reported">≈ 98 % räknat</span> · <strong>13 nov:</strong> länsintygande</div><button type="button" class="detail" data-open="mississippi">Livekort & detaljer ↗</button></div>
       </article>
     </main>
-    <footer class="bottom"><span id="data-source"><strong>SNAPSHOT / 07.11.26</strong> · tryck på Uppdatera</span><button type="button" data-open="sources">Källor & metod ↗</button></footer>
+    <footer class="bottom"><span id="data-source"><strong>SNAPSHOT / 07.11.26</strong> · uppdaterar automatiskt</span><button type="button" data-open="sources">Källor & metod ↗</button></footer>
   </div>
 
   <dialog id="alaska" aria-labelledby="dialog-ak-label">
@@ -211,8 +211,8 @@
   <dialog id="sources" aria-labelledby="dialog-sources-label">
     <div class="dialog-head"><h3 id="dialog-sources-label">Källor & metod</h3><button class="close" type="button" data-close aria-label="Stäng källor">Stäng ×</button></div>
     <div class="dialog-body">
-      <p><strong>Två val på en enda skärm.</strong> Röstsiffrorna på startsidan är en daterad ögonblicksbild från Polling Desk / civicAPI, avläst den 7 november 2026. Du kan hämta nyare siffror med knappen Uppdatera.</p>
-      <p>När du trycker på <strong>Uppdatera siffror</strong> hämtas valdata direkt från Carmena’s öppna JSON-API. Datumet visar när datakällan senast uppdaterade sitt resultat, inte tidpunkten när sidan öppnades. Om tjänsten är otillgänglig behålls de senast visade siffrorna.</p>
+      <p><strong>Två val på en enda skärm.</strong> Röstsiffrorna på startsidan är en daterad ögonblicksbild från Polling Desk / civicAPI, avläst den 7 november 2026. Sidan försöker hämta nya siffror automatiskt när den öppnas och medan den är aktiv. Knappen Uppdatera kan också användas när som helst.</p>
+      <p>Vid sidöppning, var femte minut medan sidan är aktiv och vid tryck på <strong>Uppdatera siffror</strong> hämtas valdata direkt från Carmena’s öppna JSON-API. Datumet visar när datakällan senast uppdaterade sitt resultat, inte tidpunkten när sidan öppnades. Om tjänsten är otillgänglig behålls de senast visade siffrorna.</p>
       <p>Öppna "Livekort & detaljer" för ett inbäddat resultatkort från extern leverantör. Dess innehåll kan ändras när leverantören publicerar nya uppgifter. När resultat fastställs officiellt måste detta bekräftas hos respektive valmyndighet.</p>
       <h4>Officiella källor</h4>
       <div class="links"><a href="https://www.elections.alaska.gov/election-results/" target="_blank" rel="noopener noreferrer">Alaska ↗</a><a href="https://www.sos.ms.gov/elections-voting/election-results" target="_blank" rel="noopener noreferrer">Mississippi ↗</a><a href="https://polling-desk.com/senate-results" target="_blank" rel="noopener noreferrer">Polling Desk ↗</a><a href="https://carmenaresearch.com/election-data/live-results-api/" target="_blank" rel="noopener noreferrer">Carmena’s JSON-data ↗</a></div>
@@ -244,6 +244,8 @@
     const snapshot = document.getElementById('snapshot');
     const sourceLabel = document.getElementById('data-source');
     const previous = {};
+    let lastCheckAt = 0;
+    const AUTO_REFRESH_MS = 5 * 60 * 1000;
     function readRace(data, key) {
       const config = RACES[key];
       if (!data || data.state !== config.state || data.office !== 'S' || !data.areas || !data.areas.top || !Array.isArray(data.areas.top.c)) {
@@ -265,7 +267,7 @@
       const call = calls.find(c => c.by && c.winner && /AP|Associated Press/i.test(c.by));
       return {rows,dem,rep,total,lead: Math.abs(dem.votes-rep.votes),leading:dem.votes===rep.votes ? null : (dem.votes>rep.votes ? dem : rep),
         pctD:100*dem.votes/total,pctR:100*rep.votes/total,
-        reported:Number.isFinite(Number(data.areas.top.reported)) ? Number(data.areas.top.reported) : null,
+        reported:data.areas.top.reported !== null && data.areas.top.reported !== undefined && Number.isFinite(Number(data.areas.top.reported)) ? Number(data.areas.top.reported) : null,
         source: String(data.areas.top.source || 'Carmena'), date:sourceDate,call};
     }
     function updateCard(key, data) {
@@ -312,6 +314,7 @@
     }
     async function refreshResults() {
       if(refreshBtn.disabled)return;
+      lastCheckAt = Date.now();
       refreshBtn.disabled=true;
       refreshBtn.setAttribute('aria-busy','true');
       refreshBtn.textContent='↻ Hämtar…';
@@ -348,6 +351,18 @@
       refreshBtn.removeAttribute('aria-busy');
     }
     refreshBtn.addEventListener('click',refreshResults);
+    // Uppdatera vid varje ny sidladdning, även när sidan öppnas via bokmärke/hemskärmsikon.
+    refreshResults();
+    // Uppdatera medan sidan är öppen utan att använda extra nättrafik i bakgrunden.
+    setInterval(()=>{ if(!document.hidden)refreshResults(); }, AUTO_REFRESH_MS);
+    // iOS/Safari kan återställa en tidigare flik utan att ladda om JavaScript.
+    window.addEventListener('pageshow',event=>{ if(event.persisted)refreshResults(); });
+    document.addEventListener('visibilitychange',()=>{
+      if(!document.hidden && Date.now()-lastCheckAt >= AUTO_REFRESH_MS)refreshResults();
+    });
+    window.addEventListener('online',()=>{
+      if(Date.now()-lastCheckAt > 10*1000)refreshResults();
+    });
     document.querySelectorAll('[data-open]').forEach(btn=>btn.addEventListener('click',()=>{
       const dialog=document.getElementById(btn.dataset.open);
       if (!dialog) return;
