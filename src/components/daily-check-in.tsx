@@ -1,15 +1,82 @@
 "use client";
 import { useState } from "react";
-import type { AppData, DailyCheckIn } from "@/lib/types";
-import { dailyChoices, dailyStart } from "@/lib/daily-start";
+import type { AppData, DailyCheckIn, DailyFocus } from "@/lib/types";
+import { dailyChoices } from "@/lib/daily-start";
 import {
-  CHECK_IN_CUES,
-  CHECK_IN_MOODS,
-  RECOVERY_FOCUS,
-  checkInPlan,
+  dailyPriorityOptions,
+  dailyFocusStep,
+  NO_DAILY_FOCUS,
 } from "@/lib/daily-check-in";
 import { planningBoundary } from "@/lib/date";
 import { Modal } from "./modal";
+
+type Priority = { id: string; label: string; hint: string };
+function PriorityPicker({
+  label,
+  options,
+  selected,
+  onChange,
+  empty,
+}: {
+  label: string;
+  options: Priority[];
+  selected: Priority[];
+  onChange: (ids: string[]) => void;
+  empty: string;
+}) {
+  return (
+    <fieldset className="daily-priority-picker">
+      <legend>{label}</legend>
+      <select
+        aria-label={label}
+        value=""
+        disabled={!options.length}
+        onChange={(event) => {
+          if (event.target.value)
+            onChange([...selected.map((item) => item.id), event.target.value]);
+        }}
+      >
+        <option value="">
+          {selected.length
+            ? "Lägg till fler om det behövs"
+            : "Välj från registret – eller avstå idag"}
+        </option>
+        {options
+          .filter((option) => !selected.some((item) => item.id === option.id))
+          .map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label} · {option.hint}
+            </option>
+          ))}
+      </select>
+      {!!selected.length && (
+        <ul className="daily-priority-picks">
+          {selected.map((item) => (
+            <li key={item.id}>
+              <span>
+                {item.label}
+                <small>{item.hint}</small>
+              </span>
+              <button
+                type="button"
+                className="text-button"
+                aria-label={`Ta bort ${item.label} från dagens val`}
+                onClick={() =>
+                  onChange(
+                    selected.filter((v) => v.id !== item.id).map((v) => v.id),
+                  )
+                }
+              >
+                Ta bort
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {!options.length && <p className="help">{empty}</p>}
+    </fieldset>
+  );
+}
 
 export function DailyCheckInModal({
   data,
@@ -20,150 +87,198 @@ export function DailyCheckInModal({
 }: {
   data: AppData;
   date: string;
-  onSave: (value: DailyCheckIn) => string | undefined;
+  onSave: (value: DailyCheckIn, start: boolean) => string | undefined;
   onRemove: () => void;
   onClose: () => void;
 }) {
   const [boundary] = useState(planningBoundary);
   const saved = data.dailyCheckIns?.[date];
-  const model = dailyStart(data, boundary);
-  const choices = dailyChoices(data, boundary);
-  const focuses = new Map<string, DailyCheckIn["focus"]>();
-  for (const choice of choices) {
+  const [applicationIds, setApplications] = useState(
+    saved?.applicationIds ?? [],
+  );
+  const [contactIds, setContacts] = useState(saved?.contactIds ?? []);
+  const [focusKey, setFocusKey] = useState(
+    saved ? `${saved.focus.kind}:${saved.focus.id}` : "",
+  );
+  const [error, setError] = useState("");
+  const options = dailyPriorityOptions(data, date);
+  const jobs: Priority[] = options.applications.map((a) => ({
+    id: a.id,
+    label: `${a.role} · ${a.organization}`,
+    hint:
+      a.deadline === date
+        ? "Sista dag idag"
+        : a.deadline
+          ? `Sista dag ${a.deadline}`
+          : "Utan sista ansökningsdag",
+  }));
+  const people: Priority[] = options.contacts.map(({ contact: c, step }) => ({
+    id: c.id,
+    label: c.name + (c.organization ? ` · ${c.organization}` : ""),
+    hint:
+      step?.kind === "waiting" && step.date > date
+        ? `Väntar på svar till ${step.date}`
+        : step?.date && step.date <= date
+          ? `Följ upp ${step.date}`
+          : step?.title || "Ingen uppföljning planerad",
+  }));
+  const selectedJobs = applicationIds.map(
+    (id) =>
+      jobs.find((a) => a.id === id) ?? {
+        id,
+        label:
+          data.applications?.find((a) => a.id === id)?.role ?? "Borttaget jobb",
+        hint: "Inte längre sökbart – ta bort från dagens val",
+      },
+  );
+  const selectedPeople = contactIds.map(
+    (id) =>
+      people.find((c) => c.id === id) ?? {
+        id,
+        label: "Borttagen kontakt",
+        hint: "Ta bort från dagens val",
+      },
+  );
+  const focuses = new Map<string, DailyFocus>();
+  for (const a of options.applications.filter((a) =>
+    applicationIds.includes(a.id),
+  ))
+    focuses.set(`application:${a.id}`, {
+      kind: "application",
+      id: a.id,
+      title: `${a.role} · ${a.organization}`,
+    });
+  for (const { contact: c } of options.contacts.filter(({ contact }) =>
+    contactIds.includes(contact.id),
+  ))
+    focuses.set(`contact:${c.id}`, {
+      kind: "contact",
+      id: c.id,
+      title: c.name + (c.organization ? ` · ${c.organization}` : ""),
+      ...(c.entries.at(-1)?.id ? { contactEntryId: c.entries.at(-1)!.id } : {}),
+    });
+  const selectedFocuses = [...focuses.entries()];
+  for (const choice of dailyChoices(data, boundary)) {
     const taskId = choice.task?.id ?? choice.activity?.taskId;
-    const focus: DailyCheckIn["focus"] = taskId
+    const focus: DailyFocus = taskId
       ? { kind: "task", id: taskId, title: choice.title }
       : { kind: "activity", id: choice.activity!.id, title: choice.title };
     focuses.set(`${focus.kind}:${focus.id}`, focus);
   }
-  focuses.set("recovery:recovery", RECOVERY_FOCUS);
-  const recommendation = model.recommendation;
-  const recommendedTask =
-    recommendation?.task?.id ?? recommendation?.activity?.taskId;
-  const initialKey = saved
-    ? `${saved.focus.kind}:${saved.focus.id}`
-    : recommendedTask
-      ? `task:${recommendedTask}`
-      : recommendation?.activity
-        ? `activity:${recommendation.activity.id}`
-        : "recovery:recovery";
-  const [focusKey, setFocusKey] = useState(
-    focuses.has(initialKey) ? initialKey : "",
-  );
-  const [mood, setMood] = useState<DailyCheckIn["mood"] | "">(
-    saved?.mood ?? "",
-  );
-  const [cue, setCue] = useState<DailyCheckIn["cue"] | "">(
-    saved?.cue === "after-booking" && !model.next ? "" : (saved?.cue ?? ""),
-  );
-  const [error, setError] = useState("");
-  const focus = focuses.get(focusKey);
-  const draft =
-    mood && cue && focus
-      ? {
-          mood,
-          cue,
-          focus,
-          ...(cue === "after-booking" ? { cueTitle: model.next?.title } : {}),
-          updatedAt: new Date().toISOString(),
-        }
-      : undefined;
+  focuses.set("none:none", NO_DAILY_FOCUS);
+  const effectiveKey = focusKey
+    ? focuses.has(focusKey)
+      ? focusKey
+      : ""
+    : (selectedFocuses[0]?.[0] ?? "none:none");
+  const focus = focuses.get(effectiveKey);
+  const draft = focus
+    ? { applicationIds, contactIds, focus, updatedAt: new Date().toISOString() }
+    : undefined;
   return (
     <Modal
-      title="Dagsincheck"
-      description="Tre snabba val. Ingen fritext."
+      title="Dagens riktning"
+      description="Välj det som är viktigt idag. Börja med en sak."
       onClose={onClose}
     >
       <form
         className="stack daily-check-in"
         onSubmit={(event) => {
           event.preventDefault();
-          if (draft) setError(onSave(draft) ?? "");
+          const start =
+            (event.nativeEvent as SubmitEvent).submitter?.getAttribute(
+              "value",
+            ) === "start";
+          if (draft) setError(onSave(draft, start) ?? "");
         }}
       >
-        <fieldset>
-          <legend>1. Hur känns det just nu?</legend>
-          <div className="check-in-options">
-            {Object.entries(CHECK_IN_MOODS).map(([value, label]) => (
-              <label key={value}>
-                <input
-                  type="radio"
-                  name="check-in-mood"
-                  required
-                  value={value}
-                  checked={mood === value}
-                  onChange={() => setMood(value as DailyCheckIn["mood"])}
-                />
-                {label}
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        <PriorityPicker
+          label="1. Vilka jobb vill du söka idag?"
+          options={jobs}
+          selected={selectedJobs}
+          onChange={setApplications}
+          empty="Inga aktuella utkast. Lägg till jobb under Jobb, eller välj kontakter och andra uppgifter idag."
+        />
+        <PriorityPicker
+          label="2. Vilka personer vill du kontakta?"
+          options={people}
+          selected={selectedPeople}
+          onChange={setContacts}
+          empty="Inga kontakter i registret ännu. Lägg till dem under Nätverk när det passar."
+        />
         <label>
-          2. En liten start på fem minuter
+          3. Vad börjar du med?
           <select
             required
-            value={focusKey}
+            value={effectiveKey}
             onChange={(event) => setFocusKey(event.target.value)}
           >
-            <option value="">Välj ett steg</option>
-            {[...focuses.entries()].map(([key, value]) => (
-              <option key={key} value={key}>
-                {value.title}
-              </option>
-            ))}
+            <option value="">Välj ditt första steg</option>
+            {selectedFocuses.length > 0 && (
+              <optgroup label="Dagens jobb och kontakter">
+                {selectedFocuses.map(([key, value]) => (
+                  <option key={key} value={key}>
+                    {value.title}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            <optgroup label="Annan uppgift eller befintligt pass">
+              {[...focuses.entries()]
+                .filter(
+                  ([, value]) =>
+                    !["application", "contact"].includes(value.kind),
+                )
+                .map(([key, value]) => (
+                  <option key={key} value={key}>
+                    {value.title}
+                  </option>
+                ))}
+            </optgroup>
           </select>
         </label>
-        <fieldset>
-          <legend>3. När börjar du?</legend>
-          <div className="check-in-options">
-            {Object.entries(CHECK_IN_CUES)
-              .filter(([value]) => value !== "after-booking" || model.next)
-              .map(([value, label]) => (
-                <label key={value}>
-                  <input
-                    type="radio"
-                    name="check-in-cue"
-                    required
-                    value={value}
-                    checked={cue === value}
-                    onChange={() => setCue(value as DailyCheckIn["cue"])}
-                  />
-                  {label}
-                </label>
-              ))}
+        {focus && focus.kind !== "none" && (
+          <div className="check-in-plan">
+            <strong>En liten start</strong>
+            <p>{dailyFocusStep(focus, data)}</p>
+            <small>
+              Gör bara första delen. Du behöver inte slutföra allt nu.
+            </small>
           </div>
-        </fieldset>
-        {draft && <p className="check-in-plan">{checkInPlan(draft)}</p>}
-        {mood === "heavy" && (
-          <p className="help">
-            En liten start eller återhämtning får räcka. Du kan också välja Låg
-            ork idag i dagsstarten.
-          </p>
         )}
-        <button className="button primary" disabled={!draft}>
-          Spara dagens incheck
-        </button>
+        <div className="career-actions">
+          {focus && focus.kind !== "none" && (
+            <button type="submit" value="start" className="button primary">
+              Spara och börja här
+            </button>
+          )}
+          <button
+            type="submit"
+            value="save"
+            className={
+              focus?.kind === "none" ? "button primary" : "button secondary"
+            }
+            disabled={!draft}
+          >
+            Spara dagens val
+          </button>
+        </div>
         {error && <p role="alert">{error}</p>}
         <p className="help">
-          Svaren sparas med din plan. Kalendern och bokad tid ändras inte. Du
-          kan ändra eller radera svaren.
+          Ingen fritext. Välj få saker som betyder något. Planen skickar inget
+          och bokar ingen tid automatiskt.
         </p>
         {saved && (
           <button type="button" className="text-button" onClick={onRemove}>
-            Radera dagens incheck
+            Radera dagens val
           </button>
         )}
         <details className="check-in-evidence">
-          <summary>Varför de här frågorna?</summary>
+          <summary>Forskningsgrunden</summary>
           <p>
-            Ett meningsfullt litet steg och en tydlig startsignal bygger på
-            forskning om handlingsplaner. Återhämtning är också ett giltigt val.
-            Måendefrågan ger utrymme att stämma av, utan poäng eller diagnoser.
-          </p>
-          <p>
-            Fem minuter och tre frågor är designval. Just den här inchecken är
-            inte vetenskapligt utvärderad.
+            Ett tydligt delmål och en konkret startsignal kan hjälpa oss att gå
+            från avsikt till handling. Här är signalen att öppna det valda
+            underlaget och göra ett litet, relevant steg.
           </p>
           <ul>
             <li>
@@ -177,31 +292,27 @@ export function DailyCheckInModal({
             </li>
             <li>
               <a
-                href="https://www.cochrane.org/evidence/CD013305_behavioural-activation-therapy-depression-adults"
+                href="https://doi.org/10.1037/apl0001040"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Meningsfull aktivitet: Cochrane, 2020
+                Konkreta delmål: fältexperiment, 2023
               </a>
-              <span>
-                {" "}
-                · stöd från behandling, inte en prövning av denna incheck.
-              </span>
             </li>
             <li>
               <a
-                href="https://doi.org/10.1371/journal.pone.0272460"
+                href="https://doi.org/10.1037/a0035923"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Korta pauser: metaanalys, 2022
+                Målsättning och jobbsökande: metaanalys, 2014
               </a>
-              <span>
-                {" "}
-                · mindre trötthet; ingen säker generell prestationseffekt.
-              </span>
             </li>
           </ul>
+          <p>
+            Detta är en praktisk tillämpning. Just de här frågorna har inte
+            utvärderats vetenskapligt.
+          </p>
         </details>
       </form>
     </Modal>

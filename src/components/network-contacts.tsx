@@ -22,8 +22,12 @@ export function NetworkContacts({
   onEditAction,
   onActions,
   onBookContact,
+  initialContactId,
+  firstStep,
 }: {
   data: AppData;
+  initialContactId?: string;
+  firstStep?: string;
   onEdit: (c: NetworkContact) => void;
   onLog: (c: NetworkContact) => void;
   onOpen: (a: Activity) => void;
@@ -34,13 +38,16 @@ export function NetworkContacts({
   onBookContact: (c: NetworkContact) => void;
 }) {
   const [query, setQuery] = useState("");
+  const [focusedId, setFocusedId] = useState(initialContactId);
   const groups = networkGroups(data)
     .map((g) => ({
       ...g,
-      contacts: g.contacts.filter(({ contact: c }) =>
-        `${c.name} ${c.organization}`
-          .toLocaleLowerCase("sv-SE")
-          .includes(query.toLocaleLowerCase("sv-SE").trim()),
+      contacts: g.contacts.filter(
+        ({ contact: c }) =>
+          (!focusedId || c.id === focusedId) &&
+          `${c.name} ${c.organization}`
+            .toLocaleLowerCase("sv-SE")
+            .includes(query.toLocaleLowerCase("sv-SE").trim()),
       ),
     }))
     .filter((g) => g.contacts.length);
@@ -51,10 +58,24 @@ export function NetworkContacts({
         <input
           type="search"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setFocusedId(undefined);
+            setQuery(e.target.value);
+          }}
           placeholder="Namn eller organisation"
         />
       </label>
+      {focusedId && (
+        <button
+          className="text-button"
+          onClick={() => {
+            setFocusedId(undefined);
+            setQuery("");
+          }}
+        >
+          Visa alla kontakter
+        </button>
+      )}
       {!groups.length && (
         <p>
           {data.contacts?.length
@@ -88,6 +109,13 @@ export function NetworkContacts({
                     {c.name}
                     {c.organization && ` · ${c.organization}`}
                   </h3>
+                  {c.id === initialContactId && firstStep && (
+                    <p className="check-in-plan">
+                      <strong>Första lilla steget</strong>
+                      <br />
+                      {firstStep}
+                    </p>
+                  )}
                   <p className="network-last-contact">
                     {lastContact
                       ? `Senaste kontakt: ${fullDate(lastContact.date)} · ${lastContact.channel || "Anteckning"}`
@@ -150,7 +178,10 @@ export function NetworkContacts({
                       Visa alla kopplade nästa steg
                     </button>
                   )}
-                  <details className="application-details network-timeline">
+                  <details
+                    className="application-details network-timeline"
+                    open={c.id === initialContactId ? true : undefined}
+                  >
                     <summary>Tidslinje · {timeline.length} händelser</summary>
                     <div className="career-actions">
                       <a

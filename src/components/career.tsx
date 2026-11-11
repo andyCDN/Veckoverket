@@ -77,6 +77,11 @@ type Props = {
   onWeek: () => void;
   initialActionId?: string;
   initialTab?: "actions";
+  initialRecord?: {
+    kind: "application" | "contact";
+    id: string;
+    instruction: string;
+  };
   section: "jobs" | "network";
   data: AppData;
   onChange: (next: AppData, base: AppData) => void;
@@ -92,12 +97,15 @@ export function CareerView({
   section,
   initialActionId,
   initialTab,
+  initialRecord,
   onWeek,
 }: Props) {
   const [cvId, setCvId] = useState<string | null>(null);
   const [messageOpen, setMessageOpen] = useState(false);
   const [linkedinOpen, setLinkedinOpen] = useState(false);
-  const [materialsId, setMaterialsId] = useState<string | null>(null);
+  const [materialsId, setMaterialsId] = useState<string | null>(
+    initialRecord?.kind === "application" ? initialRecord.id : null,
+  );
   const [actionEditing, setActionEditing] = useState(false);
   const [interviewBookingId, setInterviewBookingId] = useState<string | null>(
     null,
@@ -802,6 +810,14 @@ export function CareerView({
             Ny kontakt
           </button>
           <NetworkContacts
+            initialContactId={
+              initialRecord?.kind === "contact" ? initialRecord.id : undefined
+            }
+            firstStep={
+              initialRecord?.kind === "contact"
+                ? initialRecord.instruction
+                : undefined
+            }
             data={data}
             onEdit={setContact}
             onLog={setContactLog}
@@ -943,6 +959,12 @@ export function CareerView({
       )}
       {materialApplication && (
         <ApplicationMaterials
+          firstStep={
+            initialRecord?.kind === "application" &&
+            initialRecord.id === materialApplication.id
+              ? initialRecord.instruction
+              : undefined
+          }
           value={materialApplication}
           onClose={() => setMaterialsId(null)}
           onSave={(fields) => {

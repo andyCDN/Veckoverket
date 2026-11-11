@@ -244,11 +244,16 @@ export type Habit = {
   checks: string[];
   paused?: boolean;
 };
+export type DailyFocus = {
+  kind: "application" | "contact" | "task" | "activity" | "none";
+  id: string;
+  title: string;
+  contactEntryId?: string;
+};
 export type DailyCheckIn = {
-  mood: "heavy" | "okay" | "good";
-  focus: { kind: "task" | "activity" | "recovery"; id: string; title: string };
-  cue: "now" | "after-break" | "after-booking";
-  cueTitle?: string;
+  applicationIds: string[];
+  contactIds: string[];
+  focus: DailyFocus;
   updatedAt: string;
 };
 export type AppData = {

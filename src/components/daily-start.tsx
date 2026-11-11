@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import type { Activity, AppData } from "@/lib/types";
+import type { Activity, AppData, DailyFocus } from "@/lib/types";
 import {
   dailyStart,
   gentleChoices,
@@ -8,7 +8,8 @@ import {
   type GentlePreview,
 } from "@/lib/daily-start";
 import { fullDate, monday, planningBoundary, time } from "@/lib/date";
-import { checkInPlan, CHECK_IN_MOODS } from "@/lib/daily-check-in";
+import { dailyFocusStep } from "@/lib/daily-check-in";
+import { APPLICATION_STATUSES } from "@/lib/applications";
 import { Modal } from "./modal";
 export function DailyStart({
   data,
@@ -17,6 +18,7 @@ export function DailyStart({
   onPlan,
   onGentle,
   onCheckIn,
+  onStartFocus,
 }: {
   data: AppData;
   week: string;
@@ -24,6 +26,7 @@ export function DailyStart({
   onPlan: (taskId: string) => void;
   onGentle: () => void;
   onCheckIn: () => void;
+  onStartFocus: (focus: DailyFocus) => void;
 }) {
   const [boundary, setBoundary] = useState(planningBoundary);
   useEffect(() => {
@@ -33,6 +36,10 @@ export function DailyStart({
   if (week !== monday(boundary.date)) return null;
   const model = dailyStart(data, boundary),
     choice = model.recommendation;
+  const source =
+    model.firstStep && ["application", "contact"].includes(model.firstStep.kind)
+      ? model.firstStep
+      : undefined;
   return (
     <section className="daily-start" aria-label="Din dagstart">
       <header>
@@ -46,19 +53,96 @@ export function DailyStart({
       </header>
       <div className="daily-check-in-invitation">
         <button className="button secondary" onClick={onCheckIn}>
-          {model.checkIn ? "Ändra dagsincheck" : "Dagsincheck · ca 20 sek"}
+          {model.checkIn ? "Ändra dagens val" : "Dagens riktning · tre frågor"}
         </button>
-        {model.checkIn && (
-          <div>
-            <small>Incheckad · {CHECK_IN_MOODS[model.checkIn.mood]}</small>
-            <p>{checkInPlan(model.checkIn)}</p>
+      </div>
+      {model.checkIn &&
+        (model.checkIn.applicationIds.length > 0 ||
+          model.checkIn.contactIds.length > 0) && (
+          <div className="daily-priorities" aria-label="Dagens prioriteringar">
+            <ul>
+              {model.checkIn.applicationIds.map((id) => {
+                const app = data.applications?.find((a) => a.id === id);
+                const active =
+                  app?.status === "draft" &&
+                  (!app.deadline || app.deadline >= boundary.date);
+                return (
+                  <li key={`application:${id}`}>
+                    {app ? (
+                      active ? (
+                        <button
+                          className="text-button"
+                          onClick={() =>
+                            onStartFocus({
+                              kind: "application",
+                              id,
+                              title: `${app.role} · ${app.organization}`,
+                            })
+                          }
+                        >
+                          Jobb: {app.role} · {app.organization}
+                        </button>
+                      ) : (
+                        <span>
+                          {app.role} · {app.organization} ·{" "}
+                          {app.status === "draft"
+                            ? "Deadline passerad"
+                            : APPLICATION_STATUSES[app.status]}
+                        </span>
+                      )
+                    ) : (
+                      "Borttaget jobb"
+                    )}
+                  </li>
+                );
+              })}
+              {model.checkIn.contactIds.map((id) => {
+                const c = data.contacts?.find((c) => c.id === id);
+                return (
+                  <li key={`contact:${id}`}>
+                    {c ? (
+                      <button
+                        className="text-button"
+                        onClick={() =>
+                          onStartFocus({
+                            kind: "contact",
+                            id,
+                            title:
+                              c.name +
+                              (c.organization ? ` · ${c.organization}` : ""),
+                          })
+                        }
+                      >
+                        Kontakt: {c.name}
+                        {c.organization && ` · ${c.organization}`}
+                      </button>
+                    ) : (
+                      "Borttagen kontakt"
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         )}
-      </div>
       {model.gentle && (
         <p className="daily-gentle-note">Dagen är anpassad efter din ork.</p>
       )}
-      {choice ? (
+      {source ? (
+        <div className="daily-recommendation">
+          <div>
+            <span>Första lilla steget</span>
+            <h3>{source.title}</h3>
+            <p>{dailyFocusStep(source, data)}</p>
+          </div>
+          <button
+            className="button primary"
+            onClick={() => onStartFocus(source)}
+          >
+            Börja här
+          </button>
+        </div>
+      ) : choice ? (
         <div className="daily-recommendation">
           <div>
             <span>En sak att börja med</span>
@@ -82,15 +166,13 @@ export function DailyStart({
         </div>
       ) : (
         <p>
-          {model.checkIn?.focus.kind === "recovery"
-            ? "Återhämtning är ditt valda steg. Du behöver inte lägga till en arbetsuppgift här."
-            : model.checkIn
-              ? "Ditt valda steg är inte längre väntande i dagsstarten. Du kan låta det räcka eller ändra din incheck."
-              : model.gentleDone
-                ? "Dagens lilla insats är genomförd. Du behöver inte välja något nytt här."
-                : model.gentle
-                  ? "Befintliga åtaganden får vara dagens plan. Resten av arbetet finns kvar för senare."
-                  : "Ingen uppgift behöver väljas just nu. Du kan låta dagen vara som den är, eller välja något i måndagschecken."}
+          {model.gentleDone
+            ? "Dagens lilla insats är genomförd. Du behöver inte välja något nytt här."
+            : model.gentle
+              ? "Befintliga åtaganden får vara dagens plan. Resten av arbetet finns kvar för senare."
+              : model.checkIn && model.checkIn.focus.kind !== "none"
+                ? "Första steget är inte längre aktuellt. Dina övriga val finns kvar. Ändra dagens val om du vill prioritera om."
+                : "Ingen uppgift behöver väljas just nu. Du kan låta dagen vara som den är, eller välja något i måndagschecken."}
         </p>
       )}
       {model.next && model.next.id !== choice?.activity?.id && (

@@ -11,8 +11,10 @@ export function ApplicationMaterials({
   value,
   onSave,
   onClose,
+  firstStep,
 }: {
   value: JobApplication;
+  firstStep?: string;
   onSave: (v: Pick<JobApplication, "advertisement" | "materials">) => void;
   onClose: () => void;
 }) {
@@ -53,6 +55,13 @@ export function ApplicationMaterials({
           }
         }}
       >
+        {firstStep && (
+          <p className="check-in-plan">
+            <strong>Första lilla steget</strong>
+            <br />
+            {firstStep}
+          </p>
+        )}
         <p>
           Spara annonsen och länkar till de dokumentversioner som används eller
           har skickats. Lägg till en egen rad för varje version.

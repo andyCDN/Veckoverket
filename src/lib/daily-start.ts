@@ -3,7 +3,7 @@ import { addDays, monday, planningBoundary, uid, weekday } from "./date";
 import { plannedDays, validatePlan } from "./planner";
 import { tasksInWeek, workBookings } from "./weekly-work";
 import { blocksTime } from "./external-calendar";
-import { RECOVERY_FOCUS } from "./daily-check-in";
+import { currentDailyFocus } from "./daily-check-in";
 import { obsoleteApplicationWork } from "./application-deadlines";
 import { careerActions } from "./career-actions";
 export type DailyChoice = {
@@ -90,16 +90,20 @@ export function dailyStart(data: AppData, boundary = planningBoundary()) {
       focusId && passes.some((a) => a.id === focusId && a.status === "done"),
     ),
     checkIn,
-    recommendation: checkIn
-      ? choices.find((c) =>
-          checkIn.focus.kind === "task"
-            ? c.task?.id === checkIn.focus.id ||
-              c.activity?.taskId === checkIn.focus.id
-            : checkIn.focus.kind === "activity" &&
-              c.activity?.id === checkIn.focus.id,
-        )
-      : gentle
-        ? choices.find((c) => c.activity?.id === focusId)
+    firstStep:
+      checkIn && !gentle
+        ? currentDailyFocus(data, checkIn, boundary)
+        : undefined,
+    recommendation: gentle
+      ? choices.find((c) => c.activity?.id === focusId)
+      : checkIn && checkIn.focus.kind !== "none"
+        ? choices.find((c) =>
+            checkIn.focus.kind === "task"
+              ? c.task?.id === checkIn.focus.id ||
+                c.activity?.taskId === checkIn.focus.id
+              : checkIn.focus.kind === "activity" &&
+                c.activity?.id === checkIn.focus.id,
+          )
         : (choices.find(
             (c) => c.activity?.taskId || c.activity?.careerActionId,
           ) ??
@@ -363,29 +367,6 @@ export function previewGentleDay(
       (a, b) => a.date.localeCompare(b.date) || a.start - b.start,
     ),
   };
-  const checkIn = data.dailyCheckIns?.[boundary.date];
-  result.data = {
-    ...data,
-    tasks,
-    weeks: { ...data.weeks, [week]: plan },
-    ...(checkIn
-      ? {
-          dailyCheckIns: {
-            ...data.dailyCheckIns,
-            [boundary.date]: {
-              ...checkIn,
-              focus: focus
-                ? {
-                    kind: focus.taskId ? "task" : "activity",
-                    id: focus.taskId ?? focus.id,
-                    title: focus.title,
-                  }
-                : RECOVERY_FOCUS,
-              updatedAt: new Date().toISOString(),
-            },
-          },
-        }
-      : {}),
-  };
+  result.data = { ...data, tasks, weeks: { ...data.weeks, [week]: plan } };
   return result;
 }

@@ -1,20 +1,28 @@
-# Kort dagsincheck
+# Dagens riktning
 
-Tre val, ingen fritext: aktuellt mående, ett meningsfullt steg ur dagens verkliga uppgifter/pass (eller återhämtning), och en startsignal. Ungefär 20 sekunder är ett UX-mål, inte ett uppmätt forskningsresultat. Fem minuter är en låg starttröskel som valts för produkten, inte en vetenskapligt optimal dos.
+En kort dagsprioritering utan måendefrågor eller fritext:
+
+1. Vilka jobb vill du söka idag? Välj ett eller flera aktuella utkast ur registret.
+2. Vilka personer vill du kontakta? Välj befintliga kontakter eller avstå idag.
+3. Vad börjar du med? Välj en av prioriteringarna eller en annan befintlig uppgift.
+
+Ett litet relevant steg visas, exempelvis att välja ett krav i annonsen eller formulera en fråga till en kontakt. Spara och börja här öppnar rätt underlag direkt. Spara dagens val låter användaren fortsätta senare från dagsstarten. Inga meddelanden skickas, statusar ändras eller kalenderbokningar görs av själva dagsplaneringen.
 
 ## Forskningsgrund, kontrollerad 11 november 2026
 
-- [Gollwitzer & Sheeran, *Psychology of Planning*, 2025](https://doi.org/10.1146/annurev-psych-021524-110536), samt [Sheeran et al., metaanalys av 642 tester, publicerad online 2024](https://doi.org/10.1080/10463283.2024.2334563): stöd för planer som kopplar en identifierbar situation till en handling. Produkten låter användaren välja startsignal och återvisar den tillsammans med uppgiften. Effekten beror bland annat på motivation och planens utformning; detta garanterar inte högre produktivitet för varje användare.
-- [Uphoff et al., Cochrane, 2020](https://www.cochrane.org/evidence/CD013305_behavioural-activation-therapy-depression-adults): beteendeaktivering innebär bland annat att återgå till meningsfull aktivitet och kan hjälpa vid depression, med begränsningar i evidensens säkerhet. Inchecken lånar principen om en konkret, meningsfull handling. Den är inte beteendeaktiveringsterapi och ingen klinisk behandlingseffekt tillskrivs appen.
-- [Albulescu et al., PLOS ONE, 2022](https://doi.org/10.1371/journal.pone.0272460): metaanalys av mikropauser fann små förbättringar i energi och trötthet, men ingen statistiskt säkerställd generell prestationseffekt. Därför är återhämtning ett fullvärdigt val, utan löften om ökad prestation.
+- [Gollwitzer & Sheeran, Psychology of Planning, 2025](https://doi.org/10.1146/annurev-psych-021524-110536): översikt av forskning om planer som binder en identifierbar situation till en handling. Här är startsignalen att öppna det valda underlaget; den specifika handlingen visas både i dagsstarten och vid underlaget.
+- [Rai et al., A Field Experiment on Subgoal Framing to Boost Volunteering, online 2022, volym 2023](https://doi.org/10.1037/apl0001040), [författarens artikelöversikt](https://aneesh-rai.com/publication/subgoals/): konkreta delmål och flexibilitet kan underlätta målarbete. Studien gäller volontärarbete, inte en femminutersövning för arbetssökande. Vår tillämpning är ett avgränsat steg inom användarens egen prioritering, med möjlighet att välja bort jobb eller kontakter en viss dag.
+- [Liu, Huang & Wang, Effectiveness of Job Search Interventions, 2014](https://doi.org/10.1037/a0035923), [artikelöversikt vid Monash University](https://research.monash.edu/en/publications/effectiveness-of-job-search-interventions-a-meta-analytic-review/): metaanalys av bredare jobbsökarinsatser. Målsättning, proaktivitet och socialt stöd ingick i komponenter som var associerade med bättre resultat. Det belägger inte att denna dagsplanering i sig förbättrar chansen till anställning.
 
-Den tregradiga måendefrågan är ett eget gränssnittsval för att stanna upp, inte en validerad skattningsskala, diagnos eller riskbedömning. Just kombinationen av dessa tre frågor har inte utvärderats vetenskapligt. Utvecklingen är forskningsinspirerad, inte kliniskt validerad.
+Den konkreta frågeuppsättningen är en designmässig tillämpning av forskningen. Ingen optimal tidsdos eller effekt på produktivitet, hälsa eller anställning tillskrivs funktionen. Fem minuter nämns enbart som möjlig låg starttröskel för vanliga uppgifter. Det finns inga måendeskalor, prestationspoäng, dagliga kvoter eller obrutna sviter.
 
-## Beteende och data
+## Flöde och data
 
-- Frivillig ingång i dagsstarten varje ny Stockholmsdag, även helger; inga popupkrav, poäng, obrutna sviter eller missade incheckar att ta igen.
-- En uppdaterbar post per datum i `dailyCheckIns`; export/import och befintlig kontobunden molnsynk bevarar fältet. Äldre data utan incheckar fungerar.
-- Inchecken styr rekommenderat fokus i dagsstarten. En avslutad/borttagen uppgift ersätts inte automatiskt med mer arbete. Återhämtning skapar ingen kalenderbokning.
-- Befintlig kalender, mål och uppgiftsstatus ändras inte vid incheckning. Åtgärderna Öppna pass/Boka tid använder de befintliga flödena. Godkänd Låg ork-plan håller valt fokus i inchecken synkroniserat med den lättare planen.
-- Svar kan ändras eller raderas. Uppgifterna följer samma lokal-/molnlagring och ångra-flöde som den övriga planen. Ingen AI-tjänst, klinisk analys eller statistik över mående tillkommer.
-- En öppen dialog över midnatt får inte spara på gårdagens datum. Dagssammanfattningen och incheckningsknappen uppdateras när dagen växlar.
+- Jobb sorteras efter känd sista ansökningsdag. Inskickade, avslutade och utgångna utkast föreslås inte som nya ansökningar. Ordningen bygger på registerdata, inte uppskattad chans att få jobbet.
+- Kontakter som behöver uppföljning visas före oplanerade kontakter och framtida bevakningar. Datum och vänteläge visas så att användaren kan välja själv.
+- Flera jobb och kontakter kan prioriteras, men bara ett första steg visas. Valen pekar på originalen, utan kopierade att-göra-uppgifter eller kontaktposter.
+- Jobb öppnar befintligt Dokumentunderlag, med annons, dokument och ett litet första steg. Kontakter öppnar rätt kontaktkort, även om flera har samma namn. Kontaktloggen fylls i först efter en verklig kontakt.
+- Ett jobb som senare skickas in eller vars deadline passerar återupplivas inte som första steg. En kontaktstart slutar föreslås efter att en ny kontakt loggats idag. Historiska val bevaras; inget annat väljs automatiskt i deras ställe.
+- Vanliga befintliga uppgifter/pass och Bara dagens befintliga plan fungerar även utan jobb eller kontakter.
+- Dagens val kan ändras och raderas. En post per Stockholmsdatum följer ordinarie lokal lagring, export/import och kontobunden molnsynk. Äldre publicerade säkerhetskopior utan fältet fungerar. Inga serverändringar behövs.
+- Valen gäller en dag. En öppen dialog över midnatt kan inte spara på gårdagens datum. Ett godkänt Låg ork-förslag styr den lilla kalenderinsatsen och bevarar dagens prioriteringar.
