@@ -58,6 +58,8 @@ import { ActionControl, ActionKindSelector } from "./action-control";
 import { actionNeedsAttention } from "@/lib/action-workflow";
 import { NetworkContacts, ContactLogForm } from "./network-contacts";
 import { logContact } from "@/lib/network-overview";
+import { LinkedInImport } from "./linkedin-import";
+import { importLinkedInJobs } from "@/lib/linkedin-import";
 import { Modal } from "./modal";
 import { PlanningConsequences } from "./planning-consequences";
 import {
@@ -88,6 +90,7 @@ export function CareerView({
   initialTab,
   onWeek,
 }: Props) {
+  const [linkedinOpen, setLinkedinOpen] = useState(false);
   const [materialsId, setMaterialsId] = useState<string | null>(null);
   const [actionEditing, setActionEditing] = useState(false);
   const [interviewBookingId, setInterviewBookingId] = useState<string | null>(
@@ -120,6 +123,7 @@ export function CareerView({
     label: string;
   } | null>(null);
   const editing = Boolean(
+    linkedinOpen ||
     actionEditing ||
     application ||
     contact ||
@@ -353,6 +357,12 @@ export function CareerView({
               }
             >
               Ny ansökan
+            </button>
+            <button
+              className="button secondary"
+              onClick={() => setLinkedinOpen(true)}
+            >
+              Importera från LinkedIn
             </button>
           </div>
           <div className="application-filters">
@@ -954,6 +964,30 @@ export function CareerView({
           onSave={(a) => {
             saveTrackedApplication(a);
             setHistoryId(null);
+          }}
+        />
+      )}
+      {linkedinOpen && (
+        <LinkedInImport
+          applications={applications}
+          onClose={() => setLinkedinOpen(false)}
+          onImport={(drafts) => {
+            const result = importLinkedInJobs(data, drafts);
+            if (result.added.length) {
+              onChange(result.data, data);
+              setLinkedinOpen(false);
+              setFilter("all");
+              setScope("active");
+              setQuery("");
+              setPeriod("all");
+              setMessage(
+                `${result.added.length} jobb har importerats som utkast.${result.skipped.length ? ` ${result.skipped.length} dubbletter hoppades över.` : ""} Nästa steg finns i veckovyn. Välj Boka arbetstid när du vill planera ett pass.`,
+              );
+            }
+            return {
+              added: result.added.length,
+              skipped: result.skipped.length,
+            };
           }}
         />
       )}

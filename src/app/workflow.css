@@ -596,3 +596,32 @@
 .week-extras .weekend-summaries {
   flex: 1;
 }
+
+.linkedin-import-job {
+  min-width: 0;
+  border: 1.5px solid var(--blue);
+  padding: 16px;
+  background: var(--paper-light);
+}
+.linkedin-import-job legend {
+  padding: 0 6px;
+  font-weight: 700;
+}
+.linkedin-import-job:disabled {
+  opacity: 0.8;
+}
+.linkedin-raw-url {
+  overflow-wrap: anywhere;
+}
+.linkedin-import .form-row > label {
+  min-width: 0;
+}
+.linkedin-import textarea {
+  width: 100%;
+}
+@media (max-width: 520px) {
+  .linkedin-import .form-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
