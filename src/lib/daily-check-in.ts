@@ -65,7 +65,10 @@ export function currentDailyFocus(
     const last = contact?.entries.at(-1);
     if (
       !contact ||
-      (last?.date === boundary.date && last.id !== focus.contactEntryId)
+      (last?.date === boundary.date &&
+        last.channel.trim() &&
+        last.channel.toLocaleLowerCase("sv-SE") !== "anteckning" &&
+        last.id !== focus.contactEntryId)
     )
       return undefined;
     return {
@@ -129,6 +132,22 @@ export function validateDailyCheckIns(
       !["application", "contact", "task", "activity", "none"].includes(
         v.focus.kind,
       ) ||
+      [v.completedKeys, v.deferredKeys].some(
+        (keys) =>
+          keys !== undefined &&
+          (!Array.isArray(keys) ||
+            keys.length > 200 ||
+            new Set(keys).size !== keys.length ||
+            keys.some(
+              (key: unknown) =>
+                typeof key !== "string" ||
+                ![
+                  ...v.applicationIds.map((id) => `application:${id}`),
+                  ...v.contactIds.map((id) => `contact:${id}`),
+                ].includes(key),
+            )),
+      ) ||
+      v.completedKeys?.some((key) => v.deferredKeys?.includes(key)) ||
       !text(v.focus.id, 200) ||
       !text(v.focus.title, 4000) ||
       (v.focus.contactEntryId !== undefined &&
@@ -155,13 +174,21 @@ export function saveDailyCheckIn(
   const options = dailyPriorityOptions(data, date);
   if (
     value.applicationIds.some(
-      (id) => !options.applications.some((a) => a.id === id),
+      (id) =>
+        !options.applications.some((a) => a.id === id) &&
+        !data.dailyCheckIns?.[date]?.applicationIds.includes(id),
     )
   )
     throw new Error(
       "Ett valt jobb är inte längre ett aktuellt utkast. Uppdatera dagens val.",
     );
-  if (value.contactIds.some((id) => !data.contacts?.some((c) => c.id === id)))
+  if (
+    value.contactIds.some(
+      (id) =>
+        !data.contacts?.some((c) => c.id === id) &&
+        !data.dailyCheckIns?.[date]?.contactIds.includes(id),
+    )
+  )
     throw new Error("En vald kontakt finns inte längre. Uppdatera dagens val.");
   const focus =
     value.focus.kind === "none"
@@ -177,6 +204,8 @@ export function saveDailyCheckIn(
   const saved: DailyCheckIn = {
     applicationIds: [...value.applicationIds],
     contactIds: [...value.contactIds],
+    ...(value.completedKeys ? { completedKeys: [...value.completedKeys] } : {}),
+    ...(value.deferredKeys ? { deferredKeys: [...value.deferredKeys] } : {}),
     focus: {
       kind: focus.kind,
       id: focus.id,
@@ -196,4 +225,198 @@ export function removeDailyCheckIn(data: AppData, date: string): AppData {
   const dailyCheckIns = { ...data.dailyCheckIns };
   delete dailyCheckIns[date];
   return { ...data, dailyCheckIns };
+}
+
+export type DailyTodo = {
+  key: string;
+  group: "jobs" | "network";
+  focus: DailyFocus;
+  title: string;
+  hint: string;
+  active: boolean;
+  systemDone: boolean;
+  completed: boolean;
+  deferred: boolean;
+};
+
+function contactMadeToday(data: AppData, id: string, date: string) {
+  return (
+    data.contacts
+      ?.find((c) => c.id === id)
+      ?.entries.some(
+        (entry) =>
+          entry.date === date &&
+          entry.channel.trim() &&
+          entry.channel.toLocaleLowerCase("sv-SE") !== "anteckning",
+      ) ?? false
+  );
+}
+
+/** Automatic suggestions become a stable daily list on the first explicit action.
+ * Completing a small step never schedules a replacement or completes an application. */
+export function dailyTodoPlan(data: AppData, date = today()) {
+  const options = dailyPriorityOptions(data, date);
+  const suggestedContacts = options.contacts.filter(
+    ({ contact, step }) =>
+      !(step?.kind === "waiting" && (!step.date || step.date > date)) &&
+      !contactMadeToday(data, contact.id, date),
+  );
+  const saved = data.dailyCheckIns?.[date];
+  const value: DailyCheckIn = saved ?? {
+    applicationIds: options.applications.slice(0, 2).map((a) => a.id),
+    contactIds: suggestedContacts.slice(0, 2).map(({ contact }) => contact.id),
+    focus: NO_DAILY_FOCUS,
+    updatedAt: new Date().toISOString(),
+  };
+  const row = (kind: "application" | "contact", id: string): DailyTodo => {
+    const key = `${kind}:${id}`;
+    const application =
+      kind === "application"
+        ? data.applications?.find((a) => a.id === id)
+        : undefined;
+    const contact =
+      kind === "contact" ? data.contacts?.find((c) => c.id === id) : undefined;
+    const step = options.contacts.find(
+      ({ contact }) => contact.id === id,
+    )?.step;
+    const focus: DailyFocus =
+      kind === "application"
+        ? {
+            kind,
+            id,
+            title: application
+              ? `${application.role} · ${application.organization}`
+              : "Borttaget jobb",
+          }
+        : {
+            kind,
+            id,
+            title: contact
+              ? contact.name +
+                (contact.organization ? ` · ${contact.organization}` : "")
+              : "Borttagen kontakt",
+            ...(contact?.entries.at(-1)?.id
+              ? { contactEntryId: contact.entries.at(-1)!.id }
+              : {}),
+          };
+    const systemDone =
+      kind === "application"
+        ? Boolean(application && application.status !== "draft")
+        : contactMadeToday(data, id, date);
+    const active =
+      kind === "application"
+        ? Boolean(
+            application &&
+            application.status === "draft" &&
+            (!application.deadline || application.deadline >= date),
+          )
+        : Boolean(
+            contact &&
+            !systemDone &&
+            !(step?.kind === "waiting" && (!step.date || step.date > date)),
+          );
+    return {
+      key,
+      group: kind === "application" ? "jobs" : "network",
+      focus,
+      title:
+        kind === "application"
+          ? dailyFocusStep(focus, data)
+          : "Formulera en fråga att skicka.",
+      hint: systemDone
+        ? kind === "application"
+          ? "Ansökan är redan skickad eller avslutad"
+          : "Kontakt loggad idag"
+        : !active
+          ? kind === "application"
+            ? "Jobbet är inte längre aktuellt"
+            : contact
+              ? "Väntar på svar · uppföljning senare"
+              : "Kontakten är borttagen"
+          : kind === "application"
+            ? application?.deadline === date
+              ? "Sista ansökningsdag idag"
+              : application?.deadline
+                ? `Sista ansökningsdag ${application.deadline}`
+                : "Ansökan utan slutdatum"
+            : step?.date && step.date <= date
+              ? `Följ upp ${step.date}`
+              : step?.title || "En kontakt att ta vidare",
+      active,
+      systemDone,
+      completed: systemDone || Boolean(value.completedKeys?.includes(key)),
+      deferred: Boolean(value.deferredKeys?.includes(key)),
+    };
+  };
+  const items = [
+    ...value.applicationIds.map((id) => row("application", id)),
+    ...value.contactIds.map((id) => row("contact", id)),
+  ];
+  const more = [
+    ...options.applications
+      .filter((a) => !value.applicationIds.includes(a.id))
+      .map((a) => row("application", a.id)),
+    ...suggestedContacts
+      .filter(({ contact }) => !value.contactIds.includes(contact.id))
+      .map(({ contact }) => row("contact", contact.id)),
+  ];
+  return { value, items, more };
+}
+
+export type DailyTodoAction =
+  "start" | "complete" | "defer" | "restore" | "add";
+export function updateDailyTodo(
+  data: AppData,
+  date: string,
+  key: string,
+  action: DailyTodoAction,
+): DailyCheckIn {
+  const { value, items, more } = dailyTodoPlan(data, date);
+  const item = [...items, ...more].find((row) => row.key === key);
+  if (!item)
+    throw new Error("Steget finns inte längre. Öppna dagens lista igen.");
+  if (!item.active)
+    throw new Error("Steget är inte längre aktuellt. Listan har uppdaterats.");
+  const applicationIds = [...value.applicationIds],
+    contactIds = [...value.contactIds];
+  const ids = item.group === "jobs" ? applicationIds : contactIds;
+  if (!ids.includes(item.focus.id)) ids.push(item.focus.id);
+  const completed = new Set(value.completedKeys ?? []),
+    deferred = new Set(value.deferredKeys ?? []);
+  let focus = value.focus;
+  const wasFocused = `${focus.kind}:${focus.id}` === key;
+  if (action === "complete") {
+    if (completed.has(key)) completed.delete(key);
+    else completed.add(key);
+    deferred.delete(key);
+    if (wasFocused) focus = NO_DAILY_FOCUS;
+  }
+  if (action === "defer") {
+    deferred.add(key);
+    completed.delete(key);
+    if (wasFocused) focus = NO_DAILY_FOCUS;
+  }
+  if (action === "restore") deferred.delete(key);
+  if (action === "start") {
+    completed.delete(key);
+    deferred.delete(key);
+    focus = item.focus;
+  }
+  if (
+    focus.kind !== "none" &&
+    !currentDailyFocus(
+      data,
+      { ...value, applicationIds, contactIds, focus },
+      { date, minute: planningBoundary().minute },
+    )
+  )
+    focus = NO_DAILY_FOCUS;
+  return {
+    ...value,
+    applicationIds,
+    contactIds,
+    completedKeys: [...completed],
+    deferredKeys: [...deferred],
+    focus,
+  };
 }

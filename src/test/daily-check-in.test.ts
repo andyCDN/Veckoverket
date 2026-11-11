@@ -6,6 +6,8 @@ import {
   dailyPriorityOptions,
   currentDailyFocus,
   NO_DAILY_FOCUS,
+  dailyTodoPlan,
+  updateDailyTodo,
 } from "../lib/daily-check-in";
 import { dailyStart, previewGentleDay } from "../lib/daily-start";
 import { logContact } from "../lib/network-overview";
@@ -179,7 +181,7 @@ describe("dagsprioriteringar och en konkret start", () => {
       ),
     ).toEqual([]);
     expect(() => saveDailyCheckIn(data, date, entry(), date)).toThrow(
-      "inte längre ett aktuellt utkast",
+      "Första steget är inte längre aktuellt",
     );
     const expired = {
       ...entry(),
@@ -382,5 +384,184 @@ describe("dagsprioriteringar och en konkret start", () => {
     await reloaded.start();
     expect(reloaded.snapshot().data?.dailyCheckIns?.[date]).toEqual(entry());
     reloaded.dispose();
+  });
+});
+
+describe("färdiga att-göra-steg utan frågeflöde", () => {
+  it("öppnar med få konkreta steg och lämnar redan kontaktade personer och framtida bevakningar ifred", () => {
+    const data = fixture();
+    const plan = dailyTodoPlan(data, date);
+    expect(plan.value.applicationIds).toEqual(["today", "later"]);
+    expect(plan.value.contactIds).toEqual(["due", "fresh"]);
+    expect(plan.items.every((item) => item.active && !item.completed)).toBe(
+      true,
+    );
+    expect(data.dailyCheckIns).toBeUndefined();
+    const logged = logContact(data, "due", {
+      date,
+      channel: "Telefon",
+      notes: "Kontakt tagen.",
+    });
+    expect(dailyTodoPlan(logged, date).value.contactIds).toEqual(["fresh"]);
+    const note = logContact(data, "due", {
+      date,
+      channel: "Anteckning",
+      notes: "En fråga att ställa senare.",
+    });
+    expect(dailyTodoPlan(note, date).value.contactIds).toContain("due");
+  });
+  it("bockar bara av det lilla steget och behåller en stabil lista utan ersättningsarbete", () => {
+    const data = fixture();
+    const before = structuredClone(data);
+    const next = saveDailyCheckIn(
+      data,
+      date,
+      updateDailyTodo(data, date, "application:today", "complete"),
+      date,
+    );
+    expect(next.dailyCheckIns?.[date].completedKeys).toEqual([
+      "application:today",
+    ]);
+    expect(next.applications).toEqual(before.applications);
+    expect(next.tasks).toEqual(before.tasks);
+    expect(next.weeks).toEqual(before.weeks);
+    expect(dailyTodoPlan(next, date).value.applicationIds).toEqual([
+      "today",
+      "later",
+    ]);
+    expect(
+      dailyTodoPlan(next, date).items.find(
+        (item) => item.key === "application:today",
+      )?.completed,
+    ).toBe(true);
+    expect(
+      dailyTodoPlan(next, date).items.some(
+        (item) => item.key === "application:undated",
+      ),
+    ).toBe(false);
+    expect(decodeData(JSON.stringify(next)).dailyCheckIns).toEqual(
+      next.dailyCheckIns,
+    );
+    const reopened = saveDailyCheckIn(
+      next,
+      date,
+      updateDailyTodo(next, date, "application:today", "complete"),
+      date,
+    );
+    expect(reopened.dailyCheckIns?.[date].completedKeys).toEqual([]);
+    expect(reopened.applications?.find((a) => a.id === "today")?.status).toBe(
+      "draft",
+    );
+  });
+  it("kan lägga steg åt sidan, ta tillbaka dem och uttryckligen lägga till ett annat steg", () => {
+    const data = fixture();
+    const deferred = saveDailyCheckIn(
+      data,
+      date,
+      updateDailyTodo(data, date, "contact:due", "defer"),
+      date,
+    );
+    expect(deferred.dailyCheckIns?.[date].deferredKeys).toEqual([
+      "contact:due",
+    ]);
+    expect(deferred.contacts).toBe(data.contacts);
+    const restored = saveDailyCheckIn(
+      deferred,
+      date,
+      updateDailyTodo(deferred, date, "contact:due", "restore"),
+      date,
+    );
+    expect(restored.dailyCheckIns?.[date].deferredKeys).toEqual([]);
+    const extra = saveDailyCheckIn(
+      restored,
+      date,
+      updateDailyTodo(restored, date, "application:undated", "add"),
+      date,
+    );
+    expect(extra.dailyCheckIns?.[date].applicationIds).toEqual([
+      "today",
+      "later",
+      "undated",
+    ]);
+    const started = saveDailyCheckIn(
+      extra,
+      date,
+      updateDailyTodo(extra, date, "contact:due", "start"),
+      date,
+    );
+    expect(
+      currentDailyFocus(started, started.dailyCheckIns![date], boundary),
+    ).toMatchObject({ kind: "contact", id: "due" });
+  });
+  it("inaktuella sparade referenser blockerar inte avprickning av övriga steg", () => {
+    const data = saveDailyCheckIn(
+      fixture(),
+      date,
+      dailyTodoPlan(fixture(), date).value,
+      date,
+    );
+    data.applications!.find((a) => a.id === "today")!.status = "sent";
+    const logged = logContact(data, "due", {
+      date,
+      channel: "Telefon",
+      notes: "Pratat om jobbet.",
+    });
+    const items = dailyTodoPlan(logged, date).items;
+    expect(
+      items.find((item) => item.key === "application:today"),
+    ).toMatchObject({ active: false, systemDone: true, completed: true });
+    expect(items.find((item) => item.key === "contact:due")).toMatchObject({
+      active: false,
+      systemDone: true,
+      completed: true,
+    });
+    const next = saveDailyCheckIn(
+      logged,
+      date,
+      updateDailyTodo(logged, date, "application:later", "complete"),
+      date,
+    );
+    expect(next.dailyCheckIns?.[date].completedKeys).toContain(
+      "application:later",
+    );
+    expect(() =>
+      updateDailyTodo(next, date, "application:today", "start"),
+    ).toThrow("inte längre aktuellt");
+  });
+  it("fyller inte på när dagens valda steg är klara", () => {
+    let data = fixture();
+    const keys = dailyTodoPlan(data, date).items.map((item) => item.key);
+    for (const key of keys)
+      data = saveDailyCheckIn(
+        data,
+        date,
+        updateDailyTodo(data, date, key, "complete"),
+        date,
+      );
+    const plan = dailyTodoPlan(data, date);
+    expect(
+      plan.items.filter(
+        (item) => item.active && !item.completed && !item.deferred,
+      ),
+    ).toEqual([]);
+    expect(plan.more.map((item) => item.key)).toEqual(["application:undated"]);
+    expect(plan.items.map((item) => item.key)).toEqual(keys);
+  });
+  it("avvisar okända eller motstridiga avprickningar i importer", () => {
+    for (const fields of [
+      { completedKeys: ["application:unselected"] },
+      { completedKeys: ["application:today", "application:today"] },
+      { completedKeys: [7] },
+      { deferredKeys: null },
+      { deferredKeys: ["contact:due"], completedKeys: ["contact:due"] },
+    ])
+      expect(() =>
+        decodeData(
+          JSON.stringify({
+            ...fixture(),
+            dailyCheckIns: { [date]: { ...entry(), ...fields } },
+          }),
+        ),
+      ).toThrow();
   });
 });

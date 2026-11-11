@@ -253,6 +253,8 @@ export type DailyFocus = {
 export type DailyCheckIn = {
   applicationIds: string[];
   contactIds: string[];
+  completedKeys?: string[];
+  deferredKeys?: string[];
   focus: DailyFocus;
   updatedAt: string;
 };

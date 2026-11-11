@@ -1,28 +1,29 @@
-# Dagens riktning
+# Att göra idag
 
-En kort dagsprioritering utan måendefrågor eller fritext:
+Dagsstarten öppnar med färdiga små steg för Jobb och Nätverkande. Den korta vyn visar ett steg per område; Visa dagens att göra öppnar hela listan. Det finns ingen frågeblankett och ingen fritext eller obligatorisk sparknapp före start.
 
-1. Vilka jobb vill du söka idag? Välj ett eller flera aktuella utkast ur registret.
-2. Vilka personer vill du kontakta? Välj befintliga kontakter eller avstå idag.
-3. Vad börjar du med? Välj en av prioriteringarna eller en annan befintlig uppgift.
+## Flöde
 
-Ett litet relevant steg visas, exempelvis att välja ett krav i annonsen eller formulera en fråga till en kontakt. Spara och börja här öppnar rätt underlag direkt. Spara dagens val låter användaren fortsätta senare från dagsstarten. Inga meddelanden skickas, statusar ändras eller kalenderbokningar görs av själva dagsplaneringen.
+- Aktuella utkast prioriteras efter känd deadline. Inskickade/avslutade ansökningar och utgångna utkast blir inte nya ansökningssteg.
+- Kontakter som behöver uppföljning prioriteras. Redan loggade kontakter idag och framtida bevakningar föreslås inte som nya kontaktsteg. En egen anteckning räknas inte som genomförd kontakt.
+- Högst två jobb och två kontakter föreslås från början. Gränsen är ett designval för överblick, inte ett vetenskapligt optimalt antal. Fler aktuella steg finns i en utfällbar lista och läggs till uttryckligen.
+- Varje rad har en konkret handling, källa, relevant datum, avprickning och Börja. Exempel: välj ett krav ur annonsen, eller formulera en fråga till kontakten. Börja öppnar rätt Dokumentunderlag eller kontaktkort direkt, även om flera personer har samma namn.
+- Avprickning gäller bara det lilla steget. Den skickar ingen ansökan, markerar ingen hel ansökan som färdig och skapar ingen kontaktlogg. Ansökans faktiska status och genomförda kontakter registreras i sina befintliga flöden.
+- Inte idag lägger steget åt sidan i dagens lista. Det flyttar inte kalenderpass eller deadlines. Steget kan tas tillbaka.
+- Vid första uttryckliga ändringen sparas dagens referenser. Färdiga steg ersätts inte automatiskt med nya. Statusändringar i registret visas direkt som klara eller inaktuella, och blockerar inte övriga steg.
+- Klart/inte längre aktuellt, åt sidan och fler steg ligger i egna utfällbara listor. Återställ dagens lista återgår uttryckligen till nya förslag från aktuella register.
+- Tomma register ger ett lugnt tomläge. Den befintliga dagsstarten och uppgiftsplaneringen finns kvar. En godkänd Låg ork-plan prioriteras i dagsstarten.
 
 ## Forskningsgrund, kontrollerad 11 november 2026
 
-- [Gollwitzer & Sheeran, Psychology of Planning, 2025](https://doi.org/10.1146/annurev-psych-021524-110536): översikt av forskning om planer som binder en identifierbar situation till en handling. Här är startsignalen att öppna det valda underlaget; den specifika handlingen visas både i dagsstarten och vid underlaget.
-- [Rai et al., A Field Experiment on Subgoal Framing to Boost Volunteering, online 2022, volym 2023](https://doi.org/10.1037/apl0001040), [författarens artikelöversikt](https://aneesh-rai.com/publication/subgoals/): konkreta delmål och flexibilitet kan underlätta målarbete. Studien gäller volontärarbete, inte en femminutersövning för arbetssökande. Vår tillämpning är ett avgränsat steg inom användarens egen prioritering, med möjlighet att välja bort jobb eller kontakter en viss dag.
-- [Liu, Huang & Wang, Effectiveness of Job Search Interventions, 2014](https://doi.org/10.1037/a0035923), [artikelöversikt vid Monash University](https://research.monash.edu/en/publications/effectiveness-of-job-search-interventions-a-meta-analytic-review/): metaanalys av bredare jobbsökarinsatser. Målsättning, proaktivitet och socialt stöd ingick i komponenter som var associerade med bättre resultat. Det belägger inte att denna dagsplanering i sig förbättrar chansen till anställning.
+- [Gollwitzer & Sheeran, Psychology of Planning, 2025](https://doi.org/10.1146/annurev-psych-021524-110536): forskning om att binda en identifierbar situation till en konkret handling. Här öppnar Börja valt underlag och visar det lilla steget där.
+- [Rai et al., A Field Experiment on Subgoal Framing to Boost Volunteering, online 2022, volym 2023](https://doi.org/10.1037/apl0001040), [författarens översikt](https://aneesh-rai.com/publication/subgoals/): stöd för konkreta delmål och flexibilitet i den studerade volontärverksamheten. Produkten tillämpar principerna på små relevanta steg och möjlighet att avstå idag; studien är inte en utvärdering av denna lista.
+- [Liu, Huang & Wang, Effectiveness of Job Search Interventions, 2014](https://doi.org/10.1037/a0035923), [Monash University](https://research.monash.edu/en/publications/effectiveness-of-job-search-interventions-a-meta-analytic-review/): metaanalys av bredare jobbsökarinsatser. Målsättning och proaktivitet ingick i komponenter som var associerade med bättre resultat. Det belägger inte att just denna lista förbättrar anställningschanser.
 
-Den konkreta frågeuppsättningen är en designmässig tillämpning av forskningen. Ingen optimal tidsdos eller effekt på produktivitet, hälsa eller anställning tillskrivs funktionen. Fem minuter nämns enbart som möjlig låg starttröskel för vanliga uppgifter. Det finns inga måendeskalor, prestationspoäng, dagliga kvoter eller obrutna sviter.
+Utformningen är en praktisk tillämpning av principerna. Inga effekter på produktivitet, hälsa eller anställning garanteras. Inga måendefrågor, prestationspoäng, dagliga kvoter eller obrutna sviter tillkommer.
 
-## Flöde och data
+## Data
 
-- Jobb sorteras efter känd sista ansökningsdag. Inskickade, avslutade och utgångna utkast föreslås inte som nya ansökningar. Ordningen bygger på registerdata, inte uppskattad chans att få jobbet.
-- Kontakter som behöver uppföljning visas före oplanerade kontakter och framtida bevakningar. Datum och vänteläge visas så att användaren kan välja själv.
-- Flera jobb och kontakter kan prioriteras, men bara ett första steg visas. Valen pekar på originalen, utan kopierade att-göra-uppgifter eller kontaktposter.
-- Jobb öppnar befintligt Dokumentunderlag, med annons, dokument och ett litet första steg. Kontakter öppnar rätt kontaktkort, även om flera har samma namn. Kontaktloggen fylls i först efter en verklig kontakt.
-- Ett jobb som senare skickas in eller vars deadline passerar återupplivas inte som första steg. En kontaktstart slutar föreslås efter att en ny kontakt loggats idag. Historiska val bevaras; inget annat väljs automatiskt i deras ställe.
-- Vanliga befintliga uppgifter/pass och Bara dagens befintliga plan fungerar även utan jobb eller kontakter.
-- Dagens val kan ändras och raderas. En post per Stockholmsdatum följer ordinarie lokal lagring, export/import och kontobunden molnsynk. Äldre publicerade säkerhetskopior utan fältet fungerar. Inga serverändringar behövs.
-- Valen gäller en dag. En öppen dialog över midnatt kan inte spara på gårdagens datum. Ett godkänt Låg ork-förslag styr den lilla kalenderinsatsen och bevarar dagens prioriteringar.
+`dailyCheckIns` bevarar en post per Stockholmsdatum med referenser till jobb/kontakter samt småstegens `completedKeys` och `deferredKeys`. Inga extra globala uppgifter, jobb eller kontakter kopieras. Kalender, deadlines, ansökningsstatusar och kontaktloggar ändras bara i sina egna ordinarie flöden.
+
+Lokal lagring, export/import, kontobunden molnsynk och ångra följer det befintliga upplägget. Äldre publicerade data utan dagslistor fungerar. En öppen dialog över midnatt kan inte skriva till gårdagens lista. Nästa dag beräknar förslag från då aktuella register; gamla avprickningar bevaras på sitt datum.

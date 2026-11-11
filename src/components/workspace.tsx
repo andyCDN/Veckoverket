@@ -25,6 +25,7 @@ import {
 import type {
   Activity,
   DailyFocus,
+  DailyCheckIn,
   AppData,
   Category,
   Goal,
@@ -459,6 +460,42 @@ export function Workspace() {
         .find((a) => a.id === focus.id && a.date === today());
       if (booked) editInWeek(monday(booked.date), booked);
     }
+  };
+  const updateDailyTodos = (
+    value: DailyCheckIn,
+    start: boolean,
+    date: string,
+  ) => {
+    if (today() !== date)
+      return "Dagen har ändrats. Stäng och öppna dagens lista igen.";
+    let error: string | undefined;
+    let focusToStart: DailyFocus | undefined;
+    setData(
+      (current) => {
+        if (!current) {
+          error = "Planen kunde inte läsas.";
+          return current;
+        }
+        try {
+          const next = saveDailyCheckIn(current, date, value);
+          if (start)
+            focusToStart = currentDailyFocus(next, next.dailyCheckIns![date]);
+          return next;
+        } catch (reason) {
+          error =
+            reason instanceof Error
+              ? reason.message
+              : "Listan kunde inte sparas.";
+          return current;
+        }
+      },
+      { undoLabel: "dagens att göra" },
+    );
+    if (!error && start && focusToStart) {
+      setCheckInDate(null);
+      startDailyFocus(focusToStart);
+    }
+    return error;
   };
   const navigateAndReveal = (v: View, target: string) => {
     navigate(v);
@@ -1541,7 +1578,7 @@ export function Workspace() {
                       openActivity(a);
                     }}
                     onPlan={(taskId) => setWorkPlanning({ taskId })}
-                    onStartFocus={startDailyFocus}
+                    onUpdateTodos={updateDailyTodos}
                     onCheckIn={() => setCheckInDate(today())}
                     onGentle={() => setGentleOpen(true)}
                   />
@@ -2185,46 +2222,11 @@ export function Workspace() {
             setData(
               (current) =>
                 current ? removeDailyCheckIn(current, checkInDate) : current,
-              { undoLabel: "radering av dagens val" },
+              { undoLabel: "återställning av dagens lista" },
             );
             setCheckInDate(null);
           }}
-          onSave={(value, start) => {
-            if (today() !== checkInDate)
-              return "Dagen har ändrats. Stäng och öppna dagens planering igen.";
-            let error: string | undefined;
-            let focusToStart: DailyFocus | undefined;
-            setData(
-              (current) => {
-                if (!current) {
-                  error = "Planen kunde inte läsas.";
-                  return current;
-                }
-                try {
-                  const next = saveDailyCheckIn(current, checkInDate, value);
-                  if (start)
-                    focusToStart = currentDailyFocus(
-                      next,
-                      next.dailyCheckIns![checkInDate],
-                    );
-                  return next;
-                } catch (reason) {
-                  error =
-                    reason instanceof Error
-                      ? reason.message
-                      : "Dagens val kunde inte sparas.";
-                  return current;
-                }
-              },
-              { undoLabel: "dagens prioriteringar" },
-            );
-            if (!error) {
-              setCheckInDate(null);
-              notify("Dagens val är sparade.");
-              if (focusToStart) startDailyFocus(focusToStart);
-            }
-            return error;
-          }}
+          onSave={(value, start) => updateDailyTodos(value, start, checkInDate)}
         />
       )}
       {gentleOpen && (
