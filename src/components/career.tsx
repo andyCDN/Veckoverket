@@ -58,6 +58,8 @@ import { ActionControl, ActionKindSelector } from "./action-control";
 import { actionNeedsAttention } from "@/lib/action-workflow";
 import { NetworkContacts, ContactLogForm } from "./network-contacts";
 import { logContact } from "@/lib/network-overview";
+import { ApplicationMessage } from "./application-message";
+import { applyApplicationMessage } from "@/lib/application-message";
 import { LinkedInImport } from "./linkedin-import";
 import { importLinkedInJobs } from "@/lib/linkedin-import";
 import { Modal } from "./modal";
@@ -90,6 +92,7 @@ export function CareerView({
   initialTab,
   onWeek,
 }: Props) {
+  const [messageOpen, setMessageOpen] = useState(false);
   const [linkedinOpen, setLinkedinOpen] = useState(false);
   const [materialsId, setMaterialsId] = useState<string | null>(null);
   const [actionEditing, setActionEditing] = useState(false);
@@ -123,6 +126,7 @@ export function CareerView({
     label: string;
   } | null>(null);
   const editing = Boolean(
+    messageOpen ||
     linkedinOpen ||
     actionEditing ||
     application ||
@@ -363,6 +367,12 @@ export function CareerView({
               onClick={() => setLinkedinOpen(true)}
             >
               Importera från LinkedIn
+            </button>
+            <button
+              className="button secondary"
+              onClick={() => setMessageOpen(true)}
+            >
+              Klistra in besked
             </button>
           </div>
           <div className="application-filters">
@@ -964,6 +974,32 @@ export function CareerView({
           onSave={(a) => {
             saveTrackedApplication(a);
             setHistoryId(null);
+          }}
+        />
+      )}
+      {messageOpen && (
+        <ApplicationMessage
+          applications={applications}
+          onClose={() => setMessageOpen(false)}
+          onSave={(id, text, update) => {
+            const current = applications.find((a) => a.id === id);
+            if (!current) return "Ansökan finns inte längre. Välj en annan.";
+            try {
+              const updated = applyApplicationMessage(current, text, update);
+              saveTrackedApplication(updated);
+              setMessageOpen(false);
+              setQuery("");
+              setFilter("all");
+              setPeriod("all");
+              setScope(isClosedApplication(updated) ? "closed" : "active");
+              setMessage(
+                "Beskedet är sparat i historiken. Status och nästa steg är uppdaterade. Du kan boka arbetstid från ansökans kort.",
+              );
+            } catch (error) {
+              return error instanceof Error
+                ? error.message
+                : "Beskedet kunde inte sparas.";
+            }
           }}
         />
       )}
