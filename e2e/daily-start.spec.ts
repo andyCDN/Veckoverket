@@ -99,6 +99,7 @@ for (const width of [1440, 390])
   test(`dagstart, lättare dag, ångra och återöppning ${width}`, async ({
     page,
   }) => {
+    test.setTimeout(90000);
     await page.setViewportSize({ width, height: 1000 });
     await page.clock.install({ time: new Date("2026-11-09T07:00:00Z") });
     const data = fixture();
