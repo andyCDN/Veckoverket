@@ -12,15 +12,29 @@ LinkedIn kan blockera anrop eller kräva inloggning. Då visas ett tydligt fel p
 
 Detta läser enskilda annonser; det ansluter inte till kontots lista över sparade jobb och använder inte LinkedIn-kakor eller lösenord. Serverhämtningen kräver ett inloggat Veckoverket-konto.
 
-## Installation
+## Installation direkt i Supabases webbgränssnitt
 
-Lägg `SUPABASE_ACCESS_TOKEN` som hemlighet i molnmiljön, inte i chatten eller källkoden. Använd samma Supabase-projekt som appen. Kör:
+Ingen access token, Codespaces eller lokal installation behövs för detta alternativ.
+
+1. Öppna projektet i Supabase och gå till Edge Functions.
+2. Skapa en ny funktion i webbeditorn med namnet `linkedin-job`.
+3. Kopiera hela `docs/linkedin-job-dashboard.txt` till editorns `index.ts`, inklusive importen överst. Ersätt all exempelkod.
+4. Publicera funktionen.
+5. Stäng av `Verify JWT` / `Verify JWT with legacy secret` för just `linkedin-job`. Funktionen verifierar själv användarens session med Supabase Auth, precis som versionen för CLI gör.
+
+Standardvärdena för Supabase-projektets URL och service-nyckel finns i Edge Functions-miljön. Appens origin är `https://andycdn.github.io` om inte `APP_ORIGIN` är angiven. Ingen LinkedIn-token eller OpenAI-nyckel behövs.
+
+`docs/linkedin-job-dashboard.txt` genereras från de ordinarie fyra källfilerna med `node scripts/build-linkedin-dashboard.mjs`. Kör om generatorn efter ändringar i dessa källfiler. Filens syntax, startpunkt, autentisering, CORS och jobbläsning har kontrollerats med styrda svar.
+
+## Installation via terminal, som alternativ
+
+Lägg `SUPABASE_ACCESS_TOKEN` som hemlighet i den miljö där terminalkommandot körs. Använd samma Supabase-projekt som appen. Kör:
 
 ```bash
 npm run deploy:linkedin-job
 ```
 
-`SUPABASE_PROJECT_REF` kan ange annat projekt; standard är appens nuvarande projekt. Funktionen använder Supabases befintliga `SUPABASE_URL` och `SUPABASE_SERVICE_ROLE_KEY`. `APP_ORIGIN` är webbplatsens origin (standard `https://andycdn.github.io`). Inga databasändringar eller OpenAI-nycklar behövs.
+`SUPABASE_PROJECT_REF` kan ange annat projekt; standard är appens nuvarande projekt. Funktionen använder Supabases befintliga `SUPABASE_URL` och `SUPABASE_SERVICE_ROLE_KEY`. `APP_ORIGIN` är webbplatsens origin (standard `https://andycdn.github.io`). Inga databasändringar behövs.
 
 Appen använder ordinarie `NEXT_PUBLIC_SUPABASE_URL` och publik Supabase-nyckel. Den valfria `NEXT_PUBLIC_LINKEDIN_JOB_ENDPOINT` tillåter en endpoint på samma origin som appen eller det konfigurerade Supabase-projektet; den används för isolerade webbläsartester. Sessionstoken skickas bara till appens metadatafunktion, aldrig till LinkedIn. Granskningen skriver inga jobb eller kalenderpass innan användaren väljer att importera.
 
