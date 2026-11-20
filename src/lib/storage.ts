@@ -72,6 +72,8 @@ export function decodeData(raw: string): AppData {
           ))) ||
       (s.weekTemplate !== undefined &&
         !["mon-thu-v1", "off"].includes(s.weekTemplate)) ||
+      (s.keepTemplateSlots !== undefined &&
+        typeof s.keepTemplateSlots !== "boolean") ||
       (s.autoPlanning !== undefined && typeof s.autoPlanning !== "boolean")
     )
       throw new Error("Planeringsreglerna är ogiltiga.");

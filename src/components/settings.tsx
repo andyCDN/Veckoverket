@@ -39,6 +39,7 @@ import { GOOGLE_CATEGORY_ID } from "@/lib/external-calendar";
 import { ROUTINE_CATEGORY } from "@/lib/weekly-routines";
 import { Modal } from "./modal";
 import { AppInstallCard } from "./app-install";
+import { appPath } from "@/lib/app-path";
 function CategoryForm({
   onSave,
   onClose,
@@ -186,6 +187,11 @@ export function SettingsView({
               />
             </label>
             {usesWeekTemplate(s) && <WeekTemplateOverview />}
+            <p>
+              <a className="button secondary" href={appPath("/veckoschema/")}>
+                Skapa mitt schema för nästa vecka
+              </a>
+            </p>
           </section>
           <section className="settings-section">
             <div className="settings-section-title">
