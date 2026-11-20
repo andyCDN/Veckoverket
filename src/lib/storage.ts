@@ -61,6 +61,15 @@ export function decodeData(raw: string): AppData {
       s.familyStart >= s.familyEnd ||
       s.buffer < 0 ||
       s.trainingMinutes <= 0 ||
+      (s.excludedActivityTitles !== undefined &&
+        (!Array.isArray(s.excludedActivityTitles) ||
+          s.excludedActivityTitles.length > 100 ||
+          !s.excludedActivityTitles.every(
+            (title: unknown) =>
+              typeof title === "string" &&
+              title.trim().length > 0 &&
+              title.length <= 200,
+          ))) ||
       (s.weekTemplate !== undefined &&
         !["mon-thu-v1", "off"].includes(s.weekTemplate)) ||
       (s.autoPlanning !== undefined && typeof s.autoPlanning !== "boolean")

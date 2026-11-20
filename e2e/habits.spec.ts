@@ -119,12 +119,18 @@ for (const width of [1440, 390, 320])
     expect(saved.weeks).toEqual(before.weeks);
     expect(saved.tasks).toEqual(before.tasks);
     await tracker
-      .getByRole("button", { name: "Nästa vanovecka", exact: true })
+      .getByRole("button", {
+        name: "Nästa vecka för kalender och vanor",
+        exact: true,
+      })
       .click();
     await expect(tracker).toContainText("V.46");
     await expect(tracker.getByRole("checkbox").first()).toBeDisabled();
     await tracker
-      .getByRole("button", { name: "Föregående vanovecka", exact: true })
+      .getByRole("button", {
+        name: "Föregående vecka för kalender och vanor",
+        exact: true,
+      })
       .click();
     await expect(first).toBeChecked();
     await page.reload();

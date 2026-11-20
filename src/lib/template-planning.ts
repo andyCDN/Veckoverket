@@ -7,6 +7,7 @@ import type {
 } from "./types";
 import { addDays } from "./date";
 import { blocksTime } from "./external-calendar";
+import { excludedActivityTitle } from "./activity-exclusions";
 import {
   FOUR_DAY_WEEK,
   templateTargetMinutes,
@@ -58,7 +59,9 @@ export function generateTemplateWeek(
     }
     return id;
   };
-  for (const recurring of data.recurring) {
+  for (const recurring of data.recurring.filter(
+    (r) => !excludedActivityTitle(settings, r.title),
+  )) {
     for (const day of recurring.weekdays.filter((day) =>
       settings.days.includes(day),
     )) {

@@ -54,6 +54,7 @@ export function replanAfterBookings(
     const settings = {
       ...(current.rules ?? data.settings),
       autoPlanning: true,
+      excludedActivityTitles: data.settings.excludedActivityTitles,
     };
     const categories = next.categories.map((category) =>
       current.targets?.[category.id] === undefined
