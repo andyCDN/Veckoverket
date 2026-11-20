@@ -100,6 +100,7 @@ export type Reflection = {
   reviewRecordedAt?: string;
 };
 export type Settings = {
+  excludedActivityTitles?: string[];
   weekTemplate?: "mon-thu-v1" | "off";
   days: number[];
   start: number;

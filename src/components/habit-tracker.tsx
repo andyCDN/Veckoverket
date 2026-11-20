@@ -89,7 +89,7 @@ export function HabitTracker({
       <div className="habit-week-bar">
         <div className="habit-week-controls">
           <button
-            aria-label="Föregående vanovecka"
+            aria-label="Föregående vecka för kalender och vanor"
             onClick={() => onWeek(addDays(week, -7))}
           >
             ‹
@@ -100,7 +100,7 @@ export function HabitTracker({
             {Number(dates[6].slice(5, 7))}
           </strong>
           <button
-            aria-label="Nästa vanovecka"
+            aria-label="Nästa vecka för kalender och vanor"
             onClick={() => onWeek(addDays(week, 7))}
           >
             ›
@@ -117,6 +117,7 @@ export function HabitTracker({
           </p>
         )}
       </div>
+      <p className="help">Veckobytet gäller både kalendern och vanorna.</p>
       {!habits.length ? (
         <div className="habit-empty">
           <p>

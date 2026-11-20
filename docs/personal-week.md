@@ -38,6 +38,10 @@ Egna bokningar, återkommande bokningar, importerade aktiviteter, påbörjade pa
 
 Veckomål och ansökningars nästa steg kan använda en del av ett befintligt jobb- eller kompetenspass. Den återstående tiden stannar i samma malltid även efter automatisk omplanering. Lunch, träning, hämtning och checkar flyttas inte för att ge plats åt sådana bokningar.
 
+Det fristående passet **Ett jobb om dagen på LinkedIn** är struket enligt användarens instruktion. Planerade tillfällen tas bort ur aktuell och framtida veckor när planen läses in. Genomförda och missade pass samt äldre veckor behålls. En rubrikregel i arbetsytans inställningar hindrar att passet kommer tillbaka från återkommande planering, Google eller iCal. Andra pass med LinkedIn i rubriken påverkas inte. Regeln kan tas bort under **Inställningar → Dolda pass → Tillåt igen**. Framtida veckors ordinarie jobbsökstider fylls på igen när det blockerande passet försvinner.
+
+Vanepanelens veckoknappar styr samma vecka som kalendern. Knapparnas etiketter och hjälptext anger detta; byten från 16–22 till 23–29 november kontrolleras tillsammans med kalenderns faktiska datum och jobbsökstider.
+
 Torsdagschecken öppnar samma uppföljningsflöde som den tidigare fredagschecken. Måndagschecken behåller flödet för veckomål och bokning av konkreta uppgifter. Den generella planeringsmotorn finns kvar för veckor och arbetsytor där mallen är avstängd.
 
 ## Verifiering

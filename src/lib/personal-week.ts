@@ -2,6 +2,7 @@ import type { AppData, WeekPlan } from "./types";
 import { monday, planningBoundary } from "./date";
 import { DEFAULT_CATEGORIES } from "./defaults";
 import { generateWeek } from "./planner";
+import { applyActivityExclusions } from "./activity-exclusions";
 import {
   templateSettings,
   templateTargetMinutes,
@@ -15,6 +16,8 @@ export function upgradePersonalWeek(
   boundary = planningBoundary(),
   force = false,
 ): AppData {
+  const beforeExclusions = data;
+  data = applyActivityExclusions(data, boundary);
   if (!force && data.settings.weekTemplate === "off") return data;
   const installing = force || data.settings.weekTemplate === undefined;
   const settings = installing ? templateSettings(data.settings) : data.settings;
@@ -56,7 +59,10 @@ export function upgradePersonalWeek(
       plan.rules?.weekTemplate === WEEK_TEMPLATE_ID
     )
       continue;
-    if (!plan.activities.length) {
+    if (
+      !plan.activities.length &&
+      !beforeExclusions.weeks[week]?.activities.length
+    ) {
       updateWeek(week, {
         ...plan,
         templateId: WEEK_TEMPLATE_ID,

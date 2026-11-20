@@ -735,6 +735,7 @@ export function Workspace() {
     settings: {
       ...(plan.rules ?? data.settings),
       autoPlanning: data.settings.autoPlanning,
+      excludedActivityTitles: data.settings.excludedActivityTitles,
     },
   };
   const days = mobile

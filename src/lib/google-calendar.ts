@@ -16,6 +16,10 @@ import {
 import { planningBoundary } from "./date";
 import { replanAfterBookings } from "./auto-planning";
 import {
+  applyActivityExclusions,
+  excludedActivity,
+} from "./activity-exclusions";
+import {
   googleInstant,
   googleWeekRange,
   isLocalDate,
@@ -259,6 +263,9 @@ export function previewGoogleImport(
   const { week } = snapshot;
   if (monday(week) !== week)
     throw new Error("Importen behöver en giltig veckostart.");
+  const boundary = planningBoundary(new Date(snapshot.importedAt));
+  data = applyActivityExclusions(data, boundary, snapshot.activities);
+  const fromWeek = monday(boundary.date);
   const previous = Object.values(data.weeks).flatMap((plan) => plan.activities);
   const eventCategories = googleCategoryChoices(data, categoryChoices);
   const statusById = new Map(
@@ -288,7 +295,9 @@ export function previewGoogleImport(
         statusById.get(a.id) ?? statusByEvent.get(eventKey(a)) ?? "planned",
     };
   };
-  const imported = snapshot.activities.map(withStatus);
+  const imported = snapshot.activities
+    .map(withStatus)
+    .filter((a) => !excludedActivity(a, data.settings, fromWeek));
   const received = new Map(snapshot.activities.map((a) => [eventKey(a), a]));
   const deleted = new Set(
     (snapshot.deleted ?? []).map((e) =>
@@ -340,7 +349,11 @@ export function previewGoogleImport(
         ],
         key,
       );
-      activities.push(...converted.map(withStatus));
+      activities.push(
+        ...converted
+          .map(withStatus)
+          .filter((a) => !excludedActivity(a, data.settings, fromWeek)),
+      );
     }
     weeks[key] =
       JSON.stringify(activities) === JSON.stringify(plan.activities)
@@ -365,6 +378,7 @@ export function previewGoogleImport(
       settings: {
         ...(merged.rules ?? data.settings),
         autoPlanning: data.settings.autoPlanning,
+        excludedActivityTitles: data.settings.excludedActivityTitles,
       },
     },
     merged,

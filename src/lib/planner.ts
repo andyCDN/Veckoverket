@@ -5,6 +5,7 @@ import {
   templateTargetMinutes,
 } from "./week-template";
 import { generateTemplateWeek } from "./template-planning";
+import { excludedActivityTitle } from "./activity-exclusions";
 import type {
   Activity,
   AppData,
@@ -354,7 +355,7 @@ export function generateWeek(
         });
     }
   }
-  for (const r of recurring)
+  for (const r of recurring.filter((r) => !excludedActivityTitle(s, r.title)))
     for (const day of schedulingDays.filter((d) => r.weekdays.includes(d))) {
       const date = addDays(week, day);
       if (

@@ -610,6 +610,34 @@ export function SettingsView({
               Lägg till eget livsområde
             </button>
           </section>
+          {Boolean(s.excludedActivityTitles?.length) && (
+            <section className="settings-section">
+              <h3>Dolda pass</h3>
+              <p>
+                De här rubrikerna läggs inte in som planerade pass, även vid
+                kalenderimport. Genomförda pass och tidigare veckor behålls.
+              </p>
+              {s.excludedActivityTitles?.map((title) => (
+                <div className="recurrence-row" key={title}>
+                  <strong>{title}</strong>
+                  <button
+                    type="button"
+                    className="text-button"
+                    onClick={() =>
+                      patch({
+                        excludedActivityTitles:
+                          s.excludedActivityTitles?.filter(
+                            (item) => item !== title,
+                          ),
+                      })
+                    }
+                  >
+                    Tillåt igen
+                  </button>
+                </div>
+              ))}
+            </section>
+          )}
           {data.recurring.length > 0 && (
             <section className="settings-section">
               <h3>Återkommande aktiviteter</h3>
