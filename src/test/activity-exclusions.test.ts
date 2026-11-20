@@ -3,6 +3,8 @@ import { createData } from "../lib/defaults";
 import {
   applyActivityExclusions,
   RETIRED_LINKEDIN_PASS,
+  isRetiredLinkedInPass,
+  removeLinkedInSeries,
 } from "../lib/activity-exclusions";
 import { upgradePersonalWeek } from "../lib/personal-week";
 import { generateWeek, validatePlan } from "../lib/planner";
@@ -41,7 +43,7 @@ const pass = (id: string, patch: Partial<Activity> = {}): Activity => ({
 });
 
 describe("borttaget fristående LinkedIn-pass", () => {
-  it("tar bara bort planerade matchande pass i aktuell och framtida veckor", () => {
+  it("tar bort LinkedIn-bokningen på alla datum och med alla statusar", () => {
     const data = createData();
     data.weeks = {
       "2026-11-09": {
@@ -75,15 +77,13 @@ describe("borttaget fristående LinkedIn-pass", () => {
     const before = structuredClone(data);
     const cleaned = applyActivityExclusions(data, boundary);
     expect(cleaned.weeks[current].activities.map((a) => a.id)).toEqual([
-      "done",
-      "skipped",
       "other",
     ]);
     expect(cleaned.weeks[next].activities.map((a) => a.id)).toEqual([
       "meeting",
     ]);
     expect(cleaned.weeks[next].templateId).toBeUndefined();
-    expect(cleaned.weeks["2026-11-09"]).toBe(data.weeks["2026-11-09"]);
+    expect(cleaned.weeks["2026-11-09"].activities).toEqual([]);
     expect(cleaned.settings.excludedActivityTitles).toEqual([
       RETIRED_LINKEDIN_PASS,
     ]);
@@ -113,12 +113,24 @@ describe("borttaget fristående LinkedIn-pass", () => {
       },
     ];
     data.weeks[next] = generateWeek(next, data).plan;
+    data.weeks[next].activities = data.weeks[next].activities.filter(
+      (a) => a.categoryId !== "career" && a.routine !== "week-start",
+    );
+    for (let day = 0; day < 4; day++)
+      data.weeks[next].activities.push(
+        pass(`legacy-${day}`, {
+          date: `2026-11-${23 + day}`,
+          recurrenceId: "linkedin-rule",
+          source: "recurring",
+        }),
+      );
     expect(
       data.weeks[next].activities.filter(
         (a) => a.title === RETIRED_LINKEDIN_PASS,
       ),
     ).toHaveLength(4);
     const cleaned = upgradePersonalWeek(data, boundary);
+    expect(cleaned.recurring).toEqual([]);
     const activities = cleaned.weeks[next].activities;
     expect(activities.some((a) => a.title === RETIRED_LINKEDIN_PASS)).toBe(
       false,
@@ -165,8 +177,28 @@ describe("borttaget fristående LinkedIn-pass", () => {
     ).toBe(540);
   });
 
+  it("återställer nästa veckas mall efter att rensningen redan sparats separat", () => {
+    const data = createData();
+    data.settings = templateSettings(data.settings);
+    data.weeks[next] = {
+      week: next,
+      generatedAt: "",
+      activities: [pass("only", { date: next })],
+    };
+    const removed = removeLinkedInSeries(data).data;
+    expect(removed.weeks[next].activities).toEqual([]);
+    expect(removed.weeks[next].templateNeedsRefresh).toBe(true);
+    const repaired = upgradePersonalWeek(
+      decodeData(JSON.stringify(removed)),
+      boundary,
+    );
+    expect(repaired.weeks[next].activities).toHaveLength(19);
+    expect(repaired.weeks[next].templateNeedsRefresh).toBeUndefined();
+    expect(upgradePersonalWeek(repaired, boundary)).toBe(repaired);
+  });
+
   it.each(["google", "ical"] as const)(
-    "återimporterar inte planerade LinkedIn-pass via %s men behåller genomförda pass och andra möten",
+    "återimporterar inga LinkedIn-tillfällen via %s och behåller andra mötens status",
     (transport) => {
       const data = createData();
       data.categories.push(GOOGLE_CATEGORY);
@@ -198,7 +230,10 @@ describe("borttaget fristående LinkedIn-pass", () => {
       data.weeks[current] = {
         week: current,
         generatedAt: "",
-        activities: [{ ...imported[0], status: "done" }],
+        activities: [
+          { ...imported[0], status: "done" },
+          { ...imported[2], status: "done" },
+        ],
         rules: data.settings,
       };
       const snapshot: GoogleSnapshot = {
@@ -212,13 +247,11 @@ describe("borttaget fristående LinkedIn-pass", () => {
       const repeated = previewGoogleImport(first, snapshot).data;
       for (const result of [first, repeated]) {
         const activities = result.weeks[current].activities;
-        expect(
-          activities.some(
-            (a) => a.title === RETIRED_LINKEDIN_PASS && a.status === "planned",
-          ),
-        ).toBe(false);
+        expect(activities.some((a) => a.title === RETIRED_LINKEDIN_PASS)).toBe(
+          false,
+        );
         expect(activities).toContainEqual(
-          expect.objectContaining({ id: imported[0].id, status: "done" }),
+          expect.objectContaining({ id: imported[2].id, status: "done" }),
         );
         expect(activities.some((a) => a.title === "Eget bokat möte")).toBe(
           true,
@@ -227,7 +260,7 @@ describe("borttaget fristående LinkedIn-pass", () => {
     },
   );
 
-  it("tillåter att användaren väljer att visa rubriken igen", () => {
+  it("låter inte ett gammalt tomt undantagsval hindra den uttryckliga raderingen", () => {
     const data = createData();
     data.settings.excludedActivityTitles = [];
     data.weeks[current] = {
@@ -235,6 +268,62 @@ describe("borttaget fristående LinkedIn-pass", () => {
       generatedAt: "",
       activities: [pass("allowed")],
     };
-    expect(applyActivityExclusions(data, boundary)).toBe(data);
+    expect(
+      applyActivityExclusions(data, boundary).weeks[current].activities,
+    ).toEqual([]);
+  });
+
+  it.each([
+    "LinkedIn",
+    "Ett jobb om dagen på LinkedIn (återkommande)",
+    "LinkedIn: Ett jobb om dagen",
+    "Ett jobb om dagen på Linked\u200bIn",
+  ])("känner igen den dagliga seriens rubrik: %s", (title) => {
+    expect(isRetiredLinkedInPass(title)).toBe(true);
+  });
+
+  it("tar bort namnändrade tillfällen via serie-id och lämnar andra bokningar kvar", () => {
+    const data = createData();
+    data.recurring = [
+      { ...pass("series"), startsOn: "2026-01-05", weekdays: [0] },
+    ];
+    data.weeks[current] = {
+      week: current,
+      generatedAt: "",
+      activities: [
+        pass("renamed", {
+          title: "Dagens ansökan",
+          recurrenceId: "series",
+          status: "done",
+        }),
+        pass("unrelated", { title: "Analytiker hos LinkedIn" }),
+      ],
+    };
+    const result = removeLinkedInSeries(data);
+    expect(result.removedBookings).toBe(1);
+    expect(result.removedRules).toBe(1);
+    expect(result.data.recurring).toEqual([]);
+    expect(result.data.weeks[current].activities.map((a) => a.id)).toEqual([
+      "unrelated",
+    ]);
+  });
+
+  it("skapar inte bokningen igen från ett äldre generellt tidsmål", () => {
+    const data = createData();
+    data.categories.push({
+      id: "linkedin-budget",
+      name: RETIRED_LINKEDIN_PASS,
+      color: "#123456",
+      targetMinutes: 240,
+      minBlock: 60,
+      priority: 5,
+      allowSplit: true,
+      movable: true,
+    });
+    expect(
+      generateWeek(next, data).plan.activities.some((a) =>
+        isRetiredLinkedInPass(a.title),
+      ),
+    ).toBe(false);
   });
 });

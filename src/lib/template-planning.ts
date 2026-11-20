@@ -184,6 +184,7 @@ export function generateTemplateWeek(
     plan: {
       ...existing,
       templateId: WEEK_TEMPLATE_ID,
+      templateNeedsRefresh: undefined,
       week,
       activities: activities.sort(
         (a, b) => a.date.localeCompare(b.date) || a.start - b.start,
