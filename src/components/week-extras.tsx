@@ -1,6 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import type { Activity, AppData } from "@/lib/types";
-import { addDays, time } from "@/lib/date";
+import { weekendDays } from "@/lib/week-template";
+import { addDays, time, DAY_NAMES } from "@/lib/date";
 import { categoryStyle } from "@/lib/presentation";
 
 export function WeekExtras({
@@ -21,7 +22,7 @@ export function WeekExtras({
   return (
     <section className="week-extras" aria-label="Helgens pass">
       <div className="weekend-summaries">
-        {[5, 6].map((day) => {
+        {weekendDays(data.settings).map((day) => {
           const date = addDays(week, day),
             entries = activities
               .filter((a) => a.date === date)
@@ -29,7 +30,7 @@ export function WeekExtras({
           return (
             <div className="weekend-summary" key={day}>
               <strong>
-                {day === 5 ? "Lör" : "Sön"} {Number(date.slice(8))}
+                {DAY_NAMES[day].slice(0, 3)} {Number(date.slice(8))}
               </strong>
               {entries.length ? (
                 <div className="weekend-entries">

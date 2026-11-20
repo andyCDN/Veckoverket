@@ -7,6 +7,7 @@ import type {
   WeekPlan,
 } from "./types";
 import { addDays, today } from "./date";
+import { usesWeekTemplate } from "./week-template";
 import { blocksTime } from "./external-calendar";
 
 export const ROUTINE_CATEGORY: Category = {
@@ -38,16 +39,33 @@ export const WEEKLY_ROUTINES = [
   },
 ] as const;
 
+export function weeklyRoutines(settings: Settings) {
+  return WEEKLY_ROUTINES.map((routine) =>
+    usesWeekTemplate(settings)
+      ? {
+          ...routine,
+          day: routine.kind === "week-start" ? 0 : 3,
+          minutes: 30,
+          title:
+            routine.kind === "week-start" ? "Veckoincheck" : "Stänga veckan",
+          start: routine.kind === "week-start" ? 510 : 780,
+        }
+      : { ...routine, start: undefined as number | undefined },
+  );
+}
+
 export function routineMinutes(
   settings: Settings,
   week?: string,
   from?: string,
 ) {
-  return WEEKLY_ROUTINES.filter(
-    (r) =>
-      settings.days.includes(r.day) &&
-      (!week || !from || addDays(week, r.day) >= from),
-  ).reduce((sum, r) => sum + r.minutes, 0);
+  return weeklyRoutines(settings)
+    .filter(
+      (r) =>
+        settings.days.includes(r.day) &&
+        (!week || !from || addDays(week, r.day) >= from),
+    )
+    .reduce((sum, r) => sum + r.minutes, 0);
 }
 
 /** Add routines without moving appointments or changing logged outcomes.
@@ -60,7 +78,7 @@ export function addWeeklyRoutines(
   notBefore?: { date: string; minute: number },
 ): WeekPlan {
   let activities = [...plan.activities];
-  for (const routine of WEEKLY_ROUTINES) {
+  for (const routine of weeklyRoutines(settings)) {
     const date = addDays(plan.week, routine.day);
     const earliest =
       notBefore?.date === date
@@ -92,14 +110,16 @@ export function addWeeklyRoutines(
     };
     // Mornings first on Monday, the last available slot on Friday.
     const candidates =
-      routine.day === 0
-        ? [earliest, ...busy.map((a) => a.end + settings.buffer)]
-        : [
-            settings.end - routine.minutes,
-            ...busy.map((a) => a.start - settings.buffer - routine.minutes),
-          ].sort((a, b) => b - a);
+      routine.start !== undefined
+        ? [routine.start]
+        : routine.day === 0
+          ? [earliest, ...busy.map((a) => a.end + settings.buffer)]
+          : [
+              settings.end - routine.minutes,
+              ...busy.map((a) => a.start - settings.buffer - routine.minutes),
+            ].sort((a, b) => b - a);
     let start = candidates.find((time) => fits(time, activities));
-    if (start === undefined) {
+    if (start === undefined && routine.start === undefined) {
       const donors = busy
         .filter((a) => {
           const category = categories.find((c) => c.id === a.categoryId);
@@ -181,19 +201,21 @@ export function routineConflicts(
   settings: Settings,
 ): Conflict[] {
   if (!plan.weeklyRoutinesFrom) return [];
-  return WEEKLY_ROUTINES.filter(
-    (r) =>
-      settings.days.includes(r.day) &&
-      !plan.gentleDays?.includes(addDays(plan.week, r.day)) &&
-      addDays(plan.week, r.day) >= plan.weeklyRoutinesFrom! &&
-      !plan.activities.some((a) => a.routine === r.kind),
-  ).map((r) => ({
-    id: `routine-${r.kind}`,
-    severity: "warning",
-    message: `${r.title}: ${r.minutes} minuter har inte kunnat bokas.`,
-    suggestion:
-      "Frigör tid på rätt veckodag och välj Planera veckan. Egna bokningar och genomförda pass har behållits.",
-  }));
+  return weeklyRoutines(settings)
+    .filter(
+      (r) =>
+        settings.days.includes(r.day) &&
+        !plan.gentleDays?.includes(addDays(plan.week, r.day)) &&
+        addDays(plan.week, r.day) >= plan.weeklyRoutinesFrom! &&
+        !plan.activities.some((a) => a.routine === r.kind),
+    )
+    .map((r) => ({
+      id: `routine-${r.kind}`,
+      severity: "warning",
+      message: `${r.title}: ${r.minutes} minuter har inte kunnat bokas.`,
+      suggestion:
+        "Frigör tid på rätt veckodag och välj Planera veckan. Egna bokningar och genomförda pass har behållits.",
+    }));
 }
 
 /** Upgrade current/future saved plans once. Past dates and explicitly empty

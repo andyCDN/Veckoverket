@@ -1,8 +1,10 @@
 import { weeklyGoals, tasksInWeek } from "./weekly-work";
 import { addDays, today } from "./date";
 import type { Activity, AppData } from "./types";
+import { usesWeekTemplate } from "./week-template";
 
-/** Professional overview only; saved personal bookings remain in the workspace. */
+/** The personal template includes pickup and other personal bookings. Older
+ * professional overviews keep their original filter and counters. */
 export function studioWeek(
   data: AppData,
   week: string,
@@ -10,12 +12,14 @@ export function studioWeek(
   currentDate = today(),
 ) {
   const end = addDays(week, 6);
-  const professional = activities.filter(
+  const personal = usesWeekTemplate(data.weeks[week]?.rules ?? data.settings);
+  const visible = activities.filter(
     (activity) =>
       activity.date >= week &&
       activity.date <= end &&
-      activity.categoryId !== "family",
+      (personal || activity.categoryId !== "family"),
   );
+  const professional = visible.filter((a) => a.categoryId !== "family");
   const goals = weeklyGoals(data, week).filter(
     (goal) => goal.categoryId !== "family",
   );
@@ -76,7 +80,7 @@ export function studioWeek(
         )),
   );
   return {
-    activities: professional,
+    activities: visible,
     goals,
     tasks,
     completed,

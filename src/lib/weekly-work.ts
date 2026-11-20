@@ -1,3 +1,4 @@
+import { dayBounds, fixedDayBreaks } from "./week-template";
 import type { Activity, AppData, Task } from "./types";
 import {
   addDays,
@@ -198,10 +199,9 @@ export function previewWeeklyWork(
       };
       const fits = (a: Activity, others: Activity[]) =>
         a.start >= earliest &&
-        a.end <= rules.end &&
+        a.end <= dayBounds(rules, date).end &&
         [
-          { start: rules.lunchStart, end: rules.lunchEnd },
-          { start: rules.familyStart, end: rules.familyEnd },
+          ...fixedDayBreaks(rules, date),
           ...others.filter(
             (b) => b.date === date && b.status !== "skipped" && blocksTime(b),
           ),
@@ -227,7 +227,7 @@ export function previewWeeklyWork(
             !a.external &&
             !a.recurrenceId &&
             !a.followUpOf &&
-            a.end <= rules.end &&
+            a.end <= dayBounds(rules, date).end &&
             a.start >= earliest &&
             a.end - a.start >= req.minutes,
         )
@@ -259,7 +259,7 @@ export function previewWeeklyWork(
       }
       for (
         let start = Math.ceil(earliest / 15) * 15;
-        start + req.minutes <= rules.end;
+        start + req.minutes <= dayBounds(rules, date).end;
         start += 15
       ) {
         const candidate = { ...base, start, end: start + req.minutes };

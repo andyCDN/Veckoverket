@@ -10,6 +10,7 @@ import {
   today,
   weekNumber,
 } from "@/lib/date";
+import { weekendStartsOn } from "@/lib/week-template";
 import { appPath } from "@/lib/app-path";
 import { studioWeek } from "@/lib/studio-week";
 import type { Activity, AppData } from "@/lib/types";
@@ -78,7 +79,9 @@ export function StudioWeek({
   onOpen,
   onStatus,
   onCreate,
+  weekendFrom,
 }: {
+  weekendFrom?: number;
   data: AppData;
   week: string;
   activities: Activity[];
@@ -92,6 +95,11 @@ export function StudioWeek({
 }) {
   const model = studioWeek(data, week, activities);
   const current = today();
+  const firstWeekend = weekendFrom ?? weekendStartsOn(data.settings);
+  const offDays = Array.from(
+    { length: 7 - firstWeekend },
+    (_, i) => firstWeekend + i,
+  );
   const end = addDays(week, 6);
   const dateRange = new Intl.DateTimeFormat("sv-SE", {
     day: "numeric",
@@ -280,17 +288,21 @@ export function StudioWeek({
         })}
       </div>
       <div className="studio-days">
-        {[0, 1, 2, 3, 4].map(block)}
+        {Array.from({ length: firstWeekend }, (_, day) => day).map(block)}
         <section className="studio-weekend" aria-label="Helg och återhämtning">
           <header>
             <h2>
-              Lör {Number(addDays(week, 5).slice(8))} & Sön{" "}
-              {Number(end.slice(8))}
+              {offDays
+                .map(
+                  (day) =>
+                    `${DAY_NAMES[day].slice(0, 3)} ${Number(addDays(week, day).slice(8))}`,
+                )
+                .join(" · ")}
             </h2>
             <span>Ledig tid</span>
           </header>
           <p>Helg & återhämtning</p>
-          {[5, 6].map((day) => {
+          {offDays.map((day) => {
             const date = addDays(week, day);
             return activeDay === day ||
               model.activities.some((activity) => activity.date === date) ||

@@ -97,6 +97,12 @@ import { Modal } from "./modal";
 import { AppInstallButton, useStandaloneMode } from "./app-install";
 import { ResetPlanningModal } from "./reset-planning";
 import { resetPlanning } from "@/lib/reset-planning";
+import { upgradePersonalWeek } from "@/lib/personal-week";
+import {
+  weekendStartsOn,
+  reviewCheckLabel,
+  usesWeekTemplate,
+} from "@/lib/week-template";
 import { upgradeWeeklyRoutines } from "@/lib/weekly-routines";
 import { addMondayGoals } from "@/lib/monday-goals";
 import { WeeklyRoutineModal } from "./weekly-routine";
@@ -157,7 +163,7 @@ function linkedPlan(plan: WeekPlan, goals: Goal[], preserved: Activity[] = []) {
   };
 }
 function newWorkspace() {
-  const data = createData(),
+  const data = upgradePersonalWeek(createData(), planningBoundary(), true),
     week = monday(today());
   data.weeks[week] = linkedPlan(generateWeek(week, data).plan, data.goals);
   return data;
@@ -289,9 +295,13 @@ export function Workspace() {
   const notify = useCallback((message: string) => setNotice(message), []);
   useEffect(() => {
     if (!data || (configured && cloud.phase !== "synced")) return;
-    setData((current) => (current ? upgradeWeeklyRoutines(current) : current), {
-      history: false,
-    });
+    setData(
+      (current) =>
+        current ? upgradeWeeklyRoutines(upgradePersonalWeek(current)) : current,
+      {
+        history: false,
+      },
+    );
   }, [data, configured, cloud.phase, setData]);
   const undoAvailable = Boolean(
     undoLabel &&
@@ -664,11 +674,30 @@ export function Workspace() {
             requestedRoutine === "week-start"
               ? "Veckostart"
               : "Veckoavstämning",
-          date: addDays(week, requestedRoutine === "week-start" ? 0 : 4),
-          start: data.settings.start,
-          end:
-            data.settings.start + (requestedRoutine === "week-start" ? 15 : 30),
-          estimatedMinutes: requestedRoutine === "week-start" ? 15 : 30,
+          date: addDays(
+            week,
+            requestedRoutine === "week-start"
+              ? 0
+              : usesWeekTemplate(plan.rules ?? data.settings)
+                ? 3
+                : 4,
+          ),
+          start: usesWeekTemplate(plan.rules ?? data.settings)
+            ? requestedRoutine === "week-start"
+              ? 510
+              : 780
+            : data.settings.start,
+          end: usesWeekTemplate(plan.rules ?? data.settings)
+            ? requestedRoutine === "week-start"
+              ? 540
+              : 810
+            : data.settings.start +
+              (requestedRoutine === "week-start" ? 15 : 30),
+          estimatedMinutes: usesWeekTemplate(plan.rules ?? data.settings)
+            ? 30
+            : requestedRoutine === "week-start"
+              ? 15
+              : 30,
           categoryId: "weekly-planning",
           blockType: "locked",
           status: "planned",
@@ -722,7 +751,7 @@ export function Workspace() {
     : activities;
   const selectDay = (day: number) => {
     setDaySelection({ week, day });
-    if (day > 4) setWeekendOpen(true);
+    if (day >= weekendStartsOn(data.settings)) setWeekendOpen(true);
   };
   function editInWeek(targetWeek: string, activity: Activity) {
     changeWeek(targetWeek);
@@ -1268,7 +1297,7 @@ export function Workspace() {
       activeDay={activeDay}
       activities={activities}
       onSelectDay={(day) => {
-        if (day > 4) setWeekendOpen(true);
+        if (day >= weekendStartsOn(data.settings)) setWeekendOpen(true);
         selectDay(day);
       }}
     />
@@ -1475,6 +1504,7 @@ export function Workspace() {
           {view === "planner" && (
             <>
               <PlanningShortcuts
+                reviewLabel={reviewCheckLabel(weekData.settings)}
                 key={`${user?.id ?? "local"}-${week}-${undoVersion}`}
                 onCheck={(kind) => setRoutineId(`check:${kind}`)}
                 onAdd={(kind) => {
@@ -1603,7 +1633,8 @@ export function Workspace() {
                   />
                   {mobile && calendarMode === "week" ? (
                     <StudioWeek
-                      data={data}
+                      weekendFrom={weekendStartsOn(data.settings)}
+                      data={weekData}
                       week={week}
                       activities={activities}
                       activeDay={activeDay}
@@ -1749,6 +1780,7 @@ export function Workspace() {
                               </div>
                             )}
                             <Calendar
+                              weekendFrom={weekendStartsOn(data.settings)}
                               mobile={mobile || calendarMode === "day"}
                               showWeekends={weekendOpen}
                               activeDay={activeDay}
@@ -1779,8 +1811,16 @@ export function Workspace() {
                                 activities={activities}
                                 weekendOpen={weekendOpen}
                                 onWeekend={() => {
-                                  if (weekendOpen && activeDay > 4)
-                                    selectDay(days.find((d) => d < 5) ?? 0);
+                                  if (
+                                    weekendOpen &&
+                                    activeDay >= weekendStartsOn(data.settings)
+                                  )
+                                    selectDay(
+                                      days.find(
+                                        (d) =>
+                                          d < weekendStartsOn(data.settings),
+                                      ) ?? 0,
+                                    );
                                   setWeekendOpen((open) => !open);
                                 }}
                                 onOpen={openActivity}
@@ -2303,7 +2343,7 @@ export function Workspace() {
           onReviewFinish={(ids) =>
             setData(
               (current) => (current ? reviewWeek(current, week, ids) : current),
-              { undoLabel: "fredagscheck och nästa vecka" },
+              { undoLabel: "veckocheck och nästa vecka" },
             )
           }
           onTaskDecision={(id, decision) =>
@@ -2480,7 +2520,11 @@ export function Workspace() {
       {generator && generation && (
         <Modal
           title="Automatisk veckoplanering"
-          description="Planera utifrån bokningar, tillgänglighet och tidsmål."
+          description={
+            usesWeekTemplate(weekData.settings)
+              ? "Utgå från din veckomall, måndag–torsdag."
+              : "Planera utifrån bokningar, tillgänglighet och tidsmål."
+          }
           onClose={() => setGenerator(false)}
         >
           <div className="stack">
@@ -2488,8 +2532,9 @@ export function Workspace() {
               <span>
                 Automatisk planering
                 <small>
-                  Jobb och kompetens först i lediga tider. Planera om efter
-                  ändrade bokningar.
+                  {usesWeekTemplate(weekData.settings)
+                    ? "Behåll veckomallens tider när bokningar ändras. Öppna luckor fylls inte automatiskt."
+                    : "Jobb och kompetens först i lediga tider. Planera om efter ändrade bokningar."}
                 </small>
               </span>
               <input
@@ -2505,8 +2550,9 @@ export function Workspace() {
             </p>
             {automaticDraft && (
               <p>
-                Påbörjade pass och tidigare datum behålls. Musikförmiddagar,
-                lunch, familjetid och buffert följer dina regler.
+                {usesWeekTemplate(weekData.settings)
+                  ? "Påbörjade pass och tidigare datum behålls. Lunch, träning, hämtning och checkar följer veckomallen."
+                  : "Påbörjade pass och tidigare datum behålls. Musikförmiddagar, lunch, familjetid och buffert följer dina regler."}{" "}
                 Google-bokningar räknas med när du importerar eller uppdaterar
                 dem.
               </p>
@@ -2623,7 +2669,7 @@ export function Workspace() {
               <strong>3. Genomför och följ upp.</strong>
               <br />
               Efter ett uppgiftspass väljer du klart, mer tid eller väntar på
-              svar. Fredagschecken sparar resultaten och för valt arbete vidare
+              svar. Veckochecken sparar resultaten och för valt arbete vidare
               till nästa vecka.
             </p>
             <details>

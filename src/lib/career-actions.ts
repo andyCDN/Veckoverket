@@ -1,3 +1,4 @@
+import { dayBounds, usesWeekTemplate } from "./week-template";
 import type { Activity, AppData, CareerAction } from "./types";
 import { completeApplicationAction, saveApplication } from "./applications";
 import { addDays, monday, planningBoundary, uid } from "./date";
@@ -375,6 +376,7 @@ export function actionBookingSuggestions(
             ...plan,
             activities: plan.activities.filter(
               (a) =>
+                usesWeekTemplate(prepared.settings) ||
                 a.source !== "generated" ||
                 a.blockType !== "flexible" ||
                 a.routine,
@@ -390,7 +392,7 @@ export function actionBookingSuggestions(
           Math.max(rules.start, date === boundary.date ? boundary.minute : 0) /
             5,
         ) * 5;
-      start + minutes <= rules.end;
+      start + minutes <= dayBounds(rules, date).end;
       start += 5
     ) {
       const result = bookCareerAction(

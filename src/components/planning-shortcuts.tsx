@@ -2,7 +2,9 @@
 export function PlanningShortcuts({
   onCheck,
   onAdd,
+  reviewLabel = "Fredagscheck",
 }: {
+  reviewLabel?: string;
   onCheck: (kind: "week-start" | "week-review") => void;
   onAdd: (kind: "pass" | "task" | "goal" | "habit") => void;
 }) {
@@ -19,7 +21,7 @@ export function PlanningShortcuts({
           className="button secondary"
           onClick={() => onCheck("week-review")}
         >
-          Fredagscheck
+          {reviewLabel}
         </button>
       </div>
       <p className="workflow-caption">Bestäm · planera · genomför · följ upp</p>
