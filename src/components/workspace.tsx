@@ -99,6 +99,10 @@ import { ResetPlanningModal } from "./reset-planning";
 import { resetPlanning } from "@/lib/reset-planning";
 import { upgradePersonalWeek } from "@/lib/personal-week";
 import {
+  applyActivityExclusions,
+  linkedInSeriesCounts,
+} from "@/lib/activity-exclusions";
+import {
   weekendStartsOn,
   reviewCheckLabel,
   usesWeekTemplate,
@@ -294,15 +298,29 @@ export function Workspace() {
   });
   const notify = useCallback((message: string) => setNotice(message), []);
   useEffect(() => {
-    if (!data || (configured && cloud.phase !== "synced")) return;
+    if (!data || (configured && ["loading", "migration"].includes(cloud.phase)))
+      return;
+    let removedBookings = 0,
+      removedRules = 0;
     setData(
-      (current) =>
-        current ? upgradeWeeklyRoutines(upgradePersonalWeek(current)) : current,
+      (current) => {
+        if (!current) return current;
+        const before = linkedInSeriesCounts(current);
+        removedBookings = before.bookings;
+        removedRules = before.rules;
+        return !configured || cloud.phase === "synced"
+          ? upgradeWeeklyRoutines(upgradePersonalWeek(current))
+          : applyActivityExclusions(current);
+      },
       {
         history: false,
       },
     );
-  }, [data, configured, cloud.phase, setData]);
+    if (removedBookings || removedRules)
+      notify(
+        `Tog bort ${removedBookings} LinkedIn-bokningar och ${removedRules} återkommande regler från alla dagar.`,
+      );
+  }, [data, configured, cloud.phase, setData, notify]);
   const undoAvailable = Boolean(
     undoLabel &&
     !editor &&

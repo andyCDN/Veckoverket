@@ -56,12 +56,14 @@ export function upgradePersonalWeek(
     if (
       !installing &&
       plan.templateId === WEEK_TEMPLATE_ID &&
-      plan.rules?.weekTemplate === WEEK_TEMPLATE_ID
+      plan.rules?.weekTemplate === WEEK_TEMPLATE_ID &&
+      !plan.templateNeedsRefresh
     )
       continue;
     if (
       !plan.activities.length &&
-      !beforeExclusions.weeks[week]?.activities.length
+      !beforeExclusions.weeks[week]?.activities.length &&
+      !plan.templateNeedsRefresh
     ) {
       updateWeek(week, {
         ...plan,

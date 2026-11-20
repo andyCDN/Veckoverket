@@ -5,7 +5,10 @@ import {
   templateTargetMinutes,
 } from "./week-template";
 import { generateTemplateWeek } from "./template-planning";
-import { excludedActivityTitle } from "./activity-exclusions";
+import {
+  excludedActivityTitle,
+  removeLinkedInSeries,
+} from "./activity-exclusions";
 import type {
   Activity,
   AppData,
@@ -225,6 +228,12 @@ export function generateWeek(
   existing?: WeekPlan,
   options: { notBefore?: { date: string; minute: number } } = {},
 ): PlanResult {
+  const cleaned = removeLinkedInSeries({
+    ...data,
+    weeks: existing ? { [week]: existing } : {},
+  }).data;
+  data = { ...data, settings: cleaned.settings, recurring: cleaned.recurring };
+  existing = cleaned.weeks[week];
   if (usesWeekTemplate(data.settings)) {
     const result = generateTemplateWeek(
       week,
@@ -241,7 +250,16 @@ export function generateWeek(
     };
   }
   const { settings: s, recurring } = data;
-  const categories = data.categories.filter((c) => c.id !== GOOGLE_CATEGORY_ID);
+  const titleFor = (c: Category) =>
+    c.id === "learning"
+      ? "Kompetensutveckling"
+      : c.id === "career"
+        ? "Jobbsök"
+        : c.name;
+  const categories = data.categories.filter(
+    (c) =>
+      c.id !== GOOGLE_CATEGORY_ID && !excludedActivityTitle(s, titleFor(c)),
+  );
   const boundary = options.notBefore;
   const started = (a: Activity) =>
     Boolean(
@@ -460,12 +478,6 @@ export function generateWeek(
           a.id.localeCompare(b.id)
         : b.priority - a.priority || a.id.localeCompare(b.id),
     );
-  const titleFor = (c: Category) =>
-    c.id === "learning"
-      ? "Kompetensutveckling"
-      : c.id === "career"
-        ? "Jobbsök"
-        : c.name;
   if (focusFirst) {
     // Give both focus areas a morning foothold on each available day, then use
     // their priorities to allocate the rest of their weekly budgets.

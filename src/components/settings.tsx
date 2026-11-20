@@ -1,6 +1,7 @@
 "use client";
 import { usesWeekTemplate, templateSettings } from "@/lib/week-template";
 import { WeekTemplateOverview } from "./week-template-overview";
+import { isRetiredLinkedInPass } from "@/lib/activity-exclusions";
 import { changeJobBudget } from "@/lib/job-categories";
 import { useRef, useState } from "react";
 import {
@@ -610,32 +611,38 @@ export function SettingsView({
               Lägg till eget livsområde
             </button>
           </section>
-          {Boolean(s.excludedActivityTitles?.length) && (
+          {Boolean(
+            s.excludedActivityTitles?.some(
+              (title) => !isRetiredLinkedInPass(title),
+            ),
+          ) && (
             <section className="settings-section">
               <h3>Dolda pass</h3>
               <p>
                 De här rubrikerna läggs inte in som planerade pass, även vid
                 kalenderimport. Genomförda pass och tidigare veckor behålls.
               </p>
-              {s.excludedActivityTitles?.map((title) => (
-                <div className="recurrence-row" key={title}>
-                  <strong>{title}</strong>
-                  <button
-                    type="button"
-                    className="text-button"
-                    onClick={() =>
-                      patch({
-                        excludedActivityTitles:
-                          s.excludedActivityTitles?.filter(
-                            (item) => item !== title,
-                          ),
-                      })
-                    }
-                  >
-                    Tillåt igen
-                  </button>
-                </div>
-              ))}
+              {s.excludedActivityTitles
+                ?.filter((title) => !isRetiredLinkedInPass(title))
+                .map((title) => (
+                  <div className="recurrence-row" key={title}>
+                    <strong>{title}</strong>
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() =>
+                        patch({
+                          excludedActivityTitles:
+                            s.excludedActivityTitles?.filter(
+                              (item) => item !== title,
+                            ),
+                        })
+                      }
+                    >
+                      Tillåt igen
+                    </button>
+                  </div>
+                ))}
             </section>
           )}
           {data.recurring.length > 0 && (

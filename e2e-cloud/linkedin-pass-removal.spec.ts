@@ -38,7 +38,27 @@ for (const width of [1440, 390])
     };
     const oldPass = data.weeks[current].activities.find(
       (a) => a.title === RETIRED_LINKEDIN_PASS,
-    )!;
+    ) ?? {
+      id: "old",
+      title: RETIRED_LINKEDIN_PASS,
+      description: "",
+      date: current,
+      start: 510,
+      end: 570,
+      estimatedMinutes: 60,
+      categoryId: "career",
+      blockType: "flexible" as const,
+      priority: 3,
+      status: "planned" as const,
+      source: "recurring" as const,
+      recurrenceId: "linkedin",
+    };
+    data.weeks[current].activities.push({ ...oldPass });
+    data.weeks[next].activities.push({
+      ...oldPass,
+      id: "old-next",
+      date: next,
+    });
     data.weeks[past] = {
       week: past,
       generatedAt: "",
@@ -53,6 +73,7 @@ for (const width of [1440, 390])
       end: 880,
       estimatedMinutes: 60,
       source: "manual" as const,
+      recurrenceId: undefined,
     };
     data.weeks[next].activities.push(meeting);
     data.habits = [
@@ -96,7 +117,8 @@ for (const width of [1440, 390])
             (a) => a.title === RETIRED_LINKEDIN_PASS,
           ),
       ).toBe(false);
-    expect(f.documents.get(userA)!.data.weeks[past]).toEqual(data.weeks[past]);
+    expect(f.documents.get(userA)!.data.weeks[past].activities).toEqual([]);
+    expect(f.documents.get(userA)!.data.recurring).toEqual([]);
     expect(f.documents.get(userA)!.data.weeks[next].activities).toContainEqual(
       meeting,
     );
