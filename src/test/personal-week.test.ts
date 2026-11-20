@@ -48,6 +48,56 @@ function booking(patch: Partial<Activity> = {}): Activity {
 }
 
 describe("personlig fyradagarsvecka", () => {
+  it.each(["old-rules", "missing-rules", "active-rules"])(
+    "rättar en gammal framtidsvecka när mallen redan är aktiv: %s",
+    (snapshot) => {
+      const data = createData();
+      const current = "2026-11-16";
+      data.weeks = {
+        [current]: generateWeek(current, data).plan,
+        [week]: generateWeek(week, data).plan,
+      };
+      data.settings = templateSettings(data.settings);
+      data.settings.autoPlanning = false;
+      if (snapshot === "missing-rules") delete data.weeks[week].rules;
+      if (snapshot === "active-rules")
+        data.weeks[week].rules = structuredClone(data.settings);
+      const original = structuredClone(data);
+      const corrected = upgradePersonalWeek(data, boundary);
+      const signature = (activities: Activity[]) =>
+        activities.map(({ title, date, start, end }) => ({
+          title,
+          date,
+          start,
+          end,
+        }));
+      expect(signature(corrected.weeks[week].activities)).toEqual(
+        signature(
+          generateWeek(week, {
+            ...data,
+            settings: templateSettings(data.settings),
+          }).plan.activities,
+        ),
+      );
+      expect(corrected.settings.autoPlanning).toBe(false);
+      expect(corrected.weeks[week].templateId).toBe("mon-thu-v1");
+      expect(corrected.weeks[current]).toBe(data.weeks[current]);
+      expect(data).toEqual(original);
+      expect(upgradePersonalWeek(corrected, boundary)).toBe(corrected);
+    },
+  );
+
+  it("behåller egna ändringar i en vecka som redan har uppdaterats", () => {
+    const data = fixture();
+    data.weeks[week].activities = data.weeks[week].activities.filter(
+      (a) => a.categoryId !== "networking",
+    );
+    expect(upgradePersonalWeek(data, boundary)).toBe(data);
+    expect(decodeData(JSON.stringify(data)).weeks[week].templateId).toBe(
+      "mon-thu-v1",
+    );
+  });
+
   it("följer de angivna tiderna, lämnar luckor öppna och ger fredag–söndag helg", () => {
     const data = fixture();
     const plan = data.weeks[week];
@@ -287,44 +337,48 @@ describe("personlig fyradagarsvecka", () => {
     ).not.toEqual([]);
   });
 
-  it("inför mallen en gång för framtida veckor och bevarar nuvarande vecka, historik, utfall och egna bokningar", () => {
-    const data = createData();
-    delete data.settings.weekTemplate;
-    const current = "2026-11-16",
-      past = "2026-11-09",
-      empty = "2026-11-30";
-    for (const key of [past, current, week])
-      data.weeks[key] = generateWeek(key, data).plan;
-    const done = data.weeks[week].activities.find(
-      (a) => a.categoryId === "learning",
-    )!;
-    done.status = "done";
-    const friday = booking({ id: "friday", date: "2026-11-27" });
-    data.weeks[week].activities.push(friday);
-    data.weeks[empty] = { ...generateWeek(empty, data).plan, activities: [] };
-    const before = structuredClone(data);
-    const next = upgradePersonalWeek(data, boundary);
-    expect(data).toEqual(before);
-    expect(next.weeks[current]).toBe(data.weeks[current]);
-    expect(next.weeks[past]).toBe(data.weeks[past]);
-    expect(next.weeks[week].activities).toContain(done);
-    expect(next.weeks[week].activities).toContain(friday);
-    expect(validatePlan([friday], next.settings)).toEqual([]);
-    expect(
-      next.weeks[week].activities.filter(
-        (a) => a.date >= "2026-11-27" && a.source === "generated",
-      ),
-    ).toEqual([]);
-    expect(next.weeks[empty].activities).toEqual([]);
-    expect(next.weeks[empty].rules?.weekTemplate).toBe("mon-thu-v1");
-    expect(next.weeks[empty].targets).toMatchObject({
-      career: 360,
-      learning: 330,
-      music: 0,
-    });
-    expect(upgradePersonalWeek(next, boundary)).toBe(next);
-    expect(decodeData(JSON.stringify(next)).weeks).toEqual(next.weeks);
-  });
+  it.each([false, true])(
+    "bevarar historik, utfall och egna bokningar när mallen redan är aktiv: %s",
+    (alreadyActive) => {
+      const data = createData();
+      delete data.settings.weekTemplate;
+      const current = "2026-11-16",
+        past = "2026-11-09",
+        empty = "2026-11-30";
+      for (const key of [past, current, week])
+        data.weeks[key] = generateWeek(key, data).plan;
+      const done = data.weeks[week].activities.find(
+        (a) => a.categoryId === "learning",
+      )!;
+      done.status = "done";
+      const friday = booking({ id: "friday", date: "2026-11-27" });
+      data.weeks[week].activities.push(friday);
+      data.weeks[empty] = { ...generateWeek(empty, data).plan, activities: [] };
+      if (alreadyActive) data.settings = templateSettings(data.settings);
+      const before = structuredClone(data);
+      const next = upgradePersonalWeek(data, boundary);
+      expect(data).toEqual(before);
+      expect(next.weeks[current]).toBe(data.weeks[current]);
+      expect(next.weeks[past]).toBe(data.weeks[past]);
+      expect(next.weeks[week].activities).toContain(done);
+      expect(next.weeks[week].activities).toContain(friday);
+      expect(validatePlan([friday], next.settings)).toEqual([]);
+      expect(
+        next.weeks[week].activities.filter(
+          (a) => a.date >= "2026-11-27" && a.source === "generated",
+        ),
+      ).toEqual([]);
+      expect(next.weeks[empty].activities).toEqual([]);
+      expect(next.weeks[empty].rules?.weekTemplate).toBe("mon-thu-v1");
+      expect(next.weeks[empty].targets).toMatchObject({
+        career: 360,
+        learning: 330,
+        music: 0,
+      });
+      expect(upgradePersonalWeek(next, boundary)).toBe(next);
+      expect(decodeData(JSON.stringify(next)).weeks).toEqual(next.weeks);
+    },
+  );
 
   it("fryser äldre veckors regler när säkerhetskopian saknar regelsnapshot och respekterar avstängd mall", () => {
     const data = createData();

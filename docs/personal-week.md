@@ -32,6 +32,8 @@ Måndagens nätverkande är 60 minuter enligt användarens besked. Hämtningen o
 
 Vid första öppningen med uppdateringen aktiveras mallen för befintliga arbetsytor som saknar ett val av veckomall. Nya arbetsytor använder den direkt. Innevarande och tidigare sparade veckor behåller sina aktiviteter, utfall och tidigare planeringsregler. Framtida sparade veckor får den nya mallen; uttryckligen tömda veckor förblir tomma. Inställningen kan stängas av utan att aktiveras igen vid nästa öppning.
 
+Kontrollen gäller varje framtida sparad vecka, även när mallen redan är aktiverad i inställningarna. En äldre vecka från en säkerhetskopia eller en senare molnläsning rättas därför också. När veckan fått mallen markeras det på själva veckoplanen, så att omladdningar inte återställer efterföljande egna ändringar eller skapar nya sparningar i en loop.
+
 Egna bokningar, återkommande bokningar, importerade aktiviteter, påbörjade pass, registrerade utfall och pass som kopplats till konkreta uppgifter behålls. Om en bokning krockar med en malltid behålls bokningen och en varning visas. Mallpasset flyttas inte till någon annan tid. En redan sparad egen fredagsbokning ligger kvar och visas i helgen.
 
 Veckomål och ansökningars nästa steg kan använda en del av ett befintligt jobb- eller kompetenspass. Den återstående tiden stannar i samma malltid även efter automatisk omplanering. Lunch, träning, hämtning och checkar flyttas inte för att ge plats åt sådana bokningar.

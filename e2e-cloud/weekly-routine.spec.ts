@@ -58,7 +58,7 @@ test("veckoplaneringens övningar och målstatus sparas i kontot och återläses
     .getByLabel(/^Plan inför nästa vecka/)
     .fill("Fortsätt projektet på onsdag.");
   await page
-    .getByRole("button", { name: "Markera som genomförd", exact: true })
+    .getByRole("button", { name: "Avsluta veckan", exact: true })
     .click();
   await status(page, "Sparat i molnet");
   const saved = f.documents.get(userA)!.data;
