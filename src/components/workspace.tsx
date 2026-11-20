@@ -61,6 +61,7 @@ import { downloadData } from "@/lib/storage";
 import { useWorkspaceStorage } from "@/lib/use-workspace-storage";
 import { StorageStatus, syncLabel } from "./storage-status";
 import { supabase } from "@/lib/supabase";
+import { isLocalDate } from "@/lib/google-time";
 import { bookDeadlineWork } from "@/lib/deadline-scheduling";
 import { DailyCheckInModal } from "./daily-check-in";
 import {
@@ -406,7 +407,12 @@ export function Workspace() {
     setWorkPlanning(null);
     setNotice("");
     setView("planner");
-    setWeek(monday(today()));
+    const selected = new URLSearchParams(window.location.search).get("week");
+    setWeek(
+      selected && isLocalDate(selected) && monday(selected) === selected
+        ? selected
+        : monday(today()),
+    );
     setDaySelection(null);
   }, [user?.id]);
   useLayoutEffect(() => {

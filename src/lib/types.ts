@@ -102,6 +102,7 @@ export type Reflection = {
 export type Settings = {
   excludedActivityTitles?: string[];
   weekTemplate?: "mon-thu-v1" | "off";
+  keepTemplateSlots?: boolean;
   days: number[];
   start: number;
   end: number;

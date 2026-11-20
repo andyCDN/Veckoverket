@@ -12,10 +12,24 @@ import {
   FOUR_DAY_WEEK,
   templateTargetMinutes,
   WEEK_TEMPLATE_ID,
+  type WeekTemplateBlock,
 } from "./week-template";
 
-/** Exact weekly slots. Explicit work, appointments and outcomes take precedence.
- * Empty intervals stay empty; a blocked slot is reported rather than moved silently. */
+/** A concrete booking may fulfil a template slot without being duplicated. */
+export function matchesTemplateBlock(a: Activity, block: WeekTemplateBlock) {
+  if (a.status === "skipped" || !blocksTime(a)) return false;
+  if (block.routine) return a.routine === block.routine;
+  if (block.blockType === "flexible") return a.categoryId === block.categoryId;
+  const title = a.title.normalize("NFKC").toLocaleLowerCase("sv-SE").trim();
+  if (block.categoryId === "health")
+    return /^(träna|träning)(?:\s|$)/u.test(title);
+  if (block.categoryId === "rest") return /^lunch(?:\s|$)/u.test(title);
+  if (block.categoryId === "family") return /^hämta(?:\s|$)/u.test(title);
+  return a.categoryId === block.categoryId;
+}
+
+/** Exact weekly slots. Explicit work, appointments and outcomes survive.
+ * Explicit installation retains blocked slots and reports their overlaps. */
 export function generateTemplateWeek(
   week: string,
   data: Pick<AppData, "settings" | "categories" | "recurring">,
@@ -102,10 +116,14 @@ export function generateTemplateWeek(
       (boundary &&
         (date < boundary.date ||
           (date === boundary.date && block.start < boundary.minute))) ||
-      activities.some(
-        (a) =>
-          (a.id === id && !assigned(a)) ||
-          (block.routine && a.routine === block.routine),
+      activities.some((a) =>
+        settings.keepTemplateSlots
+          ? a.date === date &&
+            a.start === block.start &&
+            a.end === block.end &&
+            matchesTemplateBlock(a, block)
+          : (a.id === id && !assigned(a)) ||
+            (block.routine && a.routine === block.routine),
       )
     )
       continue;
@@ -160,7 +178,7 @@ export function generateTemplateWeek(
     ) {
       let cursor = block.start;
       for (const held of [...occupied, { start: block.end, end: block.end }]) {
-        if (held.start - cursor >= 5)
+        if (held.start - cursor >= (settings.keepTemplateSlots ? 1 : 5))
           activities.push({
             ...pass,
             id: availableId(`${id}-part-${cursor}`),
@@ -175,9 +193,11 @@ export function generateTemplateWeek(
         id: `template-busy-${id}`,
         severity: "warning",
         message: `${block.title} ${date}: malltiden upptas av en befintlig bokning.`,
-        suggestion:
-          "Bokningen är bevarad. Välj en annan tid för mallpasset om det behövs.",
+        suggestion: settings.keepTemplateSlots
+          ? "Både schemapasset och den egna bokningen finns kvar. Flytta den bokning som passar bäst."
+          : "Bokningen är bevarad. Välj en annan tid för mallpasset om det behövs.",
       });
+      if (settings.keepTemplateSlots) activities.push(pass);
     } else activities.push(pass);
   }
   return {
