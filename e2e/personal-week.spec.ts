@@ -42,7 +42,7 @@ for (const width of [1440, 390, 320])
         JSON.parse(localStorage.getItem("veckoverket.workspace.v1")!),
       );
     await expect
-      .poll(async () => (await stored()).settings.weekTemplate)
+      .poll(async () => (await stored()).weeks[next].templateId)
       .toBe("mon-thu-v1");
     expect((await stored()).weeks[current].activities).toEqual(
       data.weeks[current].activities,

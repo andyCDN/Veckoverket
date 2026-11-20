@@ -122,6 +122,9 @@ export function decodeData(raw: string): AppData {
       !Array.isArray(plan.activities)
     )
       throw new Error("Veckodatan är ogiltig.");
+    const templateId = (plan as { templateId?: unknown }).templateId;
+    if (templateId !== undefined && templateId !== "mon-thu-v1")
+      throw new Error("Veckomallen är ogiltig.");
     const routinesFrom = (plan as { weeklyRoutinesFrom?: unknown })
       .weeklyRoutinesFrom;
     if (

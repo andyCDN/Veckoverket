@@ -7,7 +7,11 @@ import type {
 } from "./types";
 import { addDays } from "./date";
 import { blocksTime } from "./external-calendar";
-import { FOUR_DAY_WEEK, templateTargetMinutes } from "./week-template";
+import {
+  FOUR_DAY_WEEK,
+  templateTargetMinutes,
+  WEEK_TEMPLATE_ID,
+} from "./week-template";
 
 /** Exact weekly slots. Explicit work, appointments and outcomes take precedence.
  * Empty intervals stay empty; a blocked slot is reported rather than moved silently. */
@@ -176,6 +180,7 @@ export function generateTemplateWeek(
   return {
     plan: {
       ...existing,
+      templateId: WEEK_TEMPLATE_ID,
       week,
       activities: activities.sort(
         (a, b) => a.date.localeCompare(b.date) || a.start - b.start,

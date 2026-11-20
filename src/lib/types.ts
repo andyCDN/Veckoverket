@@ -118,6 +118,7 @@ export type Settings = {
   autoPlanning?: boolean;
 };
 export type WeekPlan = {
+  templateId?: "mon-thu-v1";
   gentleDays?: string[];
   gentleFocus?: Record<string, string>;
   rules?: Settings;
