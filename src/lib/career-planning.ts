@@ -1,3 +1,4 @@
+import { dayBounds, fixedDayBreaks, usesWeekTemplate } from "./week-template";
 import { applicationDeadlineActive } from "./application-deadlines";
 import { validateApplicationMaterials } from "./application-materials";
 import { validateCareerAction } from "./career-actions";
@@ -7,7 +8,7 @@ import {
   planningLimitError,
 } from "./planning-insights";
 import type { Activity, AppData, Deadline, Settings, WeekPlan } from "./types";
-import { addDays, monday, planningBoundary, weekday, time } from "./date";
+import { addDays, monday, planningBoundary, weekday, time, uid } from "./date";
 import { generateWeek, plannedDays, validateMove } from "./planner";
 import { blocksTime } from "./external-calendar";
 import { isLocalDate } from "./google-time";
@@ -23,13 +24,12 @@ export type PlanningPreview = {
 function fits(a: Activity, held: Activity[], s: Settings) {
   if (
     !plannedDays(s).includes(weekday(a.date)) ||
-    a.start < s.start ||
-    a.end > s.end
+    a.start < dayBounds(s, a.date).start ||
+    a.end > dayBounds(s, a.date).end
   )
     return false;
   const reservations = [
-    { start: s.lunchStart, end: s.lunchEnd },
-    { start: s.familyStart, end: s.familyEnd },
+    ...fixedDayBreaks(s, a.date),
     ...held.filter((b) => b.date === a.date && blocksTime(b)),
   ];
   return reservations.every(
@@ -144,7 +144,7 @@ export function replanDay(
     let moved: Activity | undefined;
     for (
       let start = Math.ceil(Math.max(s.start, boundary.minute) / 5) * 5;
-      start + a.end - a.start <= s.end;
+      start + a.end - a.start <= dayBounds(s, boundary.date).end;
       start += 5
     ) {
       const candidate = {
@@ -292,6 +292,7 @@ export function planDeadline(
           ...generated,
           activities: generated.activities.filter(
             (a) =>
+              usesWeekTemplate(data.settings) ||
               a.source !== "generated" ||
               a.blockType !== "flexible" ||
               a.routine,
@@ -301,7 +302,7 @@ export function planDeadline(
       }
       const s = plan.rules ?? data.settings;
       const endLimit = Math.min(
-        s.end,
+        dayBounds(s, date).end,
         date === latestDate ? latestMinute : 1440,
       );
       if (options.reuseGenerated) {
@@ -589,10 +590,37 @@ export function bookCareerActivity(
         ...p,
         activities: p.activities.filter(
           (a) =>
-            a.source !== "generated" || a.blockType !== "flexible" || a.routine,
+            usesWeekTemplate(data.settings) ||
+            a.source !== "generated" ||
+            a.blockType !== "flexible" ||
+            a.routine,
         ),
       };
     })();
+  const rules = plan.rules ?? data.settings;
+  const slot = usesWeekTemplate(rules)
+    ? plan.activities.find(
+        (a) =>
+          a.date === activity.date &&
+          a.categoryId === activity.categoryId &&
+          a.source === "generated" &&
+          a.status === "planned" &&
+          a.blockType === "flexible" &&
+          !a.taskId &&
+          !a.habitId &&
+          !a.applicationId &&
+          !a.contactId &&
+          !a.careerActionId &&
+          !a.deadlineId &&
+          !a.routine &&
+          !a.external &&
+          !a.recurrenceId &&
+          !a.followUpOf &&
+          a.start <= activity.start &&
+          a.end >= activity.end,
+      )
+    : undefined;
+  const held = plan.activities.filter((a) => a !== slot);
   if (
     !activity.title.trim() ||
     !data.categories.some(
@@ -606,7 +634,7 @@ export function bookCareerActivity(
     !Number.isFinite(activity.start) ||
     !Number.isFinite(activity.end) ||
     activity.end <= activity.start ||
-    !fits(activity, plan.activities, plan.rules ?? data.settings)
+    !fits(activity, held, rules)
   )
     return {
       data,
@@ -615,12 +643,25 @@ export function bookCareerActivity(
         "Passet ryms inte på den valda tiden. Välj en ledig tid inom dina planeringsregler.",
       ],
     };
+  if (slot)
+    for (const [start, end] of [
+      [slot.start, activity.start],
+      [activity.end, slot.end],
+    ])
+      if (end - start >= 5)
+        held.push({
+          ...slot,
+          id: uid(),
+          start,
+          end,
+          estimatedMinutes: end - start,
+        });
   return {
     data: {
       ...data,
       weeks: {
         ...data.weeks,
-        [week]: { ...plan, activities: [...plan.activities, activity] },
+        [week]: { ...plan, activities: [...held, activity] },
       },
     },
     activities: [activity],

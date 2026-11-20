@@ -32,6 +32,7 @@ import {
   planningBoundary,
 } from "@/lib/date";
 import { canFollowUp } from "@/lib/follow-up";
+import { weekendStartsOn } from "@/lib/week-template";
 import { visibleDays } from "@/lib/planner";
 import { categoryLabel, categoryStyle } from "@/lib/presentation";
 import { GOOGLE_CATEGORY_ID } from "@/lib/external-calendar";
@@ -353,6 +354,7 @@ export function Calendar({
   onStatusChange,
   mobile = false,
   showWeekends = false,
+  weekendFrom,
 }: {
   week: string;
   data: AppData;
@@ -368,10 +370,15 @@ export function Calendar({
   onDelete: (a: Activity) => void;
   mobile?: boolean;
   showWeekends?: boolean;
+  weekendFrom?: number;
 }) {
   const weekDays = visibleDays(data.settings, activities);
+  const firstWeekend = weekendFrom ?? weekendStartsOn(data.settings);
   const shownDays = weekDays.filter(
-    (day) => day < 5 || showWeekends || weekDays.every((d) => d > 4),
+    (day) =>
+      day < firstWeekend ||
+      showWeekends ||
+      weekDays.every((d) => d >= firstWeekend),
   );
   const days = mobile ? [0, 1, 2, 3, 4, 5, 6] : weekDays;
   const completedDays = new Set(

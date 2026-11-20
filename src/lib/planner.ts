@@ -1,3 +1,10 @@
+import {
+  usesWeekTemplate,
+  dayBounds,
+  fixedDayBreaks,
+  templateTargetMinutes,
+} from "./week-template";
+import { generateTemplateWeek } from "./template-planning";
 import type {
   Activity,
   AppData,
@@ -45,6 +52,7 @@ export function categoryMinutes(
     }, {});
 }
 export function targetMinutes(category: Category, s: Settings) {
+  if (usesWeekTemplate(s)) return templateTargetMinutes(category.id);
   if (category.id === ROUTINE_CATEGORY.id) return routineMinutes(s);
   if (category.id === GOOGLE_CATEGORY_ID) return 0;
   if (category.id === "music")
@@ -61,6 +69,16 @@ export function targetMinutes(category: Category, s: Settings) {
   return category.targetMinutes;
 }
 export function capacity(s: Settings) {
+  if (usesWeekTemplate(s))
+    return plannedDays(s).reduce((sum, day) => {
+      const bounds = dayBounds(s, day);
+      return (
+        sum +
+        bounds.end -
+        bounds.start -
+        fixedDayBreaks(s, day).reduce((n, gap) => n + gap.end - gap.start, 0)
+      );
+    }, 0);
   const overlap = (a: number, b: number) =>
     Math.max(0, Math.min(s.end, b) - Math.max(s.start, a));
   const lunch = overlap(s.lunchStart, s.lunchEnd),
@@ -83,7 +101,7 @@ export function budgetRemaining(categories: Category[], s: Settings) {
       .reduce((n, c) => n + targetMinutes(c, s), 0) -
     categories
       .filter((c) => c.id === "rest")
-      .reduce((n, c) => n + c.targetMinutes, 0)
+      .reduce((n, c) => n + targetMinutes(c, s), 0)
   );
 }
 const overlap = (a: Activity, b: Activity) =>
@@ -110,7 +128,13 @@ export function validatePlan(activities: Activity[], s: Settings): Conflict[] {
       });
     if (
       !a.external &&
-      (!days.includes(weekday(a.date)) || a.start < s.start || a.end > s.end)
+      // The personal pattern limits automatic suggestions; explicit bookings
+      // and logged outcomes can also exist outside its four working days.
+      (!usesWeekTemplate(s) ||
+        (a.source === "generated" && a.status === "planned")) &&
+      (!days.includes(weekday(a.date)) ||
+        a.start < dayBounds(s, a.date).start ||
+        a.end > dayBounds(s, a.date).end)
     )
       issues.push({
         id: `availability-${a.id}`,
@@ -200,6 +224,21 @@ export function generateWeek(
   existing?: WeekPlan,
   options: { notBefore?: { date: string; minute: number } } = {},
 ): PlanResult {
+  if (usesWeekTemplate(data.settings)) {
+    const result = generateTemplateWeek(
+      week,
+      data,
+      existing,
+      options.notBefore,
+    );
+    return {
+      ...result,
+      conflicts: [
+        ...result.conflicts,
+        ...validatePlan(result.plan.activities, data.settings),
+      ],
+    };
+  }
   const { settings: s, recurring } = data;
   const categories = data.categories.filter((c) => c.id !== GOOGLE_CATEGORY_ID);
   const boundary = options.notBefore;

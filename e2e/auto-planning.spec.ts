@@ -2,6 +2,8 @@ import { addItem, openToday } from "./navigation";
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { time } from "../src/lib/date";
+import { createData } from "../src/lib/defaults";
+import { generateWeek } from "../src/lib/planner";
 
 test("automatisk mobilplanering flyttar förslag runt bokningar, sparas och kan pausas", async ({
   page,
@@ -11,6 +13,12 @@ test("automatisk mobilplanering flyttar förslag runt bokningar, sparas och kan 
     Object.defineProperty(navigator, "standalone", { get: () => true }),
   );
   await page.setViewportSize({ width: 320, height: 740 });
+  const data = createData();
+  data.weeks["2026-11-02"] = generateWeek("2026-11-02", data).plan;
+  await page.addInitScript((data) => {
+    if (!localStorage.getItem("veckoverket.workspace.v1"))
+      localStorage.setItem("veckoverket.workspace.v1", JSON.stringify(data));
+  }, data);
   await page.goto("./");
   await openToday(page);
   const stored = () =>

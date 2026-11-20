@@ -1,5 +1,7 @@
 # Automatic weekly planning
 
+The [personal four-day template](personal-week.md) uses the requested Monday–Thursday times instead of the generic allocation described below. Its open gaps stay empty and explicit appointments may also lie outside the template's working hours.
+
 ## Enable or pause
 
 1. Open **Verktyg → Planera veckan** on a phone, or **Planera veckan** above the desktop calendar.

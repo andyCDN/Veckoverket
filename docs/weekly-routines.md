@@ -1,5 +1,7 @@
 # Weekly planning and review
 
+With the [personal four-day template](personal-week.md), Monday's **Veckoincheck** is 08.30–09.00 and **Stänga veckan** is Thursday 13.00–13.30. The review shortcut/modal is called **Torsdagscheck**. Existing notes, task decisions and the next-week flow are shared with the original routines described below.
+
 Monday has a **Veckostart** (15 minutes). Friday has a **Veckoavstämning** (30 minutes). Open the calendar card to use the exercise; the independent calendar checkbox still records completion. Saving notes does not mark the session done automatically.
 
 The Monday exercise records the week's priorities, tasks, timing and obstacles. It also shows the week's goals and their tasks. The Friday exercise records a summary, unfinished work, a goal assessment and the plan for the following week. Task completion is shown as a count and percentage for each weekly goal. Goals without tasks do not receive a percentage. The next-week section shows saved plan information and provides a button to open that week.

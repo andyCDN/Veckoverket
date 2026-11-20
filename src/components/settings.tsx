@@ -1,4 +1,6 @@
 "use client";
+import { usesWeekTemplate, templateSettings } from "@/lib/week-template";
+import { WeekTemplateOverview } from "./week-template-overview";
 import { changeJobBudget } from "@/lib/job-categories";
 import { useRef, useState } from "react";
 import {
@@ -162,6 +164,29 @@ export function SettingsView({
       <form onSubmit={apply} className="settings-layout">
         <div className="settings-main">
           <section className="settings-section">
+            <h3>Min veckoplan</h3>
+            <label className="switch-row">
+              <span>
+                Fyradagarsvecka, måndag–torsdag
+                <small>
+                  Fasta tider enligt din mall. Fredag–söndag visas som helg.
+                </small>
+              </span>
+              <input
+                type="checkbox"
+                checked={usesWeekTemplate(s)}
+                onChange={(event) =>
+                  setS(
+                    event.target.checked
+                      ? templateSettings(s)
+                      : { ...s, weekTemplate: "off", days: [0, 1, 2, 3, 4] },
+                  )
+                }
+              />
+            </label>
+            {usesWeekTemplate(s) && <WeekTemplateOverview />}
+          </section>
+          <section className="settings-section">
             <div className="settings-section-title">
               <span>01</span>
               <div>
@@ -178,248 +203,269 @@ export function SettingsView({
                 onChange={(e) => setName(e.target.value)}
               />
             </label>
-            <fieldset>
-              <legend>Dagar att planera</legend>
-              <div className="day-toggles">
-                {DAY_NAMES.slice(0, 5).map((day, i) => (
-                  <button
-                    className={s.days.includes(i) ? "selected" : ""}
-                    key={day}
-                    type="button"
-                    aria-pressed={s.days.includes(i)}
-                    onClick={() =>
-                      patch({
-                        days: s.days.includes(i)
-                          ? s.days.filter((d) => d !== i)
-                          : [...s.days, i],
-                      })
+            {usesWeekTemplate(s) ? (
+              <p>
+                Dagarnas tider följer veckomallen ovan. Stäng av mallen om du
+                vill använda generella planeringsregler.
+              </p>
+            ) : (
+              <>
+                <fieldset>
+                  <legend>Dagar att planera</legend>
+                  <div className="day-toggles">
+                    {DAY_NAMES.slice(0, 5).map((day, i) => (
+                      <button
+                        className={s.days.includes(i) ? "selected" : ""}
+                        key={day}
+                        type="button"
+                        aria-pressed={s.days.includes(i)}
+                        onClick={() =>
+                          patch({
+                            days: s.days.includes(i)
+                              ? s.days.filter((d) => d !== i)
+                              : [...s.days, i],
+                          })
+                        }
+                      >
+                        {day.slice(0, 3)}
+                        {s.days.includes(i) && <Check size={12} />}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+                <label className="switch-row">
+                  <span>
+                    Automatisk veckoplanering
+                    <small>
+                      Jobb och kompetens läggs först i lediga tider.
+                      Bokningsändringar planerar om framtida förslag.
+                    </small>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(s.autoPlanning)}
+                    onChange={(event) =>
+                      patch({ autoPlanning: event.target.checked })
                     }
-                  >
-                    {day.slice(0, 3)}
-                    {s.days.includes(i) && <Check size={12} />}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-            <label className="switch-row">
-              <span>
-                Automatisk veckoplanering
-                <small>
-                  Jobb och kompetens läggs först i lediga tider.
-                  Bokningsändringar planerar om framtida förslag.
-                </small>
-              </span>
-              <input
-                type="checkbox"
-                checked={Boolean(s.autoPlanning)}
-                onChange={(event) =>
-                  patch({ autoPlanning: event.target.checked })
-                }
-              />
-            </label>
-            <div className="form-row">
-              <label>
-                Dagen börjar
-                <input
-                  type="time"
-                  required
-                  value={time(s.start)}
-                  onChange={(e) => patch({ start: parseTime(e.target.value) })}
-                />
-              </label>
-              <label>
-                Dagen slutar
-                <input
-                  type="time"
-                  required
-                  value={time(s.end)}
-                  onChange={(e) => patch({ end: parseTime(e.target.value) })}
-                />
-              </label>
-            </div>
-            <div className="fixed-time-row">
-              <span>
-                <LockKeyhole size={16} />
-                Lunch & paus
-              </span>
-              <label>
-                <span className="sr-only">Lunch börjar</span>
-                <input
-                  type="time"
-                  required
-                  value={time(s.lunchStart)}
-                  onChange={(e) =>
-                    patch({ lunchStart: parseTime(e.target.value) })
-                  }
-                />
-              </label>
-              <span>–</span>
-              <label>
-                <span className="sr-only">Lunch slutar</span>
-                <input
-                  type="time"
-                  required
-                  value={time(s.lunchEnd)}
-                  onChange={(e) =>
-                    patch({ lunchEnd: parseTime(e.target.value) })
-                  }
-                />
-              </label>
-            </div>
-            <div className="fixed-time-row">
-              <span>
-                <LockKeyhole size={16} />
-                Familj & hushåll
-              </span>
-              <label>
-                <span className="sr-only">Familjetid börjar</span>
-                <input
-                  type="time"
-                  required
-                  value={time(s.familyStart)}
-                  onChange={(e) =>
-                    patch({ familyStart: parseTime(e.target.value) })
-                  }
-                />
-              </label>
-              <span>–</span>
-              <label>
-                <span className="sr-only">Familjetid slutar</span>
-                <input
-                  type="time"
-                  required
-                  value={time(s.familyEnd)}
-                  onChange={(e) =>
-                    patch({ familyEnd: parseTime(e.target.value) })
-                  }
-                />
-              </label>
-            </div>
-            <label className="switch-row">
-              <span>
-                Gör även helgen tillgänglig
-                <small>Lördag och söndag använder samma tidsramar.</small>
-              </span>
-              <input
-                type="checkbox"
-                checked={s.weekends}
-                onChange={(e) => patch({ weekends: e.target.checked })}
-              />
-            </label>
+                  />
+                </label>
+                <div className="form-row">
+                  <label>
+                    Dagen börjar
+                    <input
+                      type="time"
+                      required
+                      value={time(s.start)}
+                      onChange={(e) =>
+                        patch({ start: parseTime(e.target.value) })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Dagen slutar
+                    <input
+                      type="time"
+                      required
+                      value={time(s.end)}
+                      onChange={(e) =>
+                        patch({ end: parseTime(e.target.value) })
+                      }
+                    />
+                  </label>
+                </div>
+                <div className="fixed-time-row">
+                  <span>
+                    <LockKeyhole size={16} />
+                    Lunch & paus
+                  </span>
+                  <label>
+                    <span className="sr-only">Lunch börjar</span>
+                    <input
+                      type="time"
+                      required
+                      value={time(s.lunchStart)}
+                      onChange={(e) =>
+                        patch({ lunchStart: parseTime(e.target.value) })
+                      }
+                    />
+                  </label>
+                  <span>–</span>
+                  <label>
+                    <span className="sr-only">Lunch slutar</span>
+                    <input
+                      type="time"
+                      required
+                      value={time(s.lunchEnd)}
+                      onChange={(e) =>
+                        patch({ lunchEnd: parseTime(e.target.value) })
+                      }
+                    />
+                  </label>
+                </div>
+                <div className="fixed-time-row">
+                  <span>
+                    <LockKeyhole size={16} />
+                    Familj & hushåll
+                  </span>
+                  <label>
+                    <span className="sr-only">Familjetid börjar</span>
+                    <input
+                      type="time"
+                      required
+                      value={time(s.familyStart)}
+                      onChange={(e) =>
+                        patch({ familyStart: parseTime(e.target.value) })
+                      }
+                    />
+                  </label>
+                  <span>–</span>
+                  <label>
+                    <span className="sr-only">Familjetid slutar</span>
+                    <input
+                      type="time"
+                      required
+                      value={time(s.familyEnd)}
+                      onChange={(e) =>
+                        patch({ familyEnd: parseTime(e.target.value) })
+                      }
+                    />
+                  </label>
+                </div>
+                <label className="switch-row">
+                  <span>
+                    Gör även helgen tillgänglig
+                    <small>Lördag och söndag använder samma tidsramar.</small>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={s.weekends}
+                    onChange={(e) => patch({ weekends: e.target.checked })}
+                  />
+                </label>
+              </>
+            )}
           </section>
-          <section className="settings-section">
-            <div className="settings-section-title">
-              <span>02</span>
-              <div>
-                <h3>Musik och träning</h3>
-                <p>Ange antal pass, passlängd och regler för flytt.</p>
-              </div>
-            </div>
-            <div className="choice-row">
-              <div>
-                <strong>Musikförmiddagar</strong>
-                <p>
-                  Hela pass {time(s.start)}–{time(s.lunchStart)}. Delas aldrig
-                  upp.
-                </p>
-              </div>
-              <div
-                className="segmented"
-                role="group"
-                aria-label="Antal musikförmiddagar"
-              >
-                {[1, 2].map((n) => (
-                  <button
-                    type="button"
-                    aria-pressed={s.musicMornings === n}
-                    className={s.musicMornings === n ? "active" : ""}
-                    key={n}
-                    onClick={() => patch({ musicMornings: n })}
+          {!usesWeekTemplate(s) && (
+            <>
+              {" "}
+              <section className="settings-section">
+                <div className="settings-section-title">
+                  <span>02</span>
+                  <div>
+                    <h3>Musik och träning</h3>
+                    <p>Ange antal pass, passlängd och regler för flytt.</p>
+                  </div>
+                </div>
+                <div className="choice-row">
+                  <div>
+                    <strong>Musikförmiddagar</strong>
+                    <p>
+                      Hela pass {time(s.start)}–{time(s.lunchStart)}. Delas
+                      aldrig upp.
+                    </p>
+                  </div>
+                  <div
+                    className="segmented"
+                    role="group"
+                    aria-label="Antal musikförmiddagar"
                   >
-                    {n} {n === 1 ? "förmiddag" : "förmiddagar"}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="choice-row">
-              <div>
-                <strong>Träningspass</strong>
-                <p>Placeras i första hand efter lunch.</p>
-              </div>
-              <div
-                className="segmented"
-                role="group"
-                aria-label="Antal träningspass"
-              >
-                {[2, 3].map((n) => (
-                  <button
-                    type="button"
-                    aria-pressed={s.trainingSessions === n}
-                    className={s.trainingSessions === n ? "active" : ""}
-                    key={n}
-                    onClick={() => patch({ trainingSessions: n })}
+                    {[1, 2].map((n) => (
+                      <button
+                        type="button"
+                        aria-pressed={s.musicMornings === n}
+                        className={s.musicMornings === n ? "active" : ""}
+                        key={n}
+                        onClick={() => patch({ musicMornings: n })}
+                      >
+                        {n} {n === 1 ? "förmiddag" : "förmiddagar"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="choice-row">
+                  <div>
+                    <strong>Träningspass</strong>
+                    <p>Placeras i första hand efter lunch.</p>
+                  </div>
+                  <div
+                    className="segmented"
+                    role="group"
+                    aria-label="Antal träningspass"
                   >
-                    {n} pass
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="form-row">
-              <label>
-                Träningspassets längd
-                <select
-                  value={s.trainingMinutes}
-                  onChange={(e) =>
-                    patch({ trainingMinutes: Number(e.target.value) })
-                  }
-                >
-                  <option value={60}>60 minuter</option>
-                  <option value={75}>75 minuter</option>
-                  <option value={90}>90 minuter</option>
-                </select>
-              </label>
-              <label>
-                Buffert mellan aktiviteter
-                <select
-                  value={s.buffer}
-                  onChange={(e) => patch({ buffer: Number(e.target.value) })}
-                >
-                  <option value={0}>Ingen extra buffert</option>
-                  <option value={5}>5 minuter</option>
-                  <option value={10}>10 minuter</option>
-                  <option value={15}>15 minuter</option>
-                </select>
-              </label>
-            </div>
-            <label className="switch-row">
-              <span>
-                Tillåt flytt av musikförmiddagar
-                <small>Flyttas alltid som ett helt förmiddagsblock.</small>
-              </span>
-              <input
-                type="checkbox"
-                checked={s.musicMovable}
-                onChange={(e) => {
-                  patch({ musicMovable: e.target.checked });
-                  setCats((cs) =>
-                    cs.map((c) =>
-                      c.id === "music"
-                        ? { ...c, movable: e.target.checked }
-                        : c,
-                    ),
-                  );
-                }}
-              />
-            </label>
-          </section>
+                    {[2, 3].map((n) => (
+                      <button
+                        type="button"
+                        aria-pressed={s.trainingSessions === n}
+                        className={s.trainingSessions === n ? "active" : ""}
+                        key={n}
+                        onClick={() => patch({ trainingSessions: n })}
+                      >
+                        {n} pass
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="form-row">
+                  <label>
+                    Träningspassets längd
+                    <select
+                      value={s.trainingMinutes}
+                      onChange={(e) =>
+                        patch({ trainingMinutes: Number(e.target.value) })
+                      }
+                    >
+                      <option value={60}>60 minuter</option>
+                      <option value={75}>75 minuter</option>
+                      <option value={90}>90 minuter</option>
+                    </select>
+                  </label>
+                  <label>
+                    Buffert mellan aktiviteter
+                    <select
+                      value={s.buffer}
+                      onChange={(e) =>
+                        patch({ buffer: Number(e.target.value) })
+                      }
+                    >
+                      <option value={0}>Ingen extra buffert</option>
+                      <option value={5}>5 minuter</option>
+                      <option value={10}>10 minuter</option>
+                      <option value={15}>15 minuter</option>
+                    </select>
+                  </label>
+                </div>
+                <label className="switch-row">
+                  <span>
+                    Tillåt flytt av musikförmiddagar
+                    <small>Flyttas alltid som ett helt förmiddagsblock.</small>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={s.musicMovable}
+                    onChange={(e) => {
+                      patch({ musicMovable: e.target.checked });
+                      setCats((cs) =>
+                        cs.map((c) =>
+                          c.id === "music"
+                            ? { ...c, movable: e.target.checked }
+                            : c,
+                        ),
+                      );
+                    }}
+                  />
+                </label>
+              </section>
+            </>
+          )}
           <section className="settings-section">
             <div className="settings-section-title">
               <span>03</span>
               <div>
                 <h3>Dina livsområden</h3>
                 <p>
-                  Prioritet 5 kommer först. Jobbtid är en miniminivå; ledig tid
-                  tilldelas också jobbet.
+                  {usesWeekTemplate(s)
+                    ? "Tidsmålen följer veckomallen. Öppna luckor förblir öppna."
+                    : "Prioritet 5 kommer först. Jobbtid är en miniminivå; ledig tid tilldelas också jobbet."}
                 </p>
               </div>
             </div>
@@ -441,7 +487,7 @@ export function SettingsView({
                       <i />
                       {categoryLabel(c)}
                     </span>
-                    {c.id === "career" && (
+                    {c.id === "career" && !usesWeekTemplate(s) && (
                       <p className="muted">
                         Jobbsök får 75 % och nätverkande 25 % av deras
                         gemensamma tidsbudget. Ändring av ett tidsmål justerar
@@ -452,6 +498,7 @@ export function SettingsView({
                       <label>
                         Timmar / vecka
                         <input
+                          disabled={usesWeekTemplate(s)}
                           type="number"
                           min={0}
                           max={100}
@@ -460,7 +507,7 @@ export function SettingsView({
                               ? "any"
                               : 0.25
                           }
-                          value={c.targetMinutes / 60}
+                          value={targetMinutes(c, s) / 60}
                           onChange={(e) =>
                             setCats((cs) =>
                               changeJobBudget(
@@ -475,6 +522,7 @@ export function SettingsView({
                       <label>
                         Prioritet
                         <select
+                          disabled={usesWeekTemplate(s)}
                           value={c.priority}
                           onChange={(e) =>
                             setCats((cs) =>
@@ -494,6 +542,7 @@ export function SettingsView({
                       <label>
                         Minsta pass
                         <select
+                          disabled={usesWeekTemplate(s)}
                           value={c.minBlock}
                           onChange={(e) =>
                             setCats((cs) =>
@@ -516,6 +565,7 @@ export function SettingsView({
                     <div className="category-checks">
                       <label>
                         <input
+                          disabled={usesWeekTemplate(s)}
                           type="checkbox"
                           checked={c.allowSplit}
                           onChange={(e) =>
@@ -532,6 +582,7 @@ export function SettingsView({
                       </label>
                       <label>
                         <input
+                          disabled={usesWeekTemplate(s)}
                           type="checkbox"
                           checked={c.movable}
                           onChange={(e) =>
@@ -645,9 +696,9 @@ export function SettingsView({
             </div>
           )}
           <div className="preview-note">
-            Lunch och familjetid är reserverade enligt inställningarna.
-            Veckostart på måndagar (15 min) och veckoavstämning på fredagar (30
-            min) läggs in när dagen ingår i planeringen och tiden räcker.
+            {usesWeekTemplate(s)
+              ? "Veckoincheck måndag 08.30–09.00 och veckostängning torsdag 13.00–13.30. Lunch och hämtning följer de angivna dagarna. Tomma luckor fylls inte automatiskt."
+              : "Lunch och familjetid är reserverade enligt inställningarna. Veckostart på måndagar (15 min) och veckoavstämning på fredagar (30 min) läggs in när dagen ingår i planeringen och tiden räcker."}
           </div>
         </aside>
       </form>

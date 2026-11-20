@@ -701,3 +701,26 @@
     display: none;
   }
 }
+
+.personal-week-overview {
+  display: grid;
+  gap: 16px;
+}
+.personal-week-overview h3 {
+  margin-bottom: 8px;
+}
+.personal-week-overview ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.personal-week-overview li {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr);
+  gap: 10px;
+  padding-block: 6px;
+  border-bottom: 1px dashed currentColor;
+}
+.personal-week-overview li span {
+  font-variant-numeric: tabular-nums;
+}

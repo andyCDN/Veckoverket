@@ -7,6 +7,7 @@ import { WeekReview } from "./week-flow";
 import type { TaskDecision } from "@/lib/task-workflow";
 import { MondayGoals } from "./monday-goals";
 import type { MondayGoalDraft } from "@/lib/monday-goals";
+import { reviewCheckLabel } from "@/lib/week-template";
 import { Modal } from "./modal";
 
 export function WeeklyRoutineModal({
@@ -86,7 +87,11 @@ export function WeeklyRoutineModal({
   );
   return (
     <Modal
-      title={start ? "Måndagscheck" : "Fredagscheck"}
+      title={
+        start
+          ? "Måndagscheck"
+          : reviewCheckLabel(data.weeks[week]?.rules ?? data.settings)
+      }
       description={
         scheduled
           ? `${fullDate(activity.date)} · ${time(activity.start)}–${time(activity.end)}`
@@ -108,7 +113,7 @@ export function WeeklyRoutineModal({
         )}
         {start && data.reflections[addDays(week, -7)]?.next && (
           <section className="previous-week-summary">
-            <h3>Från förra veckans fredagscheck</h3>
+            <h3>Från förra veckans veckocheck</h3>
             <p className="career-notes">
               {data.reflections[addDays(week, -7)].next}
             </p>

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { navigateTo } from "./navigation";
+import { addItem, navigateTo, openContext } from "./navigation";
 import AxeBuilder from "@axe-core/playwright";
 import { createData } from "../src/lib/defaults";
 import { decodeData } from "../src/lib/storage";
@@ -172,10 +172,7 @@ for (const width of [390, 320]) {
     const before = await page.evaluate(() =>
       JSON.parse(localStorage.getItem("veckoverket.workspace.v1")!),
     );
-    const active = overview.getByRole("article", { name: /24 oktober 2024/ });
-    await active
-      .getByRole("button", { name: "Ny uppgift", exact: true })
-      .click();
+    await addItem(page, "Uppgift");
     const dialog = page.getByRole("dialog");
     await dialog
       .getByLabel("Uppgift", { exact: true })
@@ -183,7 +180,9 @@ for (const width of [390, 320]) {
     await dialog
       .getByRole("button", { name: "Spara uppgift", exact: true })
       .click();
-    await active
+    await openContext(page);
+    await page
+      .locator(".planner-habits")
       .getByRole("checkbox", {
         name: "Kontrollera leveranspaketet",
         exact: true,
@@ -202,7 +201,16 @@ for (const width of [390, 320]) {
     await nav.getByRole("button", { name: "Vecka", exact: true }).click();
     await page.reload();
     await expect(overview).toContainText("19 AV 29 KLARA");
-    await expect(overview).toContainText("Kontrollera leveranspaketet");
+    await openContext(page);
+    await page
+      .getByRole("checkbox", {
+        name: "Visa klara och släppta uppgifter",
+        exact: true,
+      })
+      .check();
+    await expect(page.locator(".planner-habits")).toContainText(
+      "Kontrollera leveranspaketet",
+    );
     await overview
       .getByRole("button", { name: "Nästa vecka", exact: true })
       .click();

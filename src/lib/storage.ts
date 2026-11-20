@@ -61,6 +61,8 @@ export function decodeData(raw: string): AppData {
       s.familyStart >= s.familyEnd ||
       s.buffer < 0 ||
       s.trainingMinutes <= 0 ||
+      (s.weekTemplate !== undefined &&
+        !["mon-thu-v1", "off"].includes(s.weekTemplate)) ||
       (s.autoPlanning !== undefined && typeof s.autoPlanning !== "boolean")
     )
       throw new Error("Planeringsreglerna är ogiltiga.");

@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { openToday } from "./navigation";
 import AxeBuilder from "@axe-core/playwright";
 
-test("måndagsplanering och fredagsövning sparas, följer rätt vecka och går att bocka av i mobilappen", async ({
+test("måndagsplanering och torsdagsövning sparas, följer rätt vecka och går att bocka av i mobilappen", async ({
   page,
 }) => {
   await page.clock.install({ time: new Date("2026-10-26T08:00:00+01:00") });
@@ -14,7 +14,7 @@ test("måndagsplanering och fredagsövning sparas, följer rätt vecka och går 
   await openToday(page);
   const start = page
     .locator(".calendar-entry")
-    .filter({ hasText: "Veckostart" });
+    .filter({ hasText: "Veckoincheck" });
   await start.locator(".calendar-block").click();
   await expect(page.getByRole("dialog")).toHaveAccessibleName("Måndagscheck");
   await page
@@ -34,13 +34,13 @@ test("måndagsplanering och fredagsövning sparas, följer rätt vecka och går 
     "Två ansökningar på måndag och projektarbete på onsdag.",
   );
   await page.getByRole("button", { name: "Stäng dialog", exact: true }).click();
-  await page.getByRole("button", { name: /^Visa fredag/ }).click();
+  await page.getByRole("button", { name: /^Visa torsdag/ }).click();
   const review = page
     .locator(".calendar-entry")
-    .filter({ hasText: "Veckoavstämning" });
+    .filter({ hasText: "Stänga veckan" });
   await review.locator(".calendar-block").click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog).toHaveAccessibleName("Fredagscheck");
+  await expect(dialog).toHaveAccessibleName("Torsdagscheck");
   await page
     .getByLabel(/^Sammanfattning av veckan/)
     .fill("Utbildningsmodulerna klara.");
@@ -71,7 +71,7 @@ test("måndagsplanering och fredagsövning sparas, följer rätt vecka och går 
   expect(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
     true,
   );
-  await page.screenshot({ path: "test-results/friday-exercise-320.png" });
+  await page.screenshot({ path: "test-results/thursday-exercise-320.png" });
   await page
     .getByRole("button", { name: "Avsluta veckan", exact: true })
     .click();
@@ -83,7 +83,7 @@ test("måndagsplanering och fredagsövning sparas, följer rätt vecka och går 
     .click();
   await page.reload();
   await openToday(page);
-  await page.getByRole("button", { name: /^Visa fredag/ }).click();
+  await page.getByRole("button", { name: /^Visa torsdag/ }).click();
   await review.locator(".calendar-block").click();
   await expect(page.getByLabel(/^Bedömning av måluppfyllelse/)).toHaveValue(
     "Jobbmålet delvis uppnått.",
