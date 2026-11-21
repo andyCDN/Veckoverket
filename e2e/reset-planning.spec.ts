@@ -44,7 +44,12 @@ for (const mobile of [false, true]) {
     );
     if (mobile) await page.setViewportSize({ width: 320, height: 740 });
     await page.goto("./");
-    await expect(page.locator(".calendar-grid")).toBeVisible();
+    await expect(
+      page.locator(mobile ? ".studio-days" : ".calendar-grid"),
+    ).toBeVisible();
+    await expect
+      .poll(async () => (await stored(page)).personalScheduleVersion)
+      .toBe(1);
     const before = await stored(page);
     const nav = page.getByRole("navigation", { name: "Huvudnavigation" });
     await nav.getByText("Mer", { exact: true }).click();
@@ -87,7 +92,9 @@ for (const mobile of [false, true]) {
       .getByRole("button", { name: "Nollställ nu", exact: true })
       .click();
     await expect(dialog).not.toBeVisible();
-    await expect(page.locator(".calendar-entry")).toHaveCount(0);
+    await expect(
+      page.locator(mobile ? ".studio-entries > li" : ".calendar-entry"),
+    ).toHaveCount(0);
     const result = await stored(page);
     expect(result.settings).toEqual(before.settings);
     expect(result.categories).toEqual(before.categories);
@@ -98,10 +105,18 @@ for (const mobile of [false, true]) {
     expect(result.reflections).toEqual({});
     expect(Object.keys(result.weeks)).toEqual([week]);
     await page.reload();
-    await expect(page.locator(".calendar-entry")).toHaveCount(0);
-    await expect(page.locator(".day-shell.is-selected .day-empty")).toHaveText(
-      "Inga pass denna dag",
-    );
+    await expect(
+      page.locator(mobile ? ".studio-entries > li" : ".calendar-entry"),
+    ).toHaveCount(0);
+    await expect(
+      page
+        .locator(
+          mobile
+            ? ".studio-days .studio-empty"
+            : ".day-shell.is-selected .day-empty",
+        )
+        .first(),
+    ).toHaveText(mobile ? "Inga block planerade." : "Inga pass denna dag");
     await nav.getByText("Mer", { exact: true }).click();
     await nav
       .getByRole("button", {

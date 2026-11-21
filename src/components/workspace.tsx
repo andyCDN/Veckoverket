@@ -98,7 +98,7 @@ import { Modal } from "./modal";
 import { AppInstallButton, useStandaloneMode } from "./app-install";
 import { ResetPlanningModal } from "./reset-planning";
 import { resetPlanning } from "@/lib/reset-planning";
-import { upgradePersonalWeek } from "@/lib/personal-week";
+import { initializePersonalSchedule } from "@/lib/initialize-personal-schedule";
 import {
   applyActivityExclusions,
   linkedInSeriesCounts,
@@ -168,10 +168,7 @@ function linkedPlan(plan: WeekPlan, goals: Goal[], preserved: Activity[] = []) {
   };
 }
 function newWorkspace() {
-  const data = upgradePersonalWeek(createData(), planningBoundary(), true),
-    week = monday(today());
-  data.weeks[week] = linkedPlan(generateWeek(week, data).plan, data.goals);
-  return data;
+  return initializePersonalSchedule(createData());
 }
 export function Workspace() {
   const standalone = useStandaloneMode();
@@ -310,7 +307,7 @@ export function Workspace() {
         removedBookings = before.bookings;
         removedRules = before.rules;
         return !configured || cloud.phase === "synced"
-          ? upgradeWeeklyRoutines(upgradePersonalWeek(current))
+          ? upgradeWeeklyRoutines(initializePersonalSchedule(current))
           : applyActivityExclusions(current);
       },
       {
