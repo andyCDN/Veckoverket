@@ -338,3 +338,144 @@ test("midnatt i Stockholm stoppar avprickning i gammal dialog och börjar en ny 
     )
     .toEqual(["2026-11-12"]);
 });
+
+for (const width of [1440, 390])
+  test(`dagstarten göms när alla steg är klara eller uppskjutna och kan öppnas igen ${width}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 950 });
+    await page.clock.install({ time: new Date("2026-11-11T07:00:00Z") });
+    const data = fixture();
+    data.personalScheduleVersion = 2;
+    await page.addInitScript((value) => {
+      if (!localStorage.getItem("veckoverket.workspace.v1"))
+        localStorage.setItem("veckoverket.workspace.v1", JSON.stringify(value));
+    }, data);
+    await page.goto("./");
+    const start = page.getByRole("region", { name: "Din dagstart" });
+    await expect(start).toBeVisible();
+    await start
+      .getByRole("checkbox", {
+        name: "Steget för Utredare · Kommunen klart",
+        exact: true,
+      })
+      .click();
+    await expect(start).toBeVisible();
+    await start
+      .getByRole("button", {
+        name: "Lägg Strateg · Kommunen åt sidan idag",
+        exact: true,
+      })
+      .click();
+    await expect(start).toBeVisible();
+    await start
+      .getByRole("checkbox", {
+        name: "Steget för Anna · Kommunen klart",
+        exact: true,
+      })
+      .click();
+    await expect(start).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { name: "Börja här idag", exact: true }),
+    ).toHaveCount(0);
+    const reopen = page.getByRole("button", {
+      name: "Visa dagens att göra",
+      exact: true,
+    });
+    await expect(reopen).toBeVisible();
+    await page.reload();
+    await expect(reopen).toBeVisible();
+    await expect(start).toHaveCount(0);
+    const saved = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem("veckoverket.workspace.v1")!),
+    );
+    expect(saved.applications).toEqual(data.applications);
+    expect(saved.contacts).toEqual(data.contacts);
+    expect(saved.dailyCheckIns[date].completedKeys).toEqual([
+      "application:today",
+      "contact:due",
+    ]);
+    expect(saved.dailyCheckIns[date].deferredKeys).toEqual([
+      "application:later",
+    ]);
+
+    await reopen.click();
+    const dialog = page.getByRole("dialog", {
+      name: "Att göra idag",
+      exact: true,
+    });
+    await dialog.locator(".daily-todos-deferred > summary").click();
+    await dialog
+      .getByRole("button", {
+        name: "Ta tillbaka Strateg · Kommunen",
+        exact: true,
+      })
+      .click();
+    await dialog
+      .getByRole("button", { name: "Tillbaka till planen", exact: true })
+      .click();
+    await expect(start).toBeVisible();
+    await start
+      .getByRole("button", {
+        name: "Lägg Strateg · Kommunen åt sidan idag",
+        exact: true,
+      })
+      .click();
+    await expect(start).toHaveCount(0);
+
+    // The hidden card keeps its date timer; yesterday's choices do not hide a new day.
+    await page.clock.fastForward(24 * 60 * 60 * 1000);
+    await expect(start).toBeVisible();
+    await expect(
+      start.getByRole("button", {
+        name: "Börja med Strateg · Kommunen",
+        exact: true,
+      }),
+    ).toBeVisible();
+  });
+
+test("en helt uppskjuten dagslista gömmer dagstarten även efter en ny sidladdning", async ({
+  page,
+}) => {
+  await page.clock.install({ time: new Date("2026-11-11T07:00:00Z") });
+  const data = fixture();
+  data.personalScheduleVersion = 2;
+  data.dailyCheckIns = {
+    [date]: {
+      applicationIds: ["today", "later"],
+      contactIds: ["due"],
+      deferredKeys: ["application:today", "application:later", "contact:due"],
+      focus: { kind: "none", id: "none", title: "Bara dagens befintliga plan" },
+      updatedAt: "2026-11-11T07:00:00Z",
+    },
+  };
+  await page.addInitScript(
+    (value) =>
+      localStorage.setItem("veckoverket.workspace.v1", JSON.stringify(value)),
+    data,
+  );
+  await page.goto("./");
+  const reopen = page.getByRole("button", {
+    name: "Visa dagens att göra",
+    exact: true,
+  });
+  await expect(reopen).toBeVisible();
+  await expect(page.getByRole("region", { name: "Din dagstart" })).toHaveCount(
+    0,
+  );
+  await reopen.click();
+  const dialog = page.getByRole("dialog", {
+    name: "Att göra idag",
+    exact: true,
+  });
+  await expect(dialog).toContainText(
+    "Stegen som återstår ligger åt sidan idag",
+  );
+  await dialog.locator(".daily-todos-deferred > summary").click();
+  await expect(
+    dialog.getByRole("button", {
+      name: "Ta tillbaka Utredare · Kommunen",
+      exact: true,
+    }),
+  ).toBeVisible();
+});
