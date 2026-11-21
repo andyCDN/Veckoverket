@@ -42,6 +42,17 @@ export function DailyStart({
     choice = model.recommendation;
   const todos = dailyTodoPlan(data, boundary.date);
   const hasDailyTodos = todos.items.length > 0;
+  if (
+    hasDailyTodos &&
+    !todos.items.some(
+      (item) => item.active && !item.completed && !item.deferred,
+    )
+  )
+    return (
+      <button className="text-button" onClick={onCheckIn}>
+        Visa dagens att göra
+      </button>
+    );
   return (
     <section className="daily-start" aria-label="Din dagstart">
       <header>
