@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { createData } from "../src/lib/defaults";
 import { generateWeek } from "../src/lib/planner";
+import { scheduleSlotCount } from "../src/lib/create-personal-schedule";
 import { navigateTo } from "./navigation";
 
 for (const width of [1440, 390, 320])
@@ -44,9 +45,8 @@ for (const width of [1440, 390, 320])
     await expect
       .poll(async () => (await stored()).weeks[next].templateId)
       .toBe("mon-thu-v1");
-    expect((await stored()).weeks[current].activities).toEqual(
-      data.weeks[current].activities,
-    );
+    expect(scheduleSlotCount((await stored()).weeks[current])).toBe(19);
+    const currentPlan = (await stored()).weeks[current];
     await page
       .getByRole("button", { name: "Nästa vecka", exact: true })
       .click();
@@ -125,9 +125,7 @@ for (const width of [1440, 390, 320])
       ),
     ).toBe(true);
     await page.reload();
-    expect((await stored()).weeks[current].activities).toEqual(
-      data.weeks[current].activities,
-    );
+    expect((await stored()).weeks[current]).toEqual(currentPlan);
     expect((await stored()).reflections[next].good).toBe(
       "Avslutar på torsdag.",
     );

@@ -20,6 +20,7 @@ test("mobilvyn visar veckopilar utan att öppna verktygsmenyn", async ({
   await previous.click();
   await expect(controls).toContainText("V.44");
   await page.setViewportSize({ width: 320, height: 740 });
+  await controls.scrollIntoViewIfNeeded();
   await expect(next).toBeInViewport();
   await expect(previous).toBeInViewport();
   await next.click();

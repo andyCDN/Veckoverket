@@ -8,6 +8,8 @@ test("drar direkt i veckokalenderns tomma yta med korrekt tid på en utvidgad ti
 }) => {
   await page.clock.install({ time: new Date("2026-11-02T07:00:00Z") });
   const data = createData();
+  // This scenario deliberately uses the general planning mode and custom axis.
+  data.personalScheduleVersion = 1;
   data.settings = {
     ...data.settings,
     autoPlanning: false,

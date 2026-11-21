@@ -17,6 +17,8 @@ export function decodeData(raw: string): AppData {
   if (
     !d ||
     d.version !== 1 ||
+    (d.personalScheduleVersion !== undefined &&
+      d.personalScheduleVersion !== 1) ||
     typeof d.profile?.name !== "string" ||
     !Array.isArray(d.categories) ||
     !d.categories.length ||

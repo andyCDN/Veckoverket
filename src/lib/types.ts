@@ -264,6 +264,7 @@ export type DailyCheckIn = {
   updatedAt: string;
 };
 export type AppData = {
+  personalScheduleVersion?: 1;
   dailyCheckIns?: Record<string, DailyCheckIn>;
   version: 1;
   habits?: Habit[];
