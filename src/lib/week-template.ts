@@ -1,5 +1,5 @@
 import type { Activity, Settings } from "./types";
-import { weekday } from "./date";
+import { weekday, DAY_NAMES } from "./date";
 
 export const WEEK_TEMPLATE_ID = "mon-thu-v1" as const;
 export type WeekTemplateBlock = {
@@ -189,15 +189,45 @@ export const FOUR_DAY_WEEK: WeekTemplateBlock[] = [
 ];
 export const usesWeekTemplate = (s: Settings) =>
   s.weekTemplate === WEEK_TEMPLATE_ID;
-export const weekendStartsOn = (s: Settings) => (usesWeekTemplate(s) ? 4 : 5);
+export const templateBlocks = (s?: Settings) =>
+  s?.importedSchedule?.blocks ?? FOUR_DAY_WEEK;
+export const weekendStartsOn = (s: Settings) =>
+  usesWeekTemplate(s) && s.importedSchedule
+    ? Math.max(...s.importedSchedule.blocks.map((b) => b.day)) + 1
+    : usesWeekTemplate(s)
+      ? 4
+      : 5;
 export const weekendDays = (s: Settings) =>
   Array.from(
     { length: 7 - weekendStartsOn(s) },
     (_, i) => weekendStartsOn(s) + i,
   );
+export const startCheckLabel = (s: Settings) =>
+  s.importedSchedule && usesWeekTemplate(s)
+    ? `${DAY_NAMES[templateBlocks(s).find((b) => b.routine === "week-start")?.day ?? 0]}scheck`
+    : "Måndagscheck";
 export const reviewCheckLabel = (s: Settings) =>
-  usesWeekTemplate(s) ? "Torsdagscheck" : "Fredagscheck";
+  s.importedSchedule && usesWeekTemplate(s)
+    ? `${DAY_NAMES[templateBlocks(s).find((b) => b.routine === "week-review")?.day ?? 3]}scheck`
+    : usesWeekTemplate(s)
+      ? "Torsdagscheck"
+      : "Fredagscheck";
 export function templateSettings(s: Settings): Settings {
+  if (s.importedSchedule) {
+    const blocks = templateBlocks(s);
+    return {
+      ...s,
+      weekTemplate: WEEK_TEMPLATE_ID,
+      days: [...new Set(blocks.map((b) => b.day))].sort(),
+      start: Math.min(...blocks.map((b) => b.start)),
+      end: Math.max(...blocks.map((b) => b.end)),
+      musicMornings: 0,
+      trainingSessions: blocks.filter((b) => b.categoryId === "health").length,
+      weekends: blocks.some((b) => b.day >= 5),
+      buffer: 0,
+      autoPlanning: true,
+    };
+  }
   return {
     ...s,
     weekTemplate: WEEK_TEMPLATE_ID,
@@ -219,6 +249,15 @@ export function templateSettings(s: Settings): Settings {
 export function dayBounds(s: Settings, dateOrDay: string | number) {
   if (!usesWeekTemplate(s)) return { start: s.start, end: s.end };
   const day = typeof dateOrDay === "number" ? dateOrDay : weekday(dateOrDay);
+  if (s.importedSchedule) {
+    const blocks = templateBlocks(s).filter((b) => b.day === day);
+    return blocks.length
+      ? {
+          start: Math.min(...blocks.map((b) => b.start)),
+          end: Math.max(...blocks.map((b) => b.end)),
+        }
+      : { start: s.start, end: s.end };
+  }
   return {
     start: 510,
     end: day === 0 ? 900 : day === 3 ? 810 : 930,
@@ -227,19 +266,18 @@ export function dayBounds(s: Settings, dateOrDay: string | number) {
 export function fixedDayBreaks(s: Settings, dateOrDay: string | number) {
   const day = typeof dateOrDay === "number" ? dateOrDay : weekday(dateOrDay);
   return usesWeekTemplate(s)
-    ? FOUR_DAY_WEEK.filter(
-        (block) => block.day === day && block.blockType === "locked",
-      ).map(({ start, end }) => ({ start, end }))
+    ? templateBlocks(s)
+        .filter((block) => block.day === day && block.blockType === "locked")
+        .map(({ start, end }) => ({ start, end }))
     : [
         { start: s.lunchStart, end: s.lunchEnd },
         { start: s.familyStart, end: s.familyEnd },
       ];
 }
-export function templateTargetMinutes(id: string) {
+export function templateTargetMinutes(id: string, s?: Settings) {
   return id === "rest"
     ? 0
-    : FOUR_DAY_WEEK.filter((block) => block.categoryId === id).reduce(
-        (sum, block) => sum + block.end - block.start,
-        0,
-      );
+    : templateBlocks(s)
+        .filter((block) => block.categoryId === id)
+        .reduce((sum, block) => sum + block.end - block.start, 0);
 }

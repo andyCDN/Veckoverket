@@ -43,6 +43,7 @@ export function upgradePersonalWeek(
     weeks[week] = plan;
   };
   for (const [week, plan] of Object.entries(data.weeks)) {
+    const weekSettings = plan.rules?.importedSchedule ? plan.rules : settings;
     if (week <= monday(boundary.date)) {
       // Older backups may predate per-week rules. Freeze their original rules
       // before changing the defaults for upcoming weeks.
@@ -53,14 +54,18 @@ export function upgradePersonalWeek(
         });
       continue;
     }
+    // An imported default applies to new weeks. Existing, unselected weeks
+    // retain their snapshots until explicitly selected in an import.
+    if (settings.importedSchedule && plan.rules && !plan.rules.importedSchedule)
+      continue;
     if (
       !installing &&
       plan.templateId === WEEK_TEMPLATE_ID &&
       plan.rules?.weekTemplate === WEEK_TEMPLATE_ID &&
       Boolean(plan.rules.keepTemplateSlots) ===
-        Boolean(settings.keepTemplateSlots) &&
+        Boolean(weekSettings.keepTemplateSlots) &&
       Boolean(plan.rules.strictWeekTemplate) ===
-        Boolean(settings.strictWeekTemplate) &&
+        Boolean(weekSettings.strictWeekTemplate) &&
       !plan.templateNeedsRefresh
     )
       continue;
@@ -72,16 +77,24 @@ export function upgradePersonalWeek(
       updateWeek(week, {
         ...plan,
         templateId: WEEK_TEMPLATE_ID,
-        rules: structuredClone(settings),
+        rules: structuredClone(weekSettings),
         targets: Object.fromEntries(
-          categories.map((c) => [c.id, templateTargetMinutes(c.id)]),
+          categories.map((c) => [
+            c.id,
+            templateTargetMinutes(c.id, weekSettings),
+          ]),
         ),
       });
       continue;
     }
-    const result = generateWeek(week, { ...data, settings, categories }, plan, {
-      notBefore: boundary,
-    }).plan;
+    const result = generateWeek(
+      week,
+      { ...data, settings: weekSettings, categories },
+      plan,
+      {
+        notBefore: boundary,
+      },
+    ).plan;
     const original = new Set(plan.activities);
     updateWeek(week, {
       ...result,

@@ -1,4 +1,4 @@
-import type { Activity, AppData, WeekPlan } from "./types";
+import type { Activity, AppData, WeekPlan, Settings } from "./types";
 import type { CloudTransport } from "./workspace-sync";
 import { addDays, monday } from "./date";
 import { isLocalDate } from "./google-time";
@@ -8,7 +8,7 @@ import {
   generateTemplateWeek,
   matchesTemplateBlock,
 } from "./template-planning";
-import { FOUR_DAY_WEEK, templateSettings } from "./week-template";
+import { templateBlocks, templateSettings } from "./week-template";
 import { validatePlan } from "./planner";
 import {
   normalizeFixedWeek,
@@ -46,7 +46,7 @@ const serialize = (value: unknown) =>
   );
 
 export function scheduleSlotCount(plan: WeekPlan) {
-  return FOUR_DAY_WEEK.filter((block) => {
+  return templateBlocks(plan.rules).filter((block) => {
     const date = addDays(plan.week, block.day);
     const intervals = plan.activities
       .filter(
@@ -68,16 +68,20 @@ export function scheduleSlotCount(plan: WeekPlan) {
 
 /** Install the prescribed slots. Superseded planning and work that cannot fit
  * remain outside the active calendar; appointments and outcomes are retained. */
-export function createPersonalSchedule(data: AppData, week: string) {
+export function createPersonalSchedule(
+  data: AppData,
+  week: string,
+  rules?: Settings,
+) {
   if (!isLocalDate(week) || monday(week) !== week)
     throw new Error("Välj en giltig vecka som börjar på en måndag.");
   const cleaned = removeLinkedInSeries(data, [], true).data;
   const settings = {
-    ...templateSettings(cleaned.settings),
+    ...templateSettings(rules ?? cleaned.settings),
     keepTemplateSlots: true,
     strictWeekTemplate: true,
   };
-  const required = new Set(FOUR_DAY_WEEK.map((b) => b.categoryId));
+  const required = new Set(templateBlocks(settings).map((b) => b.categoryId));
   const categories = [
     ...cleaned.categories,
     ...DEFAULT_CATEGORIES.filter(
@@ -141,14 +145,14 @@ export function createPersonalSchedule(data: AppData, week: string) {
     });
   const unchanged =
     cleaned === data &&
-    serialize(settings) === serialize(data.settings) &&
+    (rules || serialize(settings) === serialize(data.settings)) &&
     serialize(categories) === serialize(data.categories) &&
     signature(plan) === signature(existing);
   let next = unchanged
     ? data
     : {
         ...cleaned,
-        settings,
+        settings: rules ? cleaned.settings : settings,
         categories,
         weeks: { ...cleaned.weeks, [week]: plan },
       };
@@ -168,7 +172,7 @@ export function createPersonalSchedule(data: AppData, week: string) {
       ),
     };
   const slots = scheduleSlotCount(plan);
-  if (slots !== FOUR_DAY_WEEK.length)
+  if (slots !== templateBlocks(settings).length)
     throw new Error(
       "Alla schemapass kunde inte skapas. Ingen ändring har sparats.",
     );

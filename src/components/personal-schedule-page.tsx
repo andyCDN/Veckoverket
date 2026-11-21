@@ -194,7 +194,7 @@ export function PersonalSchedulePage() {
           <h2>Veckoschemat är sparat</h2>
           <p role="status">
             Kontrollerat i {user ? "molnplanen" : "den sparade planen"}:{" "}
-            {report.slots} av 19 schemapass finns på dina tider.
+            {report.slots} av {report.slots} schemapass finns på dina tider.
           </p>
           {report.conflicts.length > 0 ? (
             <div>

@@ -39,7 +39,6 @@ import { GOOGLE_CATEGORY_ID } from "@/lib/external-calendar";
 import { ROUTINE_CATEGORY } from "@/lib/weekly-routines";
 import { Modal } from "./modal";
 import { AppInstallCard } from "./app-install";
-import { appPath } from "@/lib/app-path";
 function CategoryForm({
   onSave,
   onClose,
@@ -110,6 +109,7 @@ export function SettingsView({
   onGoogle,
   onCategoryRules,
   onApplyCategoryRules,
+  onImportSchedule,
 }: {
   data: AppData;
   week: string;
@@ -122,6 +122,7 @@ export function SettingsView({
   onGoogle: () => void;
   onCategoryRules: (rules: CalendarCategoryRule[]) => void;
   onApplyCategoryRules: () => void;
+  onImportSchedule: () => void;
 }) {
   const [s, setS] = useState(data.settings),
     [cats, setCats] = useState(data.categories),
@@ -132,9 +133,10 @@ export function SettingsView({
   const patch = (v: Partial<Settings>) => setS((s) => ({ ...s, ...v }));
   const valid =
     s.start < s.end &&
-    s.lunchStart < s.lunchEnd &&
-    s.familyStart < s.familyEnd &&
-    s.lunchEnd <= s.familyStart;
+    (usesWeekTemplate(s) ||
+      (s.lunchStart < s.lunchEnd &&
+        s.familyStart < s.familyEnd &&
+        s.lunchEnd <= s.familyStart));
   const preview = valid
     ? generateWeek(
         week,
@@ -169,9 +171,13 @@ export function SettingsView({
             <h3>Min veckoplan</h3>
             <label className="switch-row">
               <span>
-                Fyradagarsvecka, måndag–torsdag
+                {s.importedSchedule
+                  ? "Importerat veckoschema"
+                  : "Fyradagarsvecka, måndag–torsdag"}
                 <small>
-                  Fasta tider enligt din mall. Fredag–söndag visas som helg.
+                  {s.importedSchedule
+                    ? "Fasta tider enligt ditt importerade schema."
+                    : "Fasta tider enligt din mall. Fredag–söndag visas som helg."}
                 </small>
               </span>
               <input
@@ -186,11 +192,15 @@ export function SettingsView({
                 }
               />
             </label>
-            {usesWeekTemplate(s) && <WeekTemplateOverview />}
+            {usesWeekTemplate(s) && <WeekTemplateOverview settings={s} />}
             <p>
-              <a className="button secondary" href={appPath("/veckoschema/")}>
-                Skapa mitt schema för nästa vecka
-              </a>
+              <button
+                type="button"
+                className="button secondary"
+                onClick={onImportSchedule}
+              >
+                Importera veckoschema
+              </button>
             </p>
           </section>
           <section className="settings-section">

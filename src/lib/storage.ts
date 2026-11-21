@@ -7,6 +7,7 @@ import type { AppData } from "./types";
 import { googleEventUrl, isGoogleEventKey } from "./external-calendar";
 import { isLocalDate } from "./google-time";
 import { ensureCityHallCategory, refreshDemoCopy } from "./defaults";
+import { validateImportedSchedule } from "./schedule-import";
 export const STORAGE_KEY = "veckoverket.workspace.v1";
 export interface StorageLike {
   getItem(key: string): string | null;
@@ -38,6 +39,10 @@ export function decodeData(raw: string): AppData {
       .map((p) => (p as { rules?: unknown }).rules)
       .filter(Boolean),
   ] as Record<string, any>[]) {
+    validateImportedSchedule(
+      s?.importedSchedule,
+      new Set(d.categories.map((c: { id: string }) => c.id)),
+    );
     if (
       !s ||
       !Array.isArray(s.days) ||
@@ -133,6 +138,7 @@ export function decodeData(raw: string): AppData {
       week: string;
       activities: Record<string, unknown>[];
       replacedActivities?: Record<string, unknown>[];
+      scheduleImport?: { id: string; definitionId: string; importedAt: string };
     },
   ][]) {
     if (
@@ -141,6 +147,17 @@ export function decodeData(raw: string): AppData {
       !Array.isArray(plan.activities)
     )
       throw new Error("Veckodatan är ogiltig.");
+    if (
+      plan.scheduleImport !== undefined &&
+      (!plan.scheduleImport ||
+        typeof plan.scheduleImport.id !== "string" ||
+        !plan.scheduleImport.id ||
+        typeof plan.scheduleImport.definitionId !== "string" ||
+        !plan.scheduleImport.definitionId ||
+        typeof plan.scheduleImport.importedAt !== "string" ||
+        !Number.isFinite(Date.parse(plan.scheduleImport.importedAt)))
+    )
+      throw new Error("Schemaimportens sparinformation är ogiltig.");
     const templateId = (plan as { templateId?: unknown }).templateId;
     if (templateId !== undefined && templateId !== "mon-thu-v1")
       throw new Error("Veckomallen är ogiltig.");

@@ -7,7 +7,7 @@ import type {
   WeekPlan,
 } from "./types";
 import { addDays, today } from "./date";
-import { usesWeekTemplate } from "./week-template";
+import { usesWeekTemplate, templateBlocks } from "./week-template";
 import { blocksTime } from "./external-calendar";
 
 export const ROUTINE_CATEGORY: Category = {
@@ -40,6 +40,18 @@ export const WEEKLY_ROUTINES = [
 ] as const;
 
 export function weeklyRoutines(settings: Settings) {
+  if (usesWeekTemplate(settings) && settings.importedSchedule)
+    return templateBlocks(settings)
+      .filter((b) => b.routine)
+      .map((b) => ({
+        kind: b.routine!,
+        day: b.day,
+        minutes: b.end - b.start,
+        title: b.title,
+        description:
+          "Veckoincheck och uppföljning enligt ditt importerade schema.",
+        start: b.start,
+      }));
   return WEEKLY_ROUTINES.map((routine) =>
     usesWeekTemplate(settings)
       ? {

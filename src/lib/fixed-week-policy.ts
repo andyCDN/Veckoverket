@@ -1,6 +1,6 @@
 import type { Activity, Settings, WeekPlan } from "./types";
 import { DAY_NAMES, time, weekday } from "./date";
-import { FOUR_DAY_WEEK, usesWeekTemplate } from "./week-template";
+import { templateBlocks, usesWeekTemplate } from "./week-template";
 
 export const fixedWeekIsActive = (s: Settings) =>
   usesWeekTemplate(s) && Boolean(s.strictWeekTemplate);
@@ -30,7 +30,15 @@ const genericAreas: Record<string, string> = {
   musikproduktion: "music",
   "musik & kreativitet": "music",
 };
-export const genericScheduleArea = (a: Pick<Activity, "title">) =>
+export const genericScheduleArea = (
+  a: Pick<Activity, "title"> & Partial<Pick<Activity, "categoryId">>,
+  s?: Settings,
+) =>
+  s?.importedSchedule?.blocks.find(
+    (b) => key(b.title) === key(a.title) && b.categoryId === a.categoryId,
+  )?.categoryId ??
+  s?.importedSchedule?.blocks.find((b) => key(b.title) === key(a.title))
+    ?.categoryId ??
   genericAreas[key(a.title)];
 export const hasScheduledWork = (a: Partial<Activity>) =>
   Boolean(
@@ -45,12 +53,18 @@ export const hasScheduledWork = (a: Partial<Activity>) =>
 
 /** Learning is always timeboxed. Fixed interviews/appointments are distinct
  * from flexible job/network work; generic legacy slots are always managed. */
-export function scheduledWorkArea(a: Activity) {
-  const generic = genericScheduleArea(a);
+export function scheduledWorkArea(a: Activity, s?: Settings) {
+  if (s?.importedSchedule && a.external) return;
+  const generic = genericScheduleArea(a, s);
   if (generic) return generic;
   if (/^kompetensutveckling(?:\s|[:–—-]|$)/u.test(key(a.title)))
     return "learning";
   if (a.categoryId === "learning") return "learning";
+  if (
+    s?.importedSchedule?.blocks.some((b) => b.categoryId === a.categoryId) &&
+    (a.blockType === "flexible" || hasScheduledWork(a))
+  )
+    return a.categoryId;
   if (
     ["career", "networking"].includes(a.categoryId) &&
     a.blockType !== "locked" &&
@@ -60,12 +74,14 @@ export function scheduledWorkArea(a: Activity) {
 }
 export function fitsFixedWeek(a: Activity, s: Settings) {
   if (!fixedWeekIsActive(s) || a.status !== "planned") return true;
-  const area = scheduledWorkArea(a);
+  const area = scheduledWorkArea(a, s);
   if (!area) return true;
   if (a.external && (!a.external.busy || a.external.allDay)) return false;
   const wholeSlot =
-    genericScheduleArea(a) && !hasScheduledWork(a) && a.source !== "generated";
-  return FOUR_DAY_WEEK.some(
+    genericScheduleArea(a, s) &&
+    !hasScheduledWork(a) &&
+    a.source !== "generated";
+  return templateBlocks(s).some(
     (b) =>
       b.day === weekday(a.date) &&
       b.categoryId === area &&
@@ -76,8 +92,8 @@ export function fitsFixedWeek(a: Activity, s: Settings) {
 }
 export function fixedWeekError(a: Activity, s: Settings) {
   if (fitsFixedWeek(a, s)) return;
-  const area = scheduledWorkArea(a);
-  const slots = FOUR_DAY_WEEK.filter(
+  const area = scheduledWorkArea(a, s);
+  const slots = templateBlocks(s).filter(
     (b) => b.day === weekday(a.date) && b.categoryId === area,
   );
   return slots.length
@@ -100,13 +116,17 @@ export function normalizeFixedWeek(plan: WeekPlan, s: Settings) {
     fillers: Activity[] = [];
   let changed = false;
   for (const a of plan.activities.filter((a) => a.status === "planned")) {
-    const generic = genericScheduleArea(a);
+    if (s.importedSchedule && a.external) {
+      kept.push(a);
+      continue;
+    }
+    const generic = genericScheduleArea(a, s);
     if (generic && !hasScheduledWork(a)) {
       if (a.source === "generated" && fitsFixedWeek(a, s)) fillers.push(a);
       else if (
         a.categoryId === generic &&
         fitsFixedWeek(a, s) &&
-        FOUR_DAY_WEEK.some(
+        templateBlocks(s).some(
           (b) =>
             b.day === weekday(a.date) &&
             b.categoryId === generic &&
@@ -121,7 +141,7 @@ export function normalizeFixedWeek(plan: WeekPlan, s: Settings) {
       }
       continue;
     }
-    const area = scheduledWorkArea(a);
+    const area = scheduledWorkArea(a, s);
     if (
       area &&
       (a.categoryId !== area ||
@@ -130,7 +150,7 @@ export function normalizeFixedWeek(plan: WeekPlan, s: Settings) {
           (b) =>
             b.date === a.date &&
             b.status !== "skipped" &&
-            scheduledWorkArea(b) === area &&
+            scheduledWorkArea(b, s) === area &&
             b.start < a.end &&
             b.end > a.start,
         ))
@@ -143,13 +163,13 @@ export function normalizeFixedWeek(plan: WeekPlan, s: Settings) {
     (a, b) =>
       Number(a.source === "generated") - Number(b.source === "generated"),
   )) {
-    const area = scheduledWorkArea(a);
+    const area = scheduledWorkArea(a, s);
     if (
       kept.some(
         (b) =>
           b.date === a.date &&
           b.status !== "skipped" &&
-          scheduledWorkArea(b) === area &&
+          scheduledWorkArea(b, s) === area &&
           b.start < a.end &&
           b.end > a.start,
       )
