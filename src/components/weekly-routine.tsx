@@ -7,7 +7,7 @@ import { WeekReview } from "./week-flow";
 import type { TaskDecision } from "@/lib/task-workflow";
 import { MondayGoals } from "./monday-goals";
 import type { MondayGoalDraft } from "@/lib/monday-goals";
-import { reviewCheckLabel } from "@/lib/week-template";
+import { reviewCheckLabel, startCheckLabel } from "@/lib/week-template";
 import { Modal } from "./modal";
 
 export function WeeklyRoutineModal({
@@ -89,7 +89,7 @@ export function WeeklyRoutineModal({
     <Modal
       title={
         start
-          ? "Måndagscheck"
+          ? startCheckLabel(data.weeks[week]?.rules ?? data.settings)
           : reviewCheckLabel(data.weeks[week]?.rules ?? data.settings)
       }
       description={

@@ -17,11 +17,12 @@ export function initializePersonalSchedule(
     for (const [week, plan] of Object.entries(next.weeks))
       if (
         week >= current &&
-        ((fixedWeekIsActive(next.settings) &&
+        ((!next.settings.importedSchedule &&
+          fixedWeekIsActive(next.settings) &&
           !fixedWeekIsActive(plan.rules ?? next.settings)) ||
           normalizeFixedWeek(plan, plan.rules ?? next.settings).changed)
       )
-        next = createPersonalSchedule(next, week).data;
+        next = createPersonalSchedule(next, week, plan.rules).data;
     return next;
   }
   let next = data;

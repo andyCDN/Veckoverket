@@ -100,6 +100,13 @@ export type Reflection = {
   reviewRecordedAt?: string;
 };
 export type Settings = {
+  importedSchedule?: {
+    id: string;
+    name: string;
+    savedAt: string;
+    blocks: import("./week-template").WeekTemplateBlock[];
+    ignoredRecurringIds: string[];
+  };
   excludedActivityTitles?: string[];
   weekTemplate?: "mon-thu-v1" | "off";
   keepTemplateSlots?: boolean;
@@ -121,6 +128,7 @@ export type Settings = {
   autoPlanning?: boolean;
 };
 export type WeekPlan = {
+  scheduleImport?: { id: string; definitionId: string; importedAt: string };
   replacedActivities?: Activity[];
   templateNeedsRefresh?: boolean;
   templateId?: "mon-thu-v1";

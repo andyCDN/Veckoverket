@@ -10,7 +10,7 @@ import {
   fixedWeekIsActive,
   scheduledWorkArea,
 } from "./fixed-week-policy";
-import { FOUR_DAY_WEEK } from "./week-template";
+import { templateBlocks } from "./week-template";
 import {
   excludedActivityTitle,
   removeLinkedInSeries,
@@ -38,6 +38,8 @@ import {
 } from "./weekly-routines";
 
 export function plannedDays(s: Settings): number[] {
+  if (usesWeekTemplate(s) && s.importedSchedule)
+    return [...new Set(templateBlocks(s).map((b) => b.day))].sort();
   return [
     ...new Set([
       ...s.days.filter((d) => d < 5 || s.weekends),
@@ -62,7 +64,7 @@ export function categoryMinutes(
     }, {});
 }
 export function targetMinutes(category: Category, s: Settings) {
-  if (usesWeekTemplate(s)) return templateTargetMinutes(category.id);
+  if (usesWeekTemplate(s)) return templateTargetMinutes(category.id, s);
   if (category.id === ROUTINE_CATEGORY.id) return routineMinutes(s);
   if (category.id === GOOGLE_CATEGORY_ID) return 0;
   if (category.id === "music")
@@ -190,6 +192,7 @@ export function validatePlan(activities: Activity[], s: Settings): Conflict[] {
     }
     if (
       a.categoryId === "music" &&
+      !s.importedSchedule &&
       a.source === "generated" &&
       (a.start !== s.start || a.end !== s.lunchStart)
     )
@@ -202,15 +205,15 @@ export function validatePlan(activities: Activity[], s: Settings): Conflict[] {
   });
   if (fixedWeekIsActive(s)) {
     const work = activities.filter(
-      (a) => a.status === "planned" && scheduledWorkArea(a),
+      (a) => a.status === "planned" && scheduledWorkArea(a, s),
     );
     for (const a of work) {
-      const area = scheduledWorkArea(a);
-      const limit = FOUR_DAY_WEEK.filter(
-        (b) => b.day === weekday(a.date) && b.categoryId === area,
-      ).reduce((n, b) => n + b.end - b.start, 0);
+      const area = scheduledWorkArea(a, s);
+      const limit = templateBlocks(s)
+        .filter((b) => b.day === weekday(a.date) && b.categoryId === area)
+        .reduce((n, b) => n + b.end - b.start, 0);
       const actual = work
-        .filter((b) => b.date === a.date && scheduledWorkArea(b) === area)
+        .filter((b) => b.date === a.date && scheduledWorkArea(b, s) === area)
         .reduce((n, b) => n + b.end - b.start, 0);
       if (actual > limit)
         issues.push({
@@ -245,6 +248,7 @@ export function validateMove(
     return "Skyddad tid måste flyttas som ett helt block.";
   if (
     original.categoryId === "music" &&
+    !s.importedSchedule &&
     (moved.start !== s.start || moved.end !== s.lunchStart)
   )
     return "Musiken behöver en hel förmiddag.";

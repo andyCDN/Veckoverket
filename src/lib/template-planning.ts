@@ -16,7 +16,7 @@ import {
   replacedScheduleActivities,
 } from "./fixed-week-policy";
 import {
-  FOUR_DAY_WEEK,
+  templateBlocks,
   templateTargetMinutes,
   WEEK_TEMPLATE_ID,
   type WeekTemplateBlock,
@@ -28,6 +28,11 @@ export function matchesTemplateBlock(a: Activity, block: WeekTemplateBlock) {
   if (block.routine) return a.routine === block.routine;
   if (block.blockType === "flexible") return a.categoryId === block.categoryId;
   const title = a.title.normalize("NFKC").toLocaleLowerCase("sv-SE").trim();
+  if (
+    a.categoryId === block.categoryId &&
+    title === block.title.normalize("NFKC").toLocaleLowerCase("sv-SE").trim()
+  )
+    return true;
   if (block.categoryId === "health")
     return /^(träna|träning)(?:\s|$)/u.test(title);
   if (block.categoryId === "rest") return /^lunch(?:\s|$)/u.test(title);
@@ -94,7 +99,9 @@ export function generateTemplateWeek(
     return id;
   };
   for (const recurring of data.recurring.filter(
-    (r) => !excludedActivityTitle(settings, r.title),
+    (r) =>
+      !excludedActivityTitle(settings, r.title) &&
+      !settings.importedSchedule?.ignoredRecurringIds.includes(r.id),
   )) {
     for (const day of recurring.weekdays.filter((day) =>
       settings.days.includes(day),
@@ -102,7 +109,7 @@ export function generateTemplateWeek(
       const date = addDays(week, day);
       if (
         fixedWeekIsActive(settings) &&
-        (genericScheduleArea(recurring) ||
+        (genericScheduleArea(recurring, settings) ||
           !fitsFixedWeek(
             { ...recurring, date, source: "recurring", status: "planned" },
             settings,
@@ -136,7 +143,7 @@ export function generateTemplateWeek(
       activities.push(pass);
     }
   }
-  for (const block of FOUR_DAY_WEEK) {
+  for (const block of templateBlocks(settings)) {
     const date = addDays(week, block.day),
       id = `${week}-template-${block.id}`;
     if (
@@ -246,7 +253,10 @@ export function generateTemplateWeek(
       rules: structuredClone(settings),
       weeklyRoutinesFrom: boundary?.date ?? week,
       targets: Object.fromEntries(
-        data.categories.map((c) => [c.id, templateTargetMinutes(c.id)]),
+        data.categories.map((c) => [
+          c.id,
+          templateTargetMinutes(c.id, settings),
+        ]),
       ),
     },
     conflicts,

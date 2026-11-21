@@ -1,7 +1,48 @@
 import { DAY_NAMES, time } from "@/lib/date";
-import { FOUR_DAY_WEEK } from "@/lib/week-template";
+import {
+  FOUR_DAY_WEEK,
+  templateBlocks,
+  weekendStartsOn,
+} from "@/lib/week-template";
+import type { Settings } from "@/lib/types";
 
-export function WeekTemplateOverview() {
+export function WeekTemplateOverview({
+  settings,
+}: { settings?: Settings } = {}) {
+  if (settings?.importedSchedule)
+    return (
+      <div
+        className="personal-week-overview"
+        aria-label="Importerat veckoschema"
+      >
+        <p>
+          <strong>{settings.importedSchedule.name}</strong> · Schemat du
+          importerat styr tiderna.
+        </p>
+        {[...new Set(templateBlocks(settings).map((b) => b.day))]
+          .sort()
+          .map((day) => (
+            <section key={day}>
+              <h3>{DAY_NAMES[day]}</h3>
+              <ul>
+                {templateBlocks(settings)
+                  .filter((b) => b.day === day)
+                  .map((b) => (
+                    <li key={b.id}>
+                      <span>
+                        {time(b.start)}–{time(b.end)}
+                      </span>
+                      <strong>{b.title}</strong>
+                    </li>
+                  ))}
+              </ul>
+            </section>
+          ))}
+        {weekendStartsOn(settings) < 7 && (
+          <p>{DAY_NAMES[weekendStartsOn(settings)]}–söndag är ledig tid.</p>
+        )}
+      </div>
+    );
   return (
     <div className="personal-week-overview" aria-label="Min fyradagarsvecka">
       {[0, 1, 2, 3].map((day) => (

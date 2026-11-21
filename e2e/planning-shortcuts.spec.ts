@@ -10,8 +10,10 @@ for (const width of [1440, 390, 320])
     await page.setViewportSize({ width, height: 900 });
     await page.clock.install({ time: new Date("2026-11-02T07:00:00Z") });
     const data = createData();
+    data.personalScheduleVersion = 2;
     data.settings = {
       ...data.settings,
+      weekTemplate: "off",
       days: [1, 2, 3],
       start: 480,
       end: 960,

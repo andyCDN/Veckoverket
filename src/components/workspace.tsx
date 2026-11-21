@@ -57,10 +57,17 @@ import {
   plannedDays,
   visibleDays,
 } from "@/lib/planner";
-import { downloadData } from "@/lib/storage";
+import { downloadData, loadLocal } from "@/lib/storage";
 import { useWorkspaceStorage } from "@/lib/use-workspace-storage";
 import { StorageStatus, syncLabel } from "./storage-status";
-import { supabase } from "@/lib/supabase";
+import { supabase, cloudTransport } from "@/lib/supabase";
+import { appPath } from "@/lib/app-path";
+import { ScheduleImport } from "./schedule-import";
+import {
+  verifyScheduleImport,
+  type ScheduleImportPreview,
+  type ScheduleImportProof,
+} from "@/lib/schedule-import";
 import { isLocalDate } from "@/lib/google-time";
 import { bookDeadlineWork } from "@/lib/deadline-scheduling";
 import { DailyCheckInModal } from "./daily-check-in";
@@ -111,6 +118,8 @@ import {
 import {
   weekendStartsOn,
   reviewCheckLabel,
+  startCheckLabel,
+  templateBlocks,
   usesWeekTemplate,
 } from "@/lib/week-template";
 import { upgradeWeeklyRoutines } from "@/lib/weekly-routines";
@@ -175,7 +184,9 @@ function linkedPlan(plan: WeekPlan, goals: Goal[], preserved: Activity[] = []) {
 function newWorkspace() {
   return initializePersonalSchedule(createData());
 }
-export function Workspace() {
+export function Workspace({
+  initialScheduleImport = false,
+}: { initialScheduleImport?: boolean } = {}) {
   const standalone = useStandaloneMode();
   const {
     data,
@@ -188,6 +199,7 @@ export function Workspace() {
     configured,
     cloud,
     retry,
+    syncNow,
     logout,
     setEditing,
     chooseInitial,
@@ -227,6 +239,9 @@ export function Workspace() {
   const [weekendOpen, setWeekendOpen] = useState(false);
   const [week, setWeek] = useState(monday(today())),
     [view, setView] = useState<View>("planner");
+  const [scheduleImportOpen, setScheduleImportOpen] = useState(
+    initialScheduleImport,
+  );
   const [daySelection, setDaySelection] = useState<{
     week: string;
     day: number;
@@ -279,6 +294,7 @@ export function Workspace() {
     paused:
       cloud.phase !== "synced" ||
       Boolean(
+        scheduleImportOpen ||
         editor ||
         newGoal ||
         checkInDate ||
@@ -300,8 +316,27 @@ export function Workspace() {
     onSnapshot: autoImportIcal,
   });
   const notify = useCallback((message: string) => setNotice(message), []);
+  const verifyImport = useCallback(
+    async (proof: ScheduleImportProof) => {
+      await Promise.resolve();
+      const saved =
+        configured && user
+          ? (await cloudTransport(user.id).load())?.data
+          : loadLocal(localStorage);
+      if (!saved)
+        throw new Error(
+          "Den sparade planen kunde inte läsas tillbaka efter importen.",
+        );
+      verifyScheduleImport(saved, proof);
+    },
+    [configured, user?.id],
+  );
   useEffect(() => {
-    if (!data || (configured && ["loading", "migration"].includes(cloud.phase)))
+    if (
+      !data ||
+      scheduleImportOpen ||
+      (configured && ["loading", "migration"].includes(cloud.phase))
+    )
       return;
     let removedBookings = 0,
       removedRules = 0;
@@ -326,10 +361,11 @@ export function Workspace() {
       notify(
         `Tog bort ${removedBookings} LinkedIn-bokningar och ${removedRules} återkommande regler från alla dagar.`,
       );
-  }, [data, configured, cloud.phase, setData, notify]);
+  }, [data, configured, cloud.phase, setData, notify, scheduleImportOpen]);
   const undoAvailable = Boolean(
     undoLabel &&
     !editor &&
+    !scheduleImportOpen &&
     !generator &&
     !newGoal &&
     !checkInDate &&
@@ -423,6 +459,7 @@ export function Workspace() {
   useLayoutEffect(() => {
     setEditing(
       Boolean(
+        scheduleImportOpen ||
         editor ||
         newGoal ||
         checkInDate ||
@@ -444,6 +481,7 @@ export function Workspace() {
     );
     return () => setEditing(false);
   }, [
+    scheduleImportOpen,
     editor,
     newGoal,
     checkInDate,
@@ -733,6 +771,19 @@ export function Workspace() {
           source: "manual",
           priority: 5,
           description: "",
+          ...(() => {
+            const block = templateBlocks(plan.rules ?? data.settings).find(
+              (b) => b.routine === requestedRoutine,
+            );
+            return usesWeekTemplate(plan.rules ?? data.settings) && block
+              ? {
+                  date: addDays(week, block.day),
+                  start: block.start,
+                  end: block.end,
+                  estimatedMinutes: block.end - block.start,
+                }
+              : {};
+          })(),
         }
       : undefined);
   function setActivityStatus(activity: Activity, status: Activity["status"]) {
@@ -781,7 +832,7 @@ export function Workspace() {
     : activities;
   const selectDay = (day: number) => {
     setDaySelection({ week, day });
-    if (day >= weekendStartsOn(data.settings)) setWeekendOpen(true);
+    if (day >= weekendStartsOn(weekData.settings)) setWeekendOpen(true);
   };
   function editInWeek(targetWeek: string, activity: Activity) {
     changeWeek(targetWeek);
@@ -1160,6 +1211,33 @@ export function Workspace() {
     setView("planner");
     notify("Planen har lästs in.");
   }
+  function importSchedule(preview: ScheduleImportPreview) {
+    if (
+      blockedSave ||
+      (configured && ["loading", "migration", "conflict"].includes(cloud.phase))
+    )
+      return "Lös lagringen eller synkroniseringen innan du importerar schemat.";
+    let changed = false;
+    setData(
+      (current) => {
+        if (
+          !current ||
+          JSON.stringify(current) !== JSON.stringify(preview.base)
+        ) {
+          changed = true;
+          return current;
+        }
+        return preview.data;
+      },
+      { undoLabel: "schemaimport" },
+    );
+    if (changed)
+      return "Planen har uppdaterats sedan förhandsgranskningen. Granska importen igen innan du ersätter något.";
+    setWeek(preview.changes[0].week);
+    setDaySelection(null);
+    setView("planner");
+    return undefined;
+  }
   function importGoogle(
     snapshot: GoogleSnapshot,
     replan: boolean,
@@ -1327,7 +1405,7 @@ export function Workspace() {
       activeDay={activeDay}
       activities={activities}
       onSelectDay={(day) => {
-        if (day >= weekendStartsOn(data.settings)) setWeekendOpen(true);
+        if (day >= weekendStartsOn(weekData.settings)) setWeekendOpen(true);
         selectDay(day);
       }}
     />
@@ -1535,6 +1613,20 @@ export function Workspace() {
             <>
               <PlanningShortcuts
                 reviewLabel={reviewCheckLabel(weekData.settings)}
+                startLabel={startCheckLabel(weekData.settings)}
+                showStart={
+                  !weekData.settings.importedSchedule ||
+                  templateBlocks(weekData.settings).some(
+                    (b) => b.routine === "week-start",
+                  )
+                }
+                showReview={
+                  !weekData.settings.importedSchedule ||
+                  templateBlocks(weekData.settings).some(
+                    (b) => b.routine === "week-review",
+                  )
+                }
+                onImport={() => setScheduleImportOpen(true)}
                 key={`${user?.id ?? "local"}-${week}-${undoVersion}`}
                 onCheck={(kind) => setRoutineId(`check:${kind}`)}
                 onAdd={(kind) => {
@@ -1666,7 +1758,7 @@ export function Workspace() {
                   />
                   {mobile && calendarMode === "week" ? (
                     <StudioWeek
-                      weekendFrom={weekendStartsOn(data.settings)}
+                      weekendFrom={weekendStartsOn(weekData.settings)}
                       data={weekData}
                       week={week}
                       activities={activities}
@@ -1813,7 +1905,7 @@ export function Workspace() {
                               </div>
                             )}
                             <Calendar
-                              weekendFrom={weekendStartsOn(data.settings)}
+                              weekendFrom={weekendStartsOn(weekData.settings)}
                               mobile={mobile || calendarMode === "day"}
                               showWeekends={weekendOpen}
                               activeDay={activeDay}
@@ -1846,12 +1938,14 @@ export function Workspace() {
                                 onWeekend={() => {
                                   if (
                                     weekendOpen &&
-                                    activeDay >= weekendStartsOn(data.settings)
+                                    activeDay >=
+                                      weekendStartsOn(weekData.settings)
                                   )
                                     selectDay(
                                       days.find(
                                         (d) =>
-                                          d < weekendStartsOn(data.settings),
+                                          d <
+                                          weekendStartsOn(weekData.settings),
                                       ) ?? 0,
                                     );
                                   setWeekendOpen((open) => !open);
@@ -2076,6 +2170,7 @@ export function Workspace() {
                 );
               }}
               onApply={applySettings}
+              onImportSchedule={() => setScheduleImportOpen(true)}
               onImport={replaceData}
               onRemoveRecurring={(id) =>
                 setData({
@@ -2132,6 +2227,31 @@ export function Workspace() {
             <X size={16} />
           </button>
         </div>
+      )}
+      {scheduleImportOpen && (
+        <ScheduleImport
+          key={`schedule-import-${user?.id ?? "local"}`}
+          data={data}
+          week={week}
+          cloudEnabled={configured}
+          cloudPhase={cloud.phase}
+          saveError={
+            blockedSave
+              ? storageError ||
+                "Den sparade originalplanen är skyddad. Läs in en giltig plan före importen."
+              : storageError || cloud.error
+          }
+          onApply={importSchedule}
+          onVerify={verifyImport}
+          onRetry={() => {
+            void syncNow();
+          }}
+          onClose={() => setScheduleImportOpen(false)}
+          onView={() => {
+            setScheduleImportOpen(false);
+            window.history.replaceState(null, "", `${appPath()}?week=${week}`);
+          }}
+        />
       )}
       {resetOpen && (
         <ResetPlanningModal
