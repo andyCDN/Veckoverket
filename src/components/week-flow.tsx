@@ -416,3 +416,39 @@ export function PlanNotices({
     </div>
   );
 }
+
+export function ReplacedScheduleActivities({
+  activities,
+}: {
+  activities: Activity[];
+}) {
+  if (!activities.length) return null;
+  return (
+    <details className="plan-info" style={{ marginBlock: 12 }}>
+      <summary>Pass utanför veckoschemat</summary>
+      <p>
+        Dessa pass ingår inte i den aktiva kalendern eller dess planerade
+        timmar. Kopplade uppgifter finns kvar att planera inom schemat.
+        Eventuella original i Google Kalender har inte ändrats.
+      </p>
+      <ul>
+        {activities.map((a) => (
+          <li key={`${a.id}:${a.date}`}>
+            <strong>{a.title}</strong> · {fullDate(a.date)} {time(a.start)}–
+            {time(a.end)}
+            {a.description && <p>{a.description}</p>}
+            {a.external?.url && (
+              <a
+                href={a.external.url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Öppna originalbokningen
+              </a>
+            )}
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}

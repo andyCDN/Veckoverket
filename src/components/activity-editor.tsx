@@ -14,6 +14,7 @@ import {
   weekday,
 } from "@/lib/date";
 import { validatePlan } from "@/lib/planner";
+import { fixedWeekError } from "@/lib/fixed-week-policy";
 import { bookingConstraints } from "@/lib/auto-planning";
 import { GOOGLE_CATEGORY_ID } from "@/lib/external-calendar";
 import {
@@ -184,6 +185,16 @@ export function ActivityEditor({
         startsOn: form.date,
       };
       updated.recurrenceId = recurring.id;
+      for (const day of recurring.weekdays) {
+        const error = fixedWeekError(
+          { ...updated, date: addDays(monday(updated.date), day) },
+          data.settings,
+        );
+        if (error) {
+          setError(`Återkommande pass: ${error}`);
+          return;
+        }
+      }
     } else delete updated.recurrenceId;
     onSave(updated, recurring, Boolean(form.recurrenceId && repeat === "none"));
   }

@@ -12,6 +12,7 @@ import { addDays, monday, planningBoundary, weekday, time, uid } from "./date";
 import { generateWeek, plannedDays, validateMove } from "./planner";
 import { blocksTime } from "./external-calendar";
 import { isLocalDate } from "./google-time";
+import { fitsFixedWeek } from "./fixed-week-policy";
 
 export type PlanningPreview = {
   data: AppData;
@@ -23,6 +24,7 @@ export type PlanningPreview = {
 // Lunch/family reservations also apply to imported or explicitly empty weeks.
 function fits(a: Activity, held: Activity[], s: Settings) {
   if (
+    !fitsFixedWeek(a, s) ||
     !plannedDays(s).includes(weekday(a.date)) ||
     a.start < dayBounds(s, a.date).start ||
     a.end > dayBounds(s, a.date).end

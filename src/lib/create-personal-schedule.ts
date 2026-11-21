@@ -10,6 +10,10 @@ import {
 } from "./template-planning";
 import { FOUR_DAY_WEEK, templateSettings } from "./week-template";
 import { validatePlan } from "./planner";
+import {
+  normalizeFixedWeek,
+  replacedScheduleActivities,
+} from "./fixed-week-policy";
 
 export type PersonalScheduleReport = {
   week: string;
@@ -62,8 +66,8 @@ export function scheduleSlotCount(plan: WeekPlan) {
   }).length;
 }
 
-/** Explicitly install the requested times in one chosen week. User bookings and
- * linked work survive; collisions stay visible instead of swallowing a slot. */
+/** Install the prescribed slots. Superseded planning and work that cannot fit
+ * remain outside the active calendar; appointments and outcomes are retained. */
 export function createPersonalSchedule(data: AppData, week: string) {
   if (!isLocalDate(week) || monday(week) !== week)
     throw new Error("Välj en giltig vecka som börjar på en måndag.");
@@ -71,6 +75,7 @@ export function createPersonalSchedule(data: AppData, week: string) {
   const settings = {
     ...templateSettings(cleaned.settings),
     keepTemplateSlots: true,
+    strictWeekTemplate: true,
   };
   const required = new Set(FOUR_DAY_WEEK.map((b) => b.categoryId));
   const categories = [
@@ -82,8 +87,11 @@ export function createPersonalSchedule(data: AppData, week: string) {
     ),
   ];
   const existing = cleaned.weeks[week];
+  const normalized = existing
+    ? normalizeFixedWeek(existing, settings)
+    : undefined;
   const preserved =
-    existing?.activities.filter(
+    (normalized?.activities ?? existing?.activities)?.filter(
       (a) =>
         a.status !== "planned" ||
         hasWork(a) ||
@@ -97,6 +105,11 @@ export function createPersonalSchedule(data: AppData, week: string) {
     ? {
         ...existing,
         activities: preserved,
+        replacedActivities: replacedScheduleActivities(
+          existing,
+          normalized?.replaced ?? [],
+          preserved,
+        ),
         gentleDays: undefined,
         gentleFocus: undefined,
       }
@@ -131,7 +144,7 @@ export function createPersonalSchedule(data: AppData, week: string) {
     serialize(settings) === serialize(data.settings) &&
     serialize(categories) === serialize(data.categories) &&
     signature(plan) === signature(existing);
-  const next = unchanged
+  let next = unchanged
     ? data
     : {
         ...cleaned,
@@ -139,6 +152,21 @@ export function createPersonalSchedule(data: AppData, week: string) {
         categories,
         weeks: { ...cleaned.weeks, [week]: plan },
       };
+  const unscheduled = new Set(
+    plan.replacedActivities?.flatMap((a) => (a.taskId ? [a.taskId] : [])) ?? [],
+  );
+  for (const other of Object.values(next.weeks))
+    for (const a of other.activities)
+      if (a.taskId && a.status !== "skipped") unscheduled.delete(a.taskId);
+  if (
+    next.tasks.some((t) => unscheduled.has(t.id) && !t.done && !t.needsPlanning)
+  )
+    next = {
+      ...next,
+      tasks: next.tasks.map((t) =>
+        unscheduled.has(t.id) && !t.done ? { ...t, needsPlanning: true } : t,
+      ),
+    };
   const slots = scheduleSlotCount(plan);
   if (slots !== FOUR_DAY_WEEK.length)
     throw new Error(
@@ -151,6 +179,13 @@ export function createPersonalSchedule(data: AppData, week: string) {
       .filter((c) => c.id.startsWith("overlap-"))
       .map((c) => c.message),
   };
+  const scheduleError = validatePlan(plan.activities, settings).find((c) =>
+    c.id.startsWith("schedule-"),
+  );
+  if (scheduleError)
+    throw new Error(
+      `Veckoschemats tidsgräns är inte uppfylld: ${scheduleError.message}`,
+    );
   return { data: next, report };
 }
 

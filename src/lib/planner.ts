@@ -6,6 +6,12 @@ import {
 } from "./week-template";
 import { generateTemplateWeek } from "./template-planning";
 import {
+  fixedWeekError,
+  fixedWeekIsActive,
+  scheduledWorkArea,
+} from "./fixed-week-policy";
+import { FOUR_DAY_WEEK } from "./week-template";
+import {
   excludedActivityTitle,
   removeLinkedInSeries,
 } from "./activity-exclusions";
@@ -117,6 +123,15 @@ export function validatePlan(activities: Activity[], s: Settings): Conflict[] {
     (a, b) => a.date.localeCompare(b.date) || a.start - b.start,
   );
   ordered.forEach((a, i) => {
+    const scheduleError = fixedWeekError(a, s);
+    if (scheduleError)
+      issues.push({
+        id: `schedule-${a.id}`,
+        severity: "error",
+        message: scheduleError,
+        suggestion:
+          "Veckoschemats tider är styrande. Dela upp större uppgifter inom de befintliga passen.",
+      });
     if (
       !Number.isFinite(a.start) ||
       !Number.isFinite(a.end) ||
@@ -185,6 +200,28 @@ export function validatePlan(activities: Activity[], s: Settings): Conflict[] {
         severity: "error",
       });
   });
+  if (fixedWeekIsActive(s)) {
+    const work = activities.filter(
+      (a) => a.status === "planned" && scheduledWorkArea(a),
+    );
+    for (const a of work) {
+      const area = scheduledWorkArea(a);
+      const limit = FOUR_DAY_WEEK.filter(
+        (b) => b.day === weekday(a.date) && b.categoryId === area,
+      ).reduce((n, b) => n + b.end - b.start, 0);
+      const actual = work
+        .filter((b) => b.date === a.date && scheduledWorkArea(b) === area)
+        .reduce((n, b) => n + b.end - b.start, 0);
+      if (actual > limit)
+        issues.push({
+          id: `schedule-budget-${a.id}`,
+          severity: "error",
+          message: `${a.title}: veckoschemat tillåter ${limit} minuter den ${a.date}, men ${actual} minuter är planerade.`,
+          suggestion:
+            "Använd de befintliga schemapassen. Fler timmar ska inte läggas till.",
+        });
+    }
+  }
   return issues;
 }
 export function validateMove(

@@ -1,6 +1,7 @@
 import type { Activity, AppData } from "./types";
 import { planningBoundary, monday } from "./date";
 import { generateWeek } from "./planner";
+import { fixedWeekIsActive } from "./fixed-week-policy";
 
 export function canReplanActivity(
   activity: Activity,
@@ -67,7 +68,11 @@ export function replanAfterBookings(
       current,
       { notBefore: boundary },
     );
-    if (result.conflicts.some((c) => c.severity === "error")) continue;
+    if (
+      !fixedWeekIsActive(settings) &&
+      result.conflicts.some((c) => c.severity === "error")
+    )
+      continue;
     const held = new Set(current.activities);
     const plan = {
       ...result.plan,

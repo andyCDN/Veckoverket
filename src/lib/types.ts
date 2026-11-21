@@ -103,6 +103,7 @@ export type Settings = {
   excludedActivityTitles?: string[];
   weekTemplate?: "mon-thu-v1" | "off";
   keepTemplateSlots?: boolean;
+  strictWeekTemplate?: boolean;
   days: number[];
   start: number;
   end: number;
@@ -120,6 +121,7 @@ export type Settings = {
   autoPlanning?: boolean;
 };
 export type WeekPlan = {
+  replacedActivities?: Activity[];
   templateNeedsRefresh?: boolean;
   templateId?: "mon-thu-v1";
   gentleDays?: string[];
@@ -264,7 +266,7 @@ export type DailyCheckIn = {
   updatedAt: string;
 };
 export type AppData = {
-  personalScheduleVersion?: 1;
+  personalScheduleVersion?: 1 | 2;
   dailyCheckIns?: Record<string, DailyCheckIn>;
   version: 1;
   habits?: Habit[];

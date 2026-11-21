@@ -9,7 +9,7 @@ test("drar direkt i veckokalenderns tomma yta med korrekt tid på en utvidgad ti
   await page.clock.install({ time: new Date("2026-11-02T07:00:00Z") });
   const data = createData();
   // This scenario deliberately uses the general planning mode and custom axis.
-  data.personalScheduleVersion = 1;
+  data.personalScheduleVersion = 2;
   data.settings = {
     ...data.settings,
     autoPlanning: false,
@@ -68,9 +68,7 @@ test("drar direkt i veckokalenderns tomma yta med korrekt tid på en utvidgad ti
   );
   await expect(dialog.getByLabel("Slut", { exact: true })).toHaveValue("11:45");
   await dialog.getByLabel("Namn", { exact: true }).fill("Direktmarkerat pass");
-  await dialog
-    .getByRole("button", { name: "Spara pass", exact: true })
-    .click();
+  await dialog.getByRole("button", { name: "Spara pass", exact: true }).click();
   const saved = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("veckoverket.workspace.v1")!),
   );

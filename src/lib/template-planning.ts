@@ -9,6 +9,13 @@ import { addDays } from "./date";
 import { blocksTime } from "./external-calendar";
 import { excludedActivityTitle } from "./activity-exclusions";
 import {
+  fixedWeekIsActive,
+  fitsFixedWeek,
+  genericScheduleArea,
+  normalizeFixedWeek,
+  replacedScheduleActivities,
+} from "./fixed-week-policy";
+import {
   FOUR_DAY_WEEK,
   templateTargetMinutes,
   WEEK_TEMPLATE_ID,
@@ -28,8 +35,8 @@ export function matchesTemplateBlock(a: Activity, block: WeekTemplateBlock) {
   return a.categoryId === block.categoryId;
 }
 
-/** Exact weekly slots. Explicit work, appointments and outcomes survive.
- * Explicit installation retains blocked slots and reports their overlaps. */
+/** Prescribed slots govern work. Displaced planning remains outside the active
+ * calendar; fixed appointments and logged outcomes remain visible. */
 export function generateTemplateWeek(
   week: string,
   data: Pick<AppData, "settings" | "categories" | "recurring">,
@@ -37,6 +44,9 @@ export function generateTemplateWeek(
   boundary?: { date: string; minute: number },
 ): PlanResult {
   const settings = data.settings;
+  const normalized = existing
+    ? normalizeFixedWeek(existing, settings)
+    : undefined;
   const started = (a: Activity) =>
     Boolean(
       boundary &&
@@ -53,7 +63,11 @@ export function generateTemplateWeek(
       a.deadlineId ||
       a.followUpOf,
     );
-  const activities = (existing?.activities ?? []).filter(
+  const activities = (
+    normalized?.activities ??
+    existing?.activities ??
+    []
+  ).filter(
     (a) =>
       a.source !== "generated" ||
       a.status !== "planned" ||
@@ -64,10 +78,16 @@ export function generateTemplateWeek(
       a.recurrenceId,
   );
   const conflicts: Conflict[] = [];
+  const replacedIds = new Set(
+    [
+      ...(existing?.replacedActivities ?? []),
+      ...(normalized?.replaced ?? []),
+    ].map((a) => a.id),
+  );
   const availableId = (base: string) => {
     let id = base.slice(0, 200),
       sequence = 1;
-    while (activities.some((a) => a.id === id)) {
+    while (activities.some((a) => a.id === id) || replacedIds.has(id)) {
       const suffix = `-${sequence++}`;
       id = `${base.slice(0, 200 - suffix.length)}${suffix}`;
     }
@@ -80,6 +100,15 @@ export function generateTemplateWeek(
       settings.days.includes(day),
     )) {
       const date = addDays(week, day);
+      if (
+        fixedWeekIsActive(settings) &&
+        (genericScheduleArea(recurring) ||
+          !fitsFixedWeek(
+            { ...recurring, date, source: "recurring", status: "planned" },
+            settings,
+          ))
+      )
+        continue;
       if (
         date < recurring.startsOn ||
         (boundary &&
@@ -168,9 +197,8 @@ export function generateTemplateWeek(
       occupied.length &&
       occupied.every(
         (a) =>
-          assigned(a) &&
-          !a.external &&
-          !a.recurrenceId &&
+          (fixedWeekIsActive(settings) ||
+            (assigned(a) && !a.external && !a.recurrenceId)) &&
           a.categoryId === block.categoryId &&
           a.start >= block.start &&
           a.end <= block.end,
@@ -208,6 +236,11 @@ export function generateTemplateWeek(
       week,
       activities: activities.sort(
         (a, b) => a.date.localeCompare(b.date) || a.start - b.start,
+      ),
+      replacedActivities: replacedScheduleActivities(
+        existing,
+        normalized?.replaced ?? [],
+        activities,
       ),
       generatedAt: new Date().toISOString(),
       rules: structuredClone(settings),
