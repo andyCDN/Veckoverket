@@ -21,6 +21,7 @@ export async function buildServiceWorker(basePath = "/Veckoverket") {
   const paths = [
     join(root, "index.html"),
     join(root, "inspelning", "index.html"),
+    join(root, "importera-schema", "index.html"),
     join(root, "pcm-capture.worklet.js"),
     join(root, "manifest.webmanifest"),
     join(root, "inspelning", "manifest.webmanifest"),
@@ -43,7 +44,7 @@ export async function buildServiceWorker(basePath = "/Veckoverket") {
   }
   const config = {
     scope,
-    pages: [scope, `${scope}inspelning/`],
+    pages: [scope, `${scope}inspelning/`, `${scope}importera-schema/`],
     cachePrefix: `veckoverket-pwa-${encodeURIComponent(scope)}-`,
     version: hash.digest("hex").slice(0, 20),
     assets,
