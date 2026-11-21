@@ -316,6 +316,7 @@ export function Workspace({
     onSnapshot: autoImportIcal,
   });
   const notify = useCallback((message: string) => setNotice(message), []);
+  const [startupError, setStartupError] = useState("");
   const verifyImport = useCallback(
     async (proof: ScheduleImportProof) => {
       await Promise.resolve();
@@ -346,12 +347,24 @@ export function Workspace({
         const before = linkedInSeriesCounts(current);
         removedBookings = before.bookings;
         removedRules = before.rules;
-        return !configured ||
-          cloud.phase === "synced" ||
-          (current.personalScheduleVersion === 2 &&
-            ["pending", "saving"].includes(cloud.phase))
-          ? upgradeWeeklyRoutines(initializePersonalSchedule(current))
-          : applyActivityExclusions(current);
+        try {
+          const next =
+            !configured ||
+            cloud.phase === "synced" ||
+            (current.personalScheduleVersion === 2 &&
+              ["pending", "saving"].includes(cloud.phase))
+              ? upgradeWeeklyRoutines(initializePersonalSchedule(current))
+              : applyActivityExclusions(current);
+          setStartupError("");
+          return next;
+        } catch (error) {
+          setStartupError(
+            error instanceof Error
+              ? error.message
+              : "Veckoplanen kunde inte uppdateras.",
+          );
+          return current;
+        }
       },
       {
         history: false,
@@ -1608,6 +1621,33 @@ export function Workspace({
                 Till inställningar
               </button>
             </div>
+          )}
+          {startupError && (
+            <section
+              className="storage-error"
+              role="alert"
+              aria-label="Veckoplanens uppdatering stoppades"
+            >
+              <div>
+                <p>
+                  <strong>
+                    Veckoplanen kunde inte uppdateras automatiskt.
+                  </strong>{" "}
+                  Du kan fortsätta använda din sparade plan eller importera ett
+                  schema.
+                </p>
+                <details>
+                  <summary>Visa felorsak</summary>
+                  <p>{startupError}</p>
+                </details>
+              </div>
+              <a
+                className="button secondary"
+                href={appPath("/importera-schema/")}
+              >
+                Öppna schemaimporten
+              </a>
+            </section>
           )}
           {view === "planner" && (
             <>

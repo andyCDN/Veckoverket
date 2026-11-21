@@ -182,6 +182,13 @@ test("appen startar offline med sparad plan utan att cachelagra konto-API:er", a
   expect(
     recorderCache.some((url) => url.includes("PRIVATE_CONTEXT_FIXTURE")),
   ).toBe(false);
+  await page.goto(new URL("importera-schema/", root).href);
+  await expect(
+    page.getByRole("dialog", { name: "Importera veckoschema", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Granska schema", exact: true }),
+  ).toBeVisible();
 });
 
 test("mobil installation använder webbläsarens dialog och visar Safari-instruktioner", async ({
