@@ -18,7 +18,7 @@ export function decodeData(raw: string): AppData {
     !d ||
     d.version !== 1 ||
     (d.personalScheduleVersion !== undefined &&
-      d.personalScheduleVersion !== 1) ||
+      ![1, 2].includes(d.personalScheduleVersion)) ||
     typeof d.profile?.name !== "string" ||
     !Array.isArray(d.categories) ||
     !d.categories.length ||
@@ -76,6 +76,8 @@ export function decodeData(raw: string): AppData {
         !["mon-thu-v1", "off"].includes(s.weekTemplate)) ||
       (s.keepTemplateSlots !== undefined &&
         typeof s.keepTemplateSlots !== "boolean") ||
+      (s.strictWeekTemplate !== undefined &&
+        typeof s.strictWeekTemplate !== "boolean") ||
       (s.autoPlanning !== undefined && typeof s.autoPlanning !== "boolean")
     )
       throw new Error("Planeringsreglerna är ogiltiga.");
@@ -127,7 +129,11 @@ export function decodeData(raw: string): AppData {
   }
   for (const [week, plan] of Object.entries(d.weeks) as [
     string,
-    { week: string; activities: Record<string, unknown>[] },
+    {
+      week: string;
+      activities: Record<string, unknown>[];
+      replacedActivities?: Record<string, unknown>[];
+    },
   ][]) {
     if (
       !date.test(week) ||
@@ -184,11 +190,20 @@ export function decodeData(raw: string): AppData {
         ))
     )
       throw new Error("Dagens valda insats är ogiltig.");
+    if (
+      plan.replacedActivities !== undefined &&
+      !Array.isArray(plan.replacedActivities)
+    )
+      throw new Error("De ersatta passen är ogiltiga.");
     const activityIds = new Set();
-    for (const a of plan.activities) {
+    for (const [index, a] of [
+      ...plan.activities,
+      ...(plan.replacedActivities ?? []),
+    ].entries()) {
+      const identity = `${index < plan.activities.length ? "active" : "replaced"}:${a.id}`;
       if (
         typeof a.id !== "string" ||
-        activityIds.has(a.id) ||
+        activityIds.has(identity) ||
         typeof a.title !== "string" ||
         typeof a.date !== "string" ||
         !date.test(a.date) ||
@@ -258,7 +273,7 @@ export function decodeData(raw: string): AppData {
         )
           throw new Error("En importerad kalenderhändelse är ogiltig.");
       }
-      activityIds.add(a.id);
+      activityIds.add(identity);
     }
   }
   for (const g of d.goals)

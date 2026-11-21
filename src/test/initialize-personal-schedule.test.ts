@@ -47,7 +47,7 @@ describe("den begärda planen installeras när den vanliga veckovyn öppnas", ()
         ]);
       }
       expect(migrated.weeks[past]).toBe(data.weeks[past]);
-      expect(migrated.personalScheduleVersion).toBe(1);
+      expect(migrated.personalScheduleVersion).toBe(2);
       expect(data).toEqual(before);
       const stored = decodeData(JSON.stringify(migrated));
       expect(initializePersonalSchedule(stored, boundary)).toBe(stored);

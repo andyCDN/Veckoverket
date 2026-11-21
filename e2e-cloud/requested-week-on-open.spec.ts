@@ -20,7 +20,7 @@ for (const mode of ["off", "installed"] as const)
       await expectRequestedMonday(page, "2026-11-16", width);
       await expect
         .poll(() => f.documents.get(userA)!.data.personalScheduleVersion)
-        .toBe(1);
+        .toBe(2);
       for (const week of ["2026-11-16", "2026-11-23"])
         expect(
           scheduleSlotCount(f.documents.get(userA)!.data.weeks[week]),

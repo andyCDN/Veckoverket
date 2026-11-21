@@ -86,6 +86,9 @@ test("kan dra och boka ett eget pass i tisdagens öppna eftermiddag efter den au
   await dialog
     .getByLabel("Namn", { exact: true })
     .fill("Eget eftermiddagspass");
+  await dialog
+    .getByRole("combobox", { name: "Område", exact: true })
+    .selectOption("family");
   await dialog.getByRole("button", { name: "Spara pass", exact: true }).click();
   await expect(dialog).not.toBeVisible();
   await expect(day).toContainText("Eget eftermiddagspass");

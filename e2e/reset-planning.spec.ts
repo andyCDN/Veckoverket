@@ -49,7 +49,7 @@ for (const mobile of [false, true]) {
     ).toBeVisible();
     await expect
       .poll(async () => (await stored(page)).personalScheduleVersion)
-      .toBe(1);
+      .toBe(2);
     const before = await stored(page);
     const nav = page.getByRole("navigation", { name: "Huvudnavigation" });
     await nav.getByText("Mer", { exact: true }).click();

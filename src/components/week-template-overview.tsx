@@ -26,7 +26,8 @@ export function WeekTemplateOverview() {
       </p>
       <p className="help">
         Veckostängning 13.00–13.30 torsdag. Hämtning 15.00–15.30 onsdag. Egna
-        bokningar och ändrade pass behålls.
+        bokningar behålls. Veckoschemat styr arbetspassens tider; uppgifter
+        använder tiden i de befintliga passen.
       </p>
     </div>
   );

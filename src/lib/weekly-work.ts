@@ -12,6 +12,7 @@ import { habitPlanned, effectiveHabitChecks, habitWeek } from "./habits";
 import { plannedDays } from "./planner";
 import { isLocalDate } from "./google-time";
 import { blocksTime } from "./external-calendar";
+import { fitsFixedWeek, fixedWeekIsActive } from "./fixed-week-policy";
 
 export type WorkRequest = {
   kind: "task" | "habit";
@@ -198,6 +199,7 @@ export function previewWeeklyWork(
           : { habitId: habit!.id }),
       };
       const fits = (a: Activity, others: Activity[]) =>
+        fitsFixedWeek(a, rules) &&
         a.start >= earliest &&
         a.end <= dayBounds(rules, date).end &&
         [
@@ -276,7 +278,9 @@ export function previewWeeklyWork(
           ? "Dagen har passerat; välj en kommande dag."
           : req.date && !plannedDays(rules).includes(weekday(req.date))
             ? "Dagen ingår inte i dina planeringsdagar."
-            : `Det saknas ${req.minutes} minuter sammanhängande tid utan att flytta skyddade bokningar.`;
+            : fixedWeekIsActive(rules)
+              ? "Arbetet ryms inte i veckoschemats pass. Välj en annan schematid eller dela upp uppgiften."
+              : `Det saknas ${req.minutes} minuter sammanhängande tid utan att flytta skyddade bokningar.`;
       unplaced.push(`${title}: ${reason}`);
       continue;
     }

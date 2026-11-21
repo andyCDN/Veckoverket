@@ -59,6 +59,8 @@ export function upgradePersonalWeek(
       plan.rules?.weekTemplate === WEEK_TEMPLATE_ID &&
       Boolean(plan.rules.keepTemplateSlots) ===
         Boolean(settings.keepTemplateSlots) &&
+      Boolean(plan.rules.strictWeekTemplate) ===
+        Boolean(settings.strictWeekTemplate) &&
       !plan.templateNeedsRefresh
     )
       continue;

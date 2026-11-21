@@ -74,7 +74,12 @@ import { DailyStart, GentleDayModal } from "./daily-start";
 import { DayFocus } from "./day-focus";
 import { Calendar } from "./calendar";
 import { PlanningShortcuts } from "./planning-shortcuts";
-import { PlanningQueue, TaskResolution, PlanNotices } from "./week-flow";
+import {
+  PlanningQueue,
+  TaskResolution,
+  PlanNotices,
+  ReplacedScheduleActivities,
+} from "./week-flow";
 import { decideTask, reviewWeek } from "@/lib/task-workflow";
 import { workBookings } from "@/lib/weekly-work";
 import { WeeklyGoals, WeeklyWorkPlanner } from "./weekly-work";
@@ -306,7 +311,10 @@ export function Workspace() {
         const before = linkedInSeriesCounts(current);
         removedBookings = before.bookings;
         removedRules = before.rules;
-        return !configured || cloud.phase === "synced"
+        return !configured ||
+          cloud.phase === "synced" ||
+          (current.personalScheduleVersion === 2 &&
+            ["pending", "saving"].includes(cloud.phase))
           ? upgradeWeeklyRoutines(initializePersonalSchedule(current))
           : applyActivityExclusions(current);
       },
@@ -1546,6 +1554,9 @@ export function Workspace() {
                       schedule: { kind: "days", days: [0, 1, 2, 3, 4] },
                     });
                 }}
+              />
+              <ReplacedScheduleActivities
+                activities={plan.replacedActivities ?? []}
               />
               <div className="planner-columns">
                 <aside

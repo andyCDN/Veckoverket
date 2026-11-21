@@ -16,6 +16,11 @@ import {
 import { planningBoundary } from "./date";
 import { replanAfterBookings } from "./auto-planning";
 import {
+  fixedWeekIsActive,
+  normalizeFixedWeek,
+  replacedScheduleActivities,
+} from "./fixed-week-policy";
+import {
   applyActivityExclusions,
   excludedActivity,
 } from "./activity-exclusions";
@@ -361,12 +366,27 @@ export function previewGoogleImport(
         : { ...plan, activities };
   }
   const base: WeekPlan = weeks[week] ?? generateWeek(week, data).plan;
-  const merged = {
+  const receivedPlan = {
     ...base,
     activities: [...base.activities, ...imported].sort(
       (a, b) => a.date.localeCompare(b.date) || a.start - b.start,
     ),
   };
+  const normalized = normalizeFixedWeek(
+    receivedPlan,
+    receivedPlan.rules ?? data.settings,
+  );
+  const merged = normalized.changed
+    ? {
+        ...receivedPlan,
+        activities: normalized.activities,
+        replacedActivities: replacedScheduleActivities(
+          receivedPlan,
+          normalized.replaced,
+          normalized.activities,
+        ),
+      }
+    : receivedPlan;
   const categories = data.categories.some((c) => c.id === GOOGLE_CATEGORY_ID)
     ? data.categories
     : [...data.categories, { ...GOOGLE_CATEGORY }];
@@ -388,7 +408,8 @@ export function previewGoogleImport(
   );
   const errors = candidate.conflicts.filter((c) => c.severity === "error");
   const appliedReplan =
-    (replan || Boolean(data.settings.autoPlanning)) && errors.length === 0;
+    fixedWeekIsActive(merged.rules ?? data.settings) ||
+    ((replan || Boolean(data.settings.autoPlanning)) && errors.length === 0);
   const plan = appliedReplan
     ? {
         ...candidate.plan,
@@ -438,7 +459,13 @@ export function removeGoogleImports(data: AppData): AppData {
     weeks: Object.fromEntries(
       Object.entries(data.weeks).map(([week, plan]) => [
         week,
-        { ...plan, activities: plan.activities.filter((a) => !a.external) },
+        {
+          ...plan,
+          activities: plan.activities.filter((a) => !a.external),
+          replacedActivities: plan.replacedActivities?.filter(
+            (a) => !a.external,
+          ),
+        },
       ]),
     ),
   };
