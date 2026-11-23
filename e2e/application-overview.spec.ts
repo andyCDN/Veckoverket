@@ -44,42 +44,38 @@ for (const mobile of [false, true]) {
       .getByRole("navigation", { name: "Huvudnavigation" })
       .getByRole("button", { name: "Jobb", exact: true })
       .click();
-    const cards = page.locator(".career-cards > article");
-    await expect(cards).toHaveCount(3);
+    const list = page.getByRole("region", { name: "Jobblista", exact: true });
+    const cards = list.locator(".job-row");
+    await expect(cards).toHaveCount(2);
     await expect(cards.first()).toContainText("Stadshuset");
-    await expect(cards.first()).toContainText("Att göra idag");
+    await expect(cards.first()).toContainText("2026-11-03");
     await expect(
       cards
         .first()
-        .getByRole("button", { name: "Boka arbetstid", exact: true }),
+        .getByRole("button", { name: "Gör nästa steg", exact: true }),
     ).toBeVisible();
     await expect(
       cards
         .first()
         .getByRole("button", { name: "Dokumentunderlag", exact: true }),
-    ).not.toBeVisible();
+    ).toHaveCount(0);
     const before = await page.evaluate(() =>
       localStorage.getItem("veckoverket.workspace.v1"),
     );
-    await page.screenshot({
-      path: `test-results/application-overview-${mobile ? "mobile" : "desktop"}.png`,
-      fullPage: true,
-    });
-    await page
-      .getByRole("searchbox", { name: "Sök ansökan" })
+    await list
+      .getByRole("searchbox", { name: "Sök jobb", exact: true })
       .fill("stadshuset ring");
     await expect(cards).toHaveCount(1);
-    await page.getByRole("searchbox", { name: "Sök ansökan" }).fill("saknas");
-    await expect(
-      page.getByText("Inga ansökningar matchar filtren."),
-    ).toBeVisible();
-    await page
-      .getByRole("button", { name: "Visa alla ansökningar", exact: true })
+    await list
+      .getByRole("searchbox", { name: "Sök jobb", exact: true })
+      .fill("saknas");
+    await expect(list).toContainText("Inga jobb matchar sökningen.");
+    await list
+      .getByRole("button", { name: "Rensa sökningen", exact: true })
       .click();
-    await expect(cards).toHaveCount(4);
-    await page
-      .getByRole("combobox", { name: "Visa ansökningar", exact: true })
-      .selectOption("closed");
+    await list
+      .getByRole("button", { name: "Avslutade (1)", exact: true })
+      .click();
     await expect(cards).toHaveCount(1);
     await expect(cards).toContainText("Arkivbolaget");
     expect(
@@ -87,14 +83,26 @@ for (const mobile of [false, true]) {
         localStorage.getItem("veckoverket.workspace.v1"),
       ),
     ).toBe(before);
-    await page
-      .getByRole("combobox", { name: "Visa ansökningar", exact: true })
-      .selectOption("active");
-    await page.getByRole("searchbox", { name: "Sök ansökan" }).fill("Kommunen");
-    await page
+    await list
+      .getByRole("button", { name: "Väntar på svar (1)", exact: true })
+      .click();
+    await list
+      .getByRole("searchbox", { name: "Sök jobb", exact: true })
+      .fill("Kommunen");
+    await list
+      .getByRole("button", { name: "Visa ansökan", exact: true })
+      .click();
+    const detail = page.getByRole("region", {
+      name: "Ansökans detaljer",
+      exact: true,
+    });
+    await detail
       .getByRole("button", { name: "Lägg till nästa steg", exact: true })
       .click();
-    const dialog = page.getByRole("dialog");
+    const dialog = page.getByRole("dialog", {
+      name: "Redigera ansökan",
+      exact: true,
+    });
     await expect(
       dialog.getByRole("group", { name: "2. Vad händer härnäst?" }),
     ).toBeVisible();
@@ -103,6 +111,9 @@ for (const mobile of [false, true]) {
       .fill("Skicka arbetsprov");
     await dialog
       .getByRole("button", { name: "Spara ansökan", exact: true })
+      .click();
+    await detail
+      .getByRole("button", { name: "Till jobblistan", exact: true })
       .click();
     await expect(cards).toContainText("Skicka arbetsprov");
     const saved = await page.evaluate(() =>

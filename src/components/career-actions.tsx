@@ -21,6 +21,7 @@ export function CareerActions({
   scope,
   onOpen,
   initialActionId,
+  applicationId,
 }: {
   data: AppData;
   onChange: (next: AppData, base: AppData) => void;
@@ -29,6 +30,7 @@ export function CareerActions({
   scope: "jobs" | "network";
   onOpen: (activity: Activity) => void;
   initialActionId?: string;
+  applicationId?: string;
 }) {
   const [period, setPeriod] = useState("open"),
     [draft, setDraft] = useState<TrackedAction | null>(null),
@@ -42,9 +44,15 @@ export function CareerActions({
   }, [initialActionId]);
   const inScope = (action: TrackedAction) =>
     scope === "jobs"
-      ? Boolean(action.applicationId)
+      ? Boolean(action.applicationId) &&
+        (!applicationId || action.applicationId === applicationId)
       : Boolean(action.contactId);
-  const applications = scope === "jobs" ? (data.applications ?? []) : [];
+  const applications =
+    scope === "jobs"
+      ? (data.applications ?? []).filter(
+          (a) => !applicationId || a.id === applicationId,
+        )
+      : [];
   const contacts = scope === "network" ? (data.contacts ?? []) : [];
   const suggestions = careerSuggestions(data).filter(inScope);
   const all = careerActions(data).filter(inScope),

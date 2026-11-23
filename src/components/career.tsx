@@ -23,13 +23,7 @@ import {
   replanDay,
   type PlanningPreview,
 } from "@/lib/career-planning";
-import {
-  APPLICATION_STATUSES,
-  ACTION_PERIODS,
-  matchesActionPeriod,
-  saveApplication,
-  type ActionPeriod,
-} from "@/lib/applications";
+import { APPLICATION_STATUSES, saveApplication } from "@/lib/applications";
 import { bookDeadlineWork, deadlineWork } from "@/lib/deadline-scheduling";
 import { ApplicationHistory } from "./application-history";
 import { ApplicationMaterials } from "./application-materials";
@@ -55,8 +49,7 @@ import {
   type TrackedAction,
   actionBookingSuggestions,
 } from "@/lib/career-actions";
-import { ActionControl, ActionKindSelector } from "./action-control";
-import { actionNeedsAttention } from "@/lib/action-workflow";
+import { ActionKindSelector } from "./action-control";
 import { NetworkContacts, ContactLogForm } from "./network-contacts";
 import { logContact } from "@/lib/network-overview";
 import { CvAgent } from "./cv-agent";
@@ -68,9 +61,18 @@ import { Modal } from "./modal";
 import { PlanningConsequences } from "./planning-consequences";
 import {
   applicationAttention,
-  applicationOverview,
   isClosedApplication,
 } from "@/lib/application-overview";
+
+import { JobList } from "./job-list";
+import { JobCapture } from "./job-capture";
+import { ApplicationSent } from "./application-sent";
+import {
+  jobWorkspace,
+  markApplicationSent,
+  type JobLane,
+  type JobRow,
+} from "@/lib/job-workspace";
 
 const statuses = APPLICATION_STATUSES;
 type Props = {
@@ -100,6 +102,18 @@ export function CareerView({
   initialRecord,
   onWeek,
 }: Props) {
+  const [detailId, setDetailId] = useState<string | null>(() =>
+    initialRecord?.kind === "application"
+      ? initialRecord.id
+      : initialActionId
+        ? (careerActions(data).find((a) => a.id === initialActionId)
+            ?.applicationId ?? null)
+        : null,
+  );
+  const [addJobOpen, setAddJobOpen] = useState(false);
+  const [sentId, setSentId] = useState<string | null>(null);
+  const [jobLane, setJobLane] = useState<JobLane>("todo");
+  const [messageApplicationId, setMessageApplicationId] = useState<string>();
   const [cvId, setCvId] = useState<string | null>(null);
   const [messageOpen, setMessageOpen] = useState(false);
   const [linkedinOpen, setLinkedinOpen] = useState(false);
@@ -115,9 +129,8 @@ export function CareerView({
     interviewId: string;
   } | null>(null);
   const [historyId, setHistoryId] = useState<string | null>(null);
-  const [period, setPeriod] = useState<ActionPeriod>("all");
   const [tab, setTab] = useState(
-    initialTab ?? (section === "network" ? "contacts" : "applications"),
+    section === "network" ? (initialTab ?? "contacts") : "applications",
   );
   const [focusActionId, setFocusActionId] = useState(initialActionId);
   const [application, setApplication] = useState<JobApplication | null>(null);
@@ -137,6 +150,9 @@ export function CareerView({
     label: string;
   } | null>(null);
   const editing = Boolean(
+    detailId ||
+    addJobOpen ||
+    sentId ||
     cvId ||
     messageOpen ||
     linkedinOpen ||
@@ -156,32 +172,12 @@ export function CareerView({
     onEditing(editing);
     return () => onEditing(false);
   }, [editing, onEditing]);
-  const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
-  const [scope, setScope] = useState<"active" | "closed" | "all">("active");
   const [message, setMessage] = useState("");
   const applications = data.applications ?? [],
     contacts = data.contacts ?? [],
     deadlines = data.deadlines ?? [];
   const all = Object.values(data.weeks).flatMap((p) => p.activities);
-  const steps = careerActions(data).filter((step) => step.status === "open");
-  const nextStep = (
-    kind: "application" | "contact",
-    item: { id: string; nextActionId?: string },
-  ) =>
-    steps
-      .filter((step) =>
-        kind === "application"
-          ? step.applicationId === item.id
-          : step.contactId === item.id,
-      )
-      .sort(
-        (a, b) =>
-          Number(!actionNeedsAttention(data, a)) -
-            Number(!actionNeedsAttention(data, b)) ||
-          (a.date || "9999").localeCompare(b.date || "9999") ||
-          Number(!a.legacy) - Number(!b.legacy),
-      )[0];
   const bookStep = (step: TrackedAction) =>
     setBooking({
       title: step.title,
@@ -236,23 +232,358 @@ export function CareerView({
   );
   const historyApplication = applications.find((a) => a.id === historyId);
   const nextDate = (date: string) => (date && date >= today() ? date : today());
-  const visibleApplications = applicationOverview(applications, {
-    query,
-    scope,
-    status: filter,
-    nextStep: (application) => nextStep("application", application),
-  }).filter((a) => {
-    const step = nextStep("application", a);
-    return matchesActionPeriod(
-      step ? { ...a, nextAction: step.title, followUpDate: step.date } : a,
-      period,
+  const detailedApplication = applications.find((a) => a.id === detailId);
+  const sentApplication = applications.find((a) => a.id === sentId);
+  const openJob = (a: JobApplication) => {
+    setDetailId(a.id);
+    requestAnimationFrame(() =>
+      window.scrollTo({ top: 0, behavior: "instant" }),
     );
-  });
-  const resetFilters = () => {
-    setQuery("");
-    setScope("all");
-    setFilter("all");
-    setPeriod("all");
+  };
+  const primaryJobAction = (row: JobRow) => {
+    openJob(row.application);
+    if (row.primary === "Fortsätt med CV") setCvId(row.application.id);
+    else if (row.primary === "Förbered ansökan")
+      setMaterialsId(row.application.id);
+    else if (row.primary === "Boka intervju")
+      setInterviewBookingId(row.application.id);
+    else if (
+      ["Förbered intervju", "Följ upp intervjun"].includes(row.primary) &&
+      row.interview
+    )
+      setInterviewNotes({
+        applicationId: row.application.id,
+        interviewId: row.interview.interview.id,
+      });
+  };
+  const renderApplication = (a: JobApplication) => {
+    const step = jobWorkspace(data).find(
+      (row) => row.application.id === a.id,
+    )?.step;
+    return (
+      <article className="career-card stack job-detail-card" key={a.id}>
+        <h2>
+          {a.role} · {a.organization}
+        </h2>
+        <div className="application-status">
+          <span>{statuses[a.status]}</span>
+          {!step && (
+            <span>
+              {a.status === "sent" ? "Väntar på svar" : applicationAttention(a)}
+            </span>
+          )}
+        </div>
+        {a.deadline && <p>Deadline: {a.deadline}</p>}
+        <section className="application-next-step">
+          <h3>{step?.kind === "waiting" ? "Väntar på svar" : "Nästa steg"}</h3>
+          <p>
+            {step?.title ||
+              (isClosedApplication(a)
+                ? "Processen är avslutad."
+                : "Välj vad du vill göra härnäst.")}
+          </p>
+          {!step && !isClosedApplication(a) && (
+            <button
+              className="button secondary"
+              onClick={() => setApplication(a)}
+            >
+              Lägg till nästa steg
+            </button>
+          )}
+        </section>
+        {a.status === "draft" && (
+          <button className="button primary" onClick={() => setSentId(a.id)}>
+            Markera skickad
+          </button>
+        )}
+        <button
+          className="button secondary"
+          onClick={() => {
+            setMessageApplicationId(a.id);
+            setMessageOpen(true);
+          }}
+        >
+          Klistra in besked
+        </button>
+        <section
+          className="job-material-summary stack"
+          aria-label="Annons och dokument"
+        >
+          <h3>Annons och dokument</h3>
+          {documentUrl(a.advertisement?.url ?? "") && (
+            <a
+              href={documentUrl(a.advertisement!.url)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Öppna annons
+            </a>
+          )}
+          {a.advertisement?.text && (
+            <details>
+              <summary>Läs annonsen</summary>
+              <p className="career-notes">{a.advertisement.text}</p>
+            </details>
+          )}
+          {!a.advertisement?.url && !a.advertisement?.text && (
+            <p>Annons saknas. Lägg till den under Dokumentunderlag.</p>
+          )}
+          {a.materials?.map((m) => (
+            <a
+              key={m.id}
+              href={documentUrl(m.url)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {m.title} · {m.version || "Ingen version"}
+              {m.sentOn ? ` · Skickat ${m.sentOn}` : ""}
+            </a>
+          ))}
+        </section>
+        <div className="career-actions">
+          <button className="button secondary" onClick={() => setCvId(a.id)}>
+            Skapa CV för jobbet ↗
+          </button>
+        </div>
+        <section
+          className="application-details"
+          aria-label="Dokument, intervjuer och historik"
+        >
+          <div className="stack">
+            {!isClosedApplication(a) && (
+              <section
+                className="job-scoped-actions"
+                aria-label="Jobbets nästa steg"
+              >
+                <h3>Uppgifter och bevakningar</h3>
+                <CareerActions
+                  data={data}
+                  scope="jobs"
+                  applicationId={a.id}
+                  onChange={onChange}
+                  onOpen={onOpen}
+                  onEditing={setActionEditing}
+                  onBook={bookStep}
+                  initialActionId={focusActionId}
+                />
+              </section>
+            )}
+            {!!a.contactIds?.length && (
+              <div className="stack" aria-label="Kopplade kontakter">
+                {a.contactIds.map((id) => {
+                  const c = contacts.find((c) => c.id === id);
+                  return c ? (
+                    <button
+                      className="text-button"
+                      key={id}
+                      onClick={() => setContact(c)}
+                    >
+                      {c.name}
+                      {c.organization && ` · ${c.organization}`}
+                    </button>
+                  ) : (
+                    <span key={id}>Borttagen kontakt</span>
+                  );
+                })}
+              </div>
+            )}
+            {a.notes && <p className="career-notes">{a.notes}</p>}
+            <div className="career-actions">
+              <a
+                className="button secondary"
+                href={recordingHref({ applicationId: a.id })}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Spela in samtal
+              </a>
+              <button
+                className="button secondary"
+                onClick={() => setMaterialsId(a.id)}
+              >
+                Dokumentunderlag
+              </button>
+              <button
+                className="button secondary"
+                onClick={() => setInterviewBookingId(a.id)}
+              >
+                Boka intervju
+              </button>
+              <button
+                className="button secondary"
+                onClick={() => setHistoryId(a.id)}
+              >
+                Visa historik
+              </button>
+              {a.status === "draft" && (
+                <button
+                  className="button secondary"
+                  onClick={() =>
+                    setDeadline({
+                      id: uid(),
+                      title: `${a.role} · ${a.organization}`,
+                      date: nextDate(a.deadline),
+                      minute: data.settings.end,
+                      categoryId: data.categories.some((c) => c.id === "career")
+                        ? "career"
+                        : data.categories[0].id,
+                      applicationId: a.id,
+                      steps: [],
+                    })
+                  }
+                >
+                  Planera från deadline
+                </button>
+              )}
+            </div>
+            {!!a.interviews?.length && (
+              <section
+                className="stack"
+                aria-label={`Intervjuer för ${a.role}`}
+              >
+                <h3>Intervjuer</h3>
+                {a.interviews.map((i) => {
+                  const meeting = interviewActivity(
+                    data,
+                    i.meetingActivityId,
+                  )?.activity;
+                  const prep = interviewActivity(
+                    data,
+                    i.preparationActivityId,
+                  )?.activity;
+                  const date = meeting?.date ?? i.date,
+                    start = meeting?.start ?? i.start,
+                    end = meeting?.end ?? i.end;
+                  const late =
+                    meeting &&
+                    prep &&
+                    (prep.date > meeting.date ||
+                      (prep.date === meeting.date && prep.end > meeting.start));
+                  return (
+                    <div className="career-interview stack" key={i.id}>
+                      <h4>{i.title}</h4>
+                      <a
+                        className="text-button"
+                        href={recordingHref({
+                          applicationId: a.id,
+                          interviewId: i.id,
+                          ...(i.contactId ? { contactId: i.contactId } : {}),
+                        })}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Spela in intervju
+                      </a>
+                      <p>
+                        {date} · {time(start)}–{time(end)} ·{" "}
+                        {meeting
+                          ? meeting.status === "done"
+                            ? "Genomförd"
+                            : meeting.status === "skipped"
+                              ? "Blev inte av"
+                              : "Planerad"
+                          : "Kalenderpass saknas"}
+                      </p>
+                      {i.location && (
+                        <p className="career-notes">
+                          {i.location}
+                          {documentUrl(i.location) && (
+                            <>
+                              {" "}
+                              ·{" "}
+                              <a
+                                href={documentUrl(i.location)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                Öppna möteslänk
+                              </a>
+                            </>
+                          )}
+                        </p>
+                      )}
+                      {i.contactId && (
+                        <p>
+                          Kontakt:{" "}
+                          {contacts.find((c) => c.id === i.contactId)?.name ??
+                            "Borttagen kontakt"}
+                        </p>
+                      )}
+                      {prep && (
+                        <p>
+                          Förberedelse: {prep.date} {time(prep.start)}–
+                          {time(prep.end)}
+                        </p>
+                      )}
+                      {i.preparationActivityId && !prep && (
+                        <p>Förberedelsepasset saknas i kalendern.</p>
+                      )}
+                      {late && (
+                        <p role="status">
+                          Förberedelsepasset ligger inte före intervjun.
+                          Kontrollera tiderna i kalendern.
+                        </p>
+                      )}
+                      <div className="career-actions">
+                        <button
+                          className="button secondary"
+                          onClick={() =>
+                            setInterviewNotes({
+                              applicationId: a.id,
+                              interviewId: i.id,
+                            })
+                          }
+                        >
+                          Intervjuanteckningar
+                        </button>
+                        <button
+                          className="button secondary"
+                          onClick={() =>
+                            setInterviewNotes({
+                              applicationId: a.id,
+                              interviewId: i.id,
+                            })
+                          }
+                        >
+                          Öppna intervjuunderlag
+                        </button>
+                        {meeting && (
+                          <button
+                            className="button secondary"
+                            onClick={() => onOpen(meeting)}
+                          >
+                            Öppna intervjupass
+                          </button>
+                        )}
+                        {prep && (
+                          <button
+                            className="button secondary"
+                            onClick={() => onOpen(prep)}
+                          >
+                            Öppna förberedelsepass
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </section>
+            )}
+            {passes(linked("applicationId", a.id))}
+            <details>
+              <summary>Historik</summary>
+              <ApplicationHistory
+                embedded
+                value={a}
+                contacts={contacts}
+                onSave={saveTrackedApplication}
+                onClose={() => {}}
+              />
+            </details>
+          </div>
+        </section>
+      </article>
+    );
   };
   return (
     <section
@@ -269,44 +600,37 @@ export function CareerView({
       <button className="text-button career-week-link" onClick={onWeek}>
         Till veckans arbete →
       </button>
-      <div className="career-tabs" role="group" aria-label="Visa jobböversikt">
-        {(section === "network"
-          ? [
-              ["contacts", "Kontakter"],
-              ["actions", "Uppföljningar"],
-            ]
-          : [
-              ["applications", "Ansökningar"],
-              ["actions", "Nästa steg"],
-            ]
-        ).map(([id, label]) => (
-          <button
-            className="button secondary"
-            key={id}
-            aria-pressed={tab === id}
-            onClick={() => {
-              setTab(id);
-              setMessage("");
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      {section === "jobs" && (
-        <details className="career-planning-options">
-          <summary>Deadlines och planering</summary>
-          <button
-            className="text-button"
-            aria-pressed={tab === "deadlines"}
-            onClick={() => setTab("deadlines")}
-          >
-            Deadlines
-          </button>
-        </details>
+      {section === "network" && (
+        <div
+          className="career-tabs"
+          role="group"
+          aria-label="Visa nätverksöversikt"
+        >
+          {[
+            ["contacts", "Kontakter"],
+            ["actions", "Uppföljningar"],
+          ].map(([id, label]) => (
+            <button
+              className="button secondary"
+              key={id}
+              aria-pressed={tab === id}
+              onClick={() => {
+                setTab(id);
+                setMessage("");
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+      {section === "jobs" && tab === "deadlines" && (
+        <button className="text-button" onClick={() => setTab("applications")}>
+          Till jobblistan
+        </button>
       )}
       {message && <p role="status">{message}</p>}
-      {tab === "actions" && (
+      {section === "network" && tab === "actions" && (
         <CareerActions
           onOpen={onOpen}
           initialActionId={focusActionId}
@@ -325,473 +649,36 @@ export function CareerView({
           }
         />
       )}
-      {tab === "applications" && (
-        <>
-          <div className="application-overview" aria-label="Ansökningsöversikt">
-            <div>
-              <strong>
-                {applications.filter((a) => !isClosedApplication(a)).length}
-              </strong>
-              <span>Aktiva ansökningar</span>
-            </div>
-            <div>
-              <strong>
-                {
-                  new Set(
-                    steps
-                      .filter(
-                        (step) =>
-                          step.applicationId &&
-                          actionNeedsAttention(data, step),
-                      )
-                      .map((step) => step.applicationId),
-                  ).size
-                }
-              </strong>
-              <span>Att följa upp senast idag</span>
-            </div>
-            <div>
-              <strong>
-                {applications.filter((a) => a.status === "interview").length}
-              </strong>
-              <span>I intervjufasen</span>
-            </div>
-          </div>
-          <div className="career-actions">
-            <button
-              className="button primary"
-              onClick={() =>
-                setApplication({
-                  id: uid(),
-                  organization: "",
-                  role: "",
-                  status: "draft",
-                  deadline: "",
-                  nextAction: "",
-                  followUpDate: "",
-                  notes: "",
-                })
-              }
-            >
-              Ny ansökan
+      {tab === "applications" &&
+        (detailedApplication ? (
+          <section className="job-detail stack" aria-label="Ansökans detaljer">
+            <button className="text-button" onClick={() => setDetailId(null)}>
+              Till jobblistan
             </button>
-            <button
-              className="button secondary"
-              onClick={() => setLinkedinOpen(true)}
-            >
-              Importera från LinkedIn
-            </button>
-            <button
-              className="button secondary"
-              onClick={() => setMessageOpen(true)}
-            >
-              Klistra in besked
-            </button>
-          </div>
-          <div className="application-filters">
-            <label>
-              Sök ansökan
-              <input
-                type="search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Arbetsgivare, tjänst eller nästa steg"
-              />
-            </label>
-            <label>
-              Visa ansökningar
-              <select
-                value={scope}
-                onChange={(event) => {
-                  setScope(event.target.value as typeof scope);
-                  setFilter("all");
-                }}
-              >
-                <option value="active">Aktiva</option>
-                <option value="closed">Avslutade och avslag</option>
-                <option value="all">Alla</option>
-              </select>
-            </label>
-            <details className="application-filter-options">
-              <summary>
-                Fler filter
-                {filter !== "all" || period !== "all" ? " · Aktiva filter" : ""}
-              </summary>
-              <div className="application-advanced-fields">
-                <label>
-                  Filtrera status
-                  <select
-                    value={filter}
-                    onChange={(e) => {
-                      setFilter(e.target.value);
-                      if (["closed", "rejected"].includes(e.target.value))
-                        setScope("closed");
-                      else if (e.target.value !== "all") setScope("active");
-                    }}
-                  >
-                    <option value="all">Alla statusar</option>
-                    {Object.entries(statuses).map(([id, label]) => (
-                      <option key={id} value={id}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Filtrera nästa steg
-                  <select
-                    value={period}
-                    onChange={(e) => setPeriod(e.target.value as ActionPeriod)}
-                  >
-                    {Object.entries(ACTION_PERIODS).map(([id, label]) => (
-                      <option value={id} key={id}>
-                        {label}
-                        {id !== "all"
-                          ? ` (${applications.filter((a) => matchesActionPeriod(a, id as ActionPeriod)).length})`
-                          : ""}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            </details>
-          </div>
-          <p role="status">
-            Visar {visibleApplications.length} av {applications.length}{" "}
-            ansökningar · Nästa datum först
-          </p>
-          {!applications.length && (
-            <p>
-              Inga ansökningar registrerade. Börja med Ny ansökan, ange
-              arbetsgivare och tjänst och välj sedan nästa steg.
-            </p>
-          )}
-          {!!applications.length && !visibleApplications.length && (
-            <div className="application-empty">
-              <p>Inga ansökningar matchar filtren.</p>
-              <button className="button secondary" onClick={resetFilters}>
-                Visa alla ansökningar
-              </button>
-            </div>
-          )}
-          <div className="career-cards">
-            {visibleApplications.map((a) => {
-              const step = nextStep("application", a);
-              return (
-                <article className="career-card stack" key={a.id}>
-                  <h2>
-                    {a.role} · {a.organization}
-                  </h2>
-                  <div className="application-status">
-                    <span>{statuses[a.status]}</span>
-                    {!step && <span>{applicationAttention(a)}</span>}
-                  </div>
-                  {a.deadline && <p>Deadline: {a.deadline}</p>}
-                  <div className="application-next-step">
-                    <h3>
-                      {step?.kind === "waiting"
-                        ? "Väntar på svar"
-                        : "Nästa steg"}
-                    </h3>
-                    <p>
-                      {step?.title ||
-                        (isClosedApplication(a)
-                          ? "Processen är avslutad."
-                          : "Välj vad du vill göra härnäst.")}
-                    </p>
-                    {step && !isClosedApplication(a) ? (
-                      <ActionControl
-                        data={data}
-                        action={step}
-                        onOpen={onOpen}
-                        onBook={() => bookStep(step)}
-                        onEdit={() => {
-                          if (step.legacy === "application") setApplication(a);
-                          else {
-                            setFocusActionId(step.id);
-                            setTab("actions");
-                          }
-                        }}
-                        editLabel={
-                          step.legacy === "application"
-                            ? "Redigera ansökan"
-                            : "Visa nästa steg"
-                        }
-                        onComplete={() =>
-                          onChange(completeCareerAction(data, step.id), data)
-                        }
-                      />
-                    ) : (
-                      <div className="career-actions">
-                        <button
-                          className={
-                            isClosedApplication(a)
-                              ? "text-button"
-                              : "button primary"
-                          }
-                          onClick={() => setApplication(a)}
-                        >
-                          {isClosedApplication(a)
-                            ? "Redigera ansökan"
-                            : "Lägg till nästa steg"}
-                        </button>
-                        {!isClosedApplication(a) && (
-                          <button
-                            className="text-button"
-                            onClick={() => setApplication(a)}
-                          >
-                            Redigera ansökan
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className="career-actions">
-                    <button
-                      className="button secondary"
-                      onClick={() => setCvId(a.id)}
-                    >
-                      Skapa CV för jobbet ↗
-                    </button>
-                  </div>
-                  <details className="application-details">
-                    <summary>Dokument, intervjuer och historik</summary>
-                    <div className="stack">
-                      {!!data.careerActions?.filter(
-                        (v) => v.applicationId === a.id && v.status === "open",
-                      ).length && (
-                        <button
-                          className="text-button"
-                          onClick={() => setTab("actions")}
-                        >
-                          Visa kopplade nästa steg (
-                          {
-                            data.careerActions.filter(
-                              (v) =>
-                                v.applicationId === a.id && v.status === "open",
-                            ).length
-                          }
-                          )
-                        </button>
-                      )}
-                      {!!a.contactIds?.length && (
-                        <div className="stack" aria-label="Kopplade kontakter">
-                          {a.contactIds.map((id) => {
-                            const c = contacts.find((c) => c.id === id);
-                            return c ? (
-                              <button
-                                className="text-button"
-                                key={id}
-                                onClick={() => setContact(c)}
-                              >
-                                {c.name}
-                                {c.organization && ` · ${c.organization}`}
-                              </button>
-                            ) : (
-                              <span key={id}>Borttagen kontakt</span>
-                            );
-                          })}
-                        </div>
-                      )}
-                      {a.notes && <p className="career-notes">{a.notes}</p>}
-                      <div className="career-actions">
-                        <a
-                          className="button secondary"
-                          href={recordingHref({ applicationId: a.id })}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Spela in samtal
-                        </a>
-                        <button
-                          className="button secondary"
-                          onClick={() => setMaterialsId(a.id)}
-                        >
-                          Dokumentunderlag
-                        </button>
-                        <button
-                          className="button secondary"
-                          onClick={() => setInterviewBookingId(a.id)}
-                        >
-                          Boka intervju
-                        </button>
-                        <button
-                          className="button secondary"
-                          onClick={() => setHistoryId(a.id)}
-                        >
-                          Visa historik
-                        </button>
-                        {a.status === "draft" && (
-                          <button
-                            className="button secondary"
-                            onClick={() =>
-                              setDeadline({
-                                id: uid(),
-                                title: `${a.role} · ${a.organization}`,
-                                date: nextDate(a.deadline),
-                                minute: data.settings.end,
-                                categoryId: data.categories.some(
-                                  (c) => c.id === "career",
-                                )
-                                  ? "career"
-                                  : data.categories[0].id,
-                                applicationId: a.id,
-                                steps: [],
-                              })
-                            }
-                          >
-                            Planera från deadline
-                          </button>
-                        )}
-                      </div>
-                      {!!a.interviews?.length && (
-                        <section
-                          className="stack"
-                          aria-label={`Intervjuer för ${a.role}`}
-                        >
-                          <h3>Intervjuer</h3>
-                          {a.interviews.map((i) => {
-                            const meeting = interviewActivity(
-                              data,
-                              i.meetingActivityId,
-                            )?.activity;
-                            const prep = interviewActivity(
-                              data,
-                              i.preparationActivityId,
-                            )?.activity;
-                            const date = meeting?.date ?? i.date,
-                              start = meeting?.start ?? i.start,
-                              end = meeting?.end ?? i.end;
-                            const late =
-                              meeting &&
-                              prep &&
-                              (prep.date > meeting.date ||
-                                (prep.date === meeting.date &&
-                                  prep.end > meeting.start));
-                            return (
-                              <div
-                                className="career-interview stack"
-                                key={i.id}
-                              >
-                                <h4>{i.title}</h4>
-                                <a
-                                  className="text-button"
-                                  href={recordingHref({
-                                    applicationId: a.id,
-                                    interviewId: i.id,
-                                    ...(i.contactId
-                                      ? { contactId: i.contactId }
-                                      : {}),
-                                  })}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                >
-                                  Spela in intervju
-                                </a>
-                                <p>
-                                  {date} · {time(start)}–{time(end)} ·{" "}
-                                  {meeting
-                                    ? meeting.status === "done"
-                                      ? "Genomförd"
-                                      : meeting.status === "skipped"
-                                        ? "Blev inte av"
-                                        : "Planerad"
-                                    : "Kalenderpass saknas"}
-                                </p>
-                                {i.location && (
-                                  <p className="career-notes">
-                                    {i.location}
-                                    {documentUrl(i.location) && (
-                                      <>
-                                        {" "}
-                                        ·{" "}
-                                        <a
-                                          href={documentUrl(i.location)}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                        >
-                                          Öppna möteslänk
-                                        </a>
-                                      </>
-                                    )}
-                                  </p>
-                                )}
-                                {i.contactId && (
-                                  <p>
-                                    Kontakt:{" "}
-                                    {contacts.find((c) => c.id === i.contactId)
-                                      ?.name ?? "Borttagen kontakt"}
-                                  </p>
-                                )}
-                                {prep && (
-                                  <p>
-                                    Förberedelse: {prep.date} {time(prep.start)}
-                                    –{time(prep.end)}
-                                  </p>
-                                )}
-                                {i.preparationActivityId && !prep && (
-                                  <p>Förberedelsepasset saknas i kalendern.</p>
-                                )}
-                                {late && (
-                                  <p role="status">
-                                    Förberedelsepasset ligger inte före
-                                    intervjun. Kontrollera tiderna i kalendern.
-                                  </p>
-                                )}
-                                <div className="career-actions">
-                                  <button
-                                    className="button secondary"
-                                    onClick={() =>
-                                      setInterviewNotes({
-                                        applicationId: a.id,
-                                        interviewId: i.id,
-                                      })
-                                    }
-                                  >
-                                    Intervjuanteckningar
-                                  </button>
-                                  <button
-                                    className="button secondary"
-                                    onClick={() =>
-                                      setInterviewNotes({
-                                        applicationId: a.id,
-                                        interviewId: i.id,
-                                      })
-                                    }
-                                  >
-                                    Öppna intervjuunderlag
-                                  </button>
-                                  {meeting && (
-                                    <button
-                                      className="button secondary"
-                                      onClick={() => onOpen(meeting)}
-                                    >
-                                      Öppna intervjupass
-                                    </button>
-                                  )}
-                                  {prep && (
-                                    <button
-                                      className="button secondary"
-                                      onClick={() => onOpen(prep)}
-                                    >
-                                      Öppna förberedelsepass
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </section>
-                      )}
-                      {passes(linked("applicationId", a.id))}
-                    </div>
-                  </details>
-                </article>
-              );
-            })}
-          </div>
-        </>
-      )}
+            {renderApplication(detailedApplication)}
+          </section>
+        ) : (
+          <JobList
+            data={data}
+            lane={jobLane}
+            onLane={setJobLane}
+            query={query}
+            onQuery={setQuery}
+            onAdd={() => setAddJobOpen(true)}
+            onOpen={openJob}
+            onPrimary={primaryJobAction}
+            onMessage={(a) => {
+              setMessageApplicationId(a.id);
+              setMessageOpen(true);
+            }}
+            onImport={() => setLinkedinOpen(true)}
+            onGlobalMessage={() => {
+              setMessageApplicationId(undefined);
+              setMessageOpen(true);
+            }}
+            onDeadlines={() => setTab("deadlines")}
+          />
+        ))}
       {tab === "contacts" && (
         <>
           <button
@@ -939,21 +826,70 @@ export function CareerView({
           ))}
         </>
       )}
-      <section className="career-card stack">
-        <h2>Omplanera resten av dagen</h2>
-        <p>
-          Flyttbara, flexibla pass som inte har börjat ordnas efter deadline och
-          prioritet från aktuell tid i Stockholm. Genomförda, påbörjade,
-          skyddade och låsta pass samt andra dagar bevaras. Förslaget sparas
-          först när du använder det.
-        </p>
-        <button
-          className="button secondary"
-          onClick={() => showPreview(replanDay(data), "Resten av dagen")}
-        >
-          Förhandsvisa dagens omplanering
-        </button>
-      </section>
+      <details className="job-tools">
+        <summary>Omplanera resten av dagen</summary>
+        <section className="career-card stack">
+          <h2>Omplanera resten av dagen</h2>
+          <p>
+            Flyttbara, flexibla pass som inte har börjat ordnas efter deadline
+            och prioritet från aktuell tid i Stockholm. Genomförda, påbörjade,
+            skyddade och låsta pass samt andra dagar bevaras. Förslaget sparas
+            först när du använder det.
+          </p>
+          <button
+            className="button secondary"
+            onClick={() => showPreview(replanDay(data), "Resten av dagen")}
+          >
+            Förhandsvisa dagens omplanering
+          </button>
+        </section>
+      </details>
+      {addJobOpen && (
+        <JobCapture
+          applications={applications}
+          onClose={() => setAddJobOpen(false)}
+          onSave={(a) => {
+            onChange(
+              {
+                ...data,
+                applications: [...applications, saveApplication(undefined, a)],
+              },
+              data,
+            );
+            setAddJobOpen(false);
+            setDetailId(a.id);
+            setJobLane("todo");
+            setMessage(
+              "Jobbet är sparat. Fortsätt med nästa steg när det passar.",
+            );
+            return undefined;
+          }}
+        />
+      )}
+      {sentApplication && (
+        <ApplicationSent
+          application={sentApplication}
+          onClose={() => setSentId(null)}
+          onSave={(date) => {
+            try {
+              const next = markApplicationSent(data, sentApplication.id, date);
+              onChange(next, data);
+              setSentId(null);
+              setJobLane(
+                jobWorkspace(next).find(
+                  (row) => row.application.id === sentApplication.id,
+                )?.lane ?? "waiting",
+              );
+              setMessage("Ansökan är markerad som skickad.");
+              return undefined;
+            } catch (e) {
+              return e instanceof Error
+                ? e.message
+                : "Ansökan kunde inte uppdateras.";
+            }
+          }}
+        />
+      )}
       {cvApplication && (
         <CvAgent application={cvApplication} onClose={() => setCvId(null)} />
       )}
@@ -1029,6 +965,7 @@ export function CareerView({
       {messageOpen && (
         <ApplicationMessage
           applications={applications}
+          initialApplicationId={messageApplicationId}
           onClose={() => setMessageOpen(false)}
           onSave={(id, text, update) => {
             const current = applications.find((a) => a.id === id);
@@ -1037,10 +974,18 @@ export function CareerView({
               const updated = applyApplicationMessage(current, text, update);
               saveTrackedApplication(updated);
               setMessageOpen(false);
+              setDetailId(updated.id);
+              setJobLane(
+                jobWorkspace({
+                  ...data,
+                  applications: applications.map((a) =>
+                    a.id === updated.id ? updated : a,
+                  ),
+                }).find((row) => row.application.id === updated.id)?.lane ??
+                  "todo",
+              );
               setQuery("");
-              setFilter("all");
-              setPeriod("all");
-              setScope(isClosedApplication(updated) ? "closed" : "active");
+
               setMessage(
                 "Beskedet är sparat i historiken. Status och nästa steg är uppdaterade. Du kan boka arbetstid från ansökans kort.",
               );
@@ -1061,10 +1006,11 @@ export function CareerView({
             if (result.added.length) {
               onChange(result.data, data);
               setLinkedinOpen(false);
-              setFilter("all");
-              setScope("active");
+              setJobLane("todo");
+              setDetailId(null);
+
               setQuery("");
-              setPeriod("all");
+
               setMessage(
                 `${result.added.length} jobb har importerats som utkast.${result.skipped.length ? ` ${result.skipped.length} dubbletter hoppades över.` : ""} Nästa steg finns i veckovyn. Välj Boka arbetstid när du vill planera ett pass.`,
               );
@@ -1101,16 +1047,12 @@ export function CareerView({
               : { data: next, activities: [], errors: [] };
             onChange(result.data, data);
             setApplication(null);
-            if (
-              !applicationOverview([a], { query, scope, status: filter })
-                .length ||
-              !matchesActionPeriod(a, period)
-            ) {
-              setQuery("");
-              setScope(isClosedApplication(a) ? "closed" : "active");
-              setFilter("all");
-              setPeriod("all");
-            }
+            setDetailId(a.id);
+            setJobLane(
+              jobWorkspace(result.data).find(
+                (row) => row.application.id === a.id,
+              )?.lane ?? "todo",
+            );
             setMessage(
               result.errors.length
                 ? `Ansökan är sparad. Arbetstid kunde inte bokas: ${result.errors.join(" ")}`
@@ -1135,6 +1077,7 @@ export function CareerView({
                 data,
               );
               setApplication(null);
+              setDetailId(null);
             }
           }}
         />

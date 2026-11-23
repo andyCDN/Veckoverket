@@ -27,6 +27,8 @@ const activity = (
 });
 function fixture() {
   const d = createData();
+  d.personalScheduleVersion = 2;
+  d.settings.weekTemplate = "off";
   d.settings = {
     ...d.settings,
     start: 480,
@@ -123,7 +125,7 @@ test("gemensamma nästa steg visar försenade kontakter, bokar utan dubbelboknin
   await queue.getByRole("button", { name: "Markera nästa steg klart" }).click();
   expect((await stored(page)).contacts![0].entries).toHaveLength(2);
   await page.getByRole("button", { name: "Jobb", exact: true }).click();
-  await page.getByRole("button", { name: "Nästa steg", exact: true }).click();
+  await page.locator(".job-title-button").first().click();
   queue = page.getByRole("region", { name: "Nästa steg för ansökningar" });
   await page.getByLabel("Visa nästa steg").selectOption("today");
   await expect(queue).toContainText("Rekryteraren efterfrågade ett exempel");
@@ -154,7 +156,7 @@ test("gemensamma nästa steg visar försenade kontakter, bokar utan dubbelboknin
   ).toMatchObject({ applicationId: "a", start: 630, end: 660 });
   await page.reload();
   await nav(page);
-  await page.getByRole("button", { name: "Nästa steg", exact: true }).click();
+  await page.locator(".job-title-button").first().click();
   await expect(
     page.getByRole("region", { name: "Nästa steg för ansökningar" }),
   ).toContainText("Överenskommet med Kim");
@@ -206,9 +208,12 @@ test("intervjuunderlaget samlar dokument, kontaktlogg, punkter och återkoppling
     activity("meeting", 810, 870, { blockType: "locked", applicationId: "a" }),
   );
   await setup(page, d);
-  await page
-    .getByText("Dokument, intervjuer och historik", { exact: true })
-    .click();
+  if (
+    !(await page
+      .getByRole("region", { name: "Ansökans detaljer", exact: true })
+      .isVisible())
+  )
+    await page.locator(".job-title-button").first().click();
   await page
     .getByRole("button", { name: "Öppna intervjuunderlag", exact: true })
     .click();
@@ -242,9 +247,12 @@ test("intervjuunderlaget samlar dokument, kontaktlogg, punkter och återkoppling
   );
   await page.reload();
   await nav(page);
-  await page
-    .getByText("Dokument, intervjuer och historik", { exact: true })
-    .click();
+  if (
+    !(await page
+      .getByRole("region", { name: "Ansökans detaljer", exact: true })
+      .isVisible())
+  )
+    await page.locator(".job-title-button").first().click();
   await page
     .getByRole("button", { name: "Öppna intervjuunderlag", exact: true })
     .click();
