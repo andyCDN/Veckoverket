@@ -13,8 +13,10 @@ export function ApplicationMessage({
   applications,
   onClose,
   onSave,
+  initialApplicationId,
 }: {
   applications: JobApplication[];
+  initialApplicationId?: string;
   onClose: () => void;
   onSave: (
     id: string,
@@ -26,7 +28,7 @@ export function ApplicationMessage({
   const [proposal, setProposal] = useState<ReturnType<
     typeof classifyApplicationMessage
   > | null>(null);
-  const [id, setId] = useState("");
+  const [id, setId] = useState(initialApplicationId ?? "");
   const [status, setStatus] = useState<JobApplication["status"] | "">("");
   const [action, setAction] = useState("");
   const [date, setDate] = useState("");
@@ -42,9 +44,14 @@ export function ApplicationMessage({
         onSubmit={(event) => {
           event.preventDefault();
           if (!proposal) {
-            const result = classifyApplicationMessage(text, applications);
+            const result = classifyApplicationMessage(
+              text,
+              initialApplicationId
+                ? applications.filter((a) => a.id === initialApplicationId)
+                : applications,
+            );
             setProposal(result);
-            setId(result.applicationId);
+            setId(initialApplicationId ?? result.applicationId);
             setStatus(result.status ?? "");
             setAction(result.nextAction);
             setDate(result.followUpDate);
@@ -91,7 +98,10 @@ export function ApplicationMessage({
           <>
             <h3>Granska och spara</h3>
             <p role="status">
-              {proposal.reason} {proposal.matchReason}
+              {proposal.reason}{" "}
+              {initialApplicationId
+                ? `Beskedet kopplas till det valda jobbet: ${selected?.role ?? ""} · ${selected?.organization ?? ""}.`
+                : proposal.matchReason}
             </p>
             <label>
               Ansökan

@@ -46,7 +46,9 @@ for (const mobile of [false, true]) {
     const before = await page.evaluate(() =>
       localStorage.getItem("veckoverket.workspace.v1"),
     );
-    await page.getByRole("button", { name: "Skapa CV för jobbet" }).click();
+    await page
+      .getByRole("button", { name: "Fortsätt med CV", exact: true })
+      .click();
     const dialog = page.getByRole("dialog");
     await expect(
       dialog.getByRole("textbox", { name: "Annonstext för CV", exact: true }),

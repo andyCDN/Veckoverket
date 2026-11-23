@@ -10,6 +10,8 @@ for (const width of [1440, 390])
     await page.setViewportSize({ width, height: 1000 });
     await page.clock.install({ time: new Date("2026-11-11T09:00:00Z") });
     const d = createData();
+    d.personalScheduleVersion = 2;
+    d.settings.weekTemplate = "off";
     d.settings.autoPlanning = false;
     d.settings.buffer = 0;
     d.goals = [];
@@ -59,8 +61,12 @@ for (const width of [1440, 390])
     await page.goto("./");
     await navigateTo(page, "Jobb");
     const before = await stored();
+    await page.getByText("Fler verktyg", { exact: true }).click();
     await page
-      .getByRole("button", { name: "Importera från LinkedIn", exact: true })
+      .getByRole("button", {
+        name: "Importera flera LinkedIn-jobb",
+        exact: true,
+      })
       .click();
     const dialog = page.getByRole("dialog", {
       name: "Importera från LinkedIn",
@@ -139,8 +145,12 @@ for (const width of [1440, 390])
     ).toHaveLength(1);
     expect(after.tasks).toEqual([]);
     await navigateTo(page, "Jobb");
+    await page.getByText("Fler verktyg", { exact: true }).click();
     await page
-      .getByRole("button", { name: "Importera från LinkedIn", exact: true })
+      .getByRole("button", {
+        name: "Importera flera LinkedIn-jobb",
+        exact: true,
+      })
       .click();
     await dialog
       .getByLabel("Jobblänkar – en per rad")

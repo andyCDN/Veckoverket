@@ -22,7 +22,9 @@ export function ApplicationHistory({
   contacts,
   onSave,
   onClose,
+  embedded = false,
 }: {
+  embedded?: boolean;
   value: JobApplication;
   contacts: NetworkContact[];
   onSave: (a: JobApplication) => void;
@@ -32,126 +34,132 @@ export function ApplicationHistory({
     [notes, setNotes] = useState(""),
     [kind, setKind] = useState<ApplicationHistoryEntry["kind"]>("note"),
     [contactId, setContactId] = useState("");
-  return (
+  const content = (
+    <div className="stack">
+      {!value.history?.length && (
+        <p>
+          Ingen historik registrerad. Äldre händelser kan läggas till med sitt
+          ursprungliga datum.
+        </p>
+      )}
+      <ol className="stack" aria-label="Ansökans historik">
+        {[...(value.history ?? [])]
+          .sort(
+            (a, b) =>
+              b.date.localeCompare(a.date) ||
+              b.recordedAt.localeCompare(a.recordedAt),
+          )
+          .map((e) => (
+            <li key={e.id}>
+              <strong>
+                {e.date} · {labels[e.kind]}
+                {e.kind === "created" && e.status
+                  ? ` · ${APPLICATION_STATUSES[e.status]}`
+                  : ""}
+              </strong>
+              <p className="career-notes">{e.notes}</p>
+              {e.contactId && (
+                <p>
+                  Kontakt:{" "}
+                  {contacts.find((c) => c.id === e.contactId)?.name ??
+                    "Borttagen kontakt"}
+                </p>
+              )}
+            </li>
+          ))}
+      </ol>
+      <form
+        className="stack"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!notes.trim()) return;
+          onSave({
+            ...value,
+            history: [
+              ...(value.history ?? []),
+              {
+                id: uid(),
+                kind,
+                date,
+                notes: notes.trim(),
+                recordedAt: new Date().toISOString(),
+                ...(contactId ? { contactId } : {}),
+              },
+            ],
+          });
+          setNotes("");
+        }}
+      >
+        <h3>Lägg till händelse</h3>
+        <label>
+          Händelsetyp
+          <select
+            value={kind}
+            onChange={(e) =>
+              setKind(e.target.value as ApplicationHistoryEntry["kind"])
+            }
+          >
+            {(["note", "contact", "interview", "feedback"] as const).map(
+              (k) => (
+                <option value={k} key={k}>
+                  {labels[k]}
+                </option>
+              ),
+            )}
+          </select>
+        </label>
+        <label>
+          Händelsedatum
+          <input
+            required
+            type="date"
+            max={today()}
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+        </label>
+        <label>
+          Kontakt för händelsen
+          <select
+            value={contactId}
+            onChange={(e) => setContactId(e.target.value)}
+          >
+            <option value="">Ingen kontakt</option>
+            {contacts
+              .filter((c) => value.contactIds?.includes(c.id))
+              .map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} · {c.organization}
+                </option>
+              ))}
+          </select>
+        </label>
+        <label>
+          Händelseanteckning
+          <textarea
+            required
+            maxLength={4000}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+        </label>
+        <p>
+          En historikhändelse ändrar inte ansökans status och skapar inget
+          kalenderpass.
+        </p>
+        <button className="button primary">Spara händelse</button>
+      </form>
+    </div>
+  );
+  return embedded ? (
+    <section aria-label="Ansökningshistorik">{content}</section>
+  ) : (
     <Modal
       title="Ansökningshistorik"
       description={`${value.role} · ${value.organization}`}
       onClose={onClose}
     >
-      <div className="stack">
-        {!value.history?.length && (
-          <p>
-            Ingen historik registrerad. Äldre händelser kan läggas till med sitt
-            ursprungliga datum.
-          </p>
-        )}
-        <ol className="stack" aria-label="Ansökans historik">
-          {[...(value.history ?? [])]
-            .sort(
-              (a, b) =>
-                b.date.localeCompare(a.date) ||
-                b.recordedAt.localeCompare(a.recordedAt),
-            )
-            .map((e) => (
-              <li key={e.id}>
-                <strong>
-                  {e.date} · {labels[e.kind]}
-                  {e.kind === "created" && e.status
-                    ? ` · ${APPLICATION_STATUSES[e.status]}`
-                    : ""}
-                </strong>
-                <p className="career-notes">{e.notes}</p>
-                {e.contactId && (
-                  <p>
-                    Kontakt:{" "}
-                    {contacts.find((c) => c.id === e.contactId)?.name ??
-                      "Borttagen kontakt"}
-                  </p>
-                )}
-              </li>
-            ))}
-        </ol>
-        <form
-          className="stack"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!notes.trim()) return;
-            onSave({
-              ...value,
-              history: [
-                ...(value.history ?? []),
-                {
-                  id: uid(),
-                  kind,
-                  date,
-                  notes: notes.trim(),
-                  recordedAt: new Date().toISOString(),
-                  ...(contactId ? { contactId } : {}),
-                },
-              ],
-            });
-          }}
-        >
-          <h3>Lägg till händelse</h3>
-          <label>
-            Händelsetyp
-            <select
-              value={kind}
-              onChange={(e) =>
-                setKind(e.target.value as ApplicationHistoryEntry["kind"])
-              }
-            >
-              {(["note", "contact", "interview", "feedback"] as const).map(
-                (k) => (
-                  <option value={k} key={k}>
-                    {labels[k]}
-                  </option>
-                ),
-              )}
-            </select>
-          </label>
-          <label>
-            Händelsedatum
-            <input
-              required
-              type="date"
-              max={today()}
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </label>
-          <label>
-            Kontakt för händelsen
-            <select
-              value={contactId}
-              onChange={(e) => setContactId(e.target.value)}
-            >
-              <option value="">Ingen kontakt</option>
-              {contacts
-                .filter((c) => value.contactIds?.includes(c.id))
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} · {c.organization}
-                  </option>
-                ))}
-            </select>
-          </label>
-          <label>
-            Händelseanteckning
-            <textarea
-              required
-              maxLength={4000}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </label>
-          <p>
-            En historikhändelse ändrar inte ansökans status och skapar inget
-            kalenderpass.
-          </p>
-          <button className="button primary">Spara händelse</button>
-        </form>
-      </div>
+      {content}
     </Modal>
   );
 }
