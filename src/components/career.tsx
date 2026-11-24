@@ -65,6 +65,7 @@ import {
 } from "@/lib/application-overview";
 
 import { JobList } from "./job-list";
+import { JobWatch } from "./job-watch";
 import { JobCapture } from "./job-capture";
 import { ApplicationSent } from "./application-sent";
 import {
@@ -623,6 +624,21 @@ export function CareerView({
             </button>
           ))}
         </div>
+      )}
+      {section === "jobs" && !detailedApplication && tab !== "deadlines" && (
+        <div className="career-tabs" role="group" aria-label="Jobbverktyg">
+          <button className="button secondary" aria-pressed={tab === "applications"} onClick={() => setTab("applications")}>Mina jobb</button>
+          <button className="button secondary" aria-pressed={tab === "watch"} onClick={() => setTab("watch")}>Jobbspaning</button>
+        </div>
+      )}
+      {section === "jobs" && tab === "watch" && (
+        <JobWatch applications={applications} onSave={(a) => {
+          onChange({...data, applications: [...applications, saveApplication(undefined, a)]}, data);
+          setTab("applications");
+          setDetailId(a.id);
+          setJobLane("todo");
+          setMessage("Jobbet är sparat. Fortsätt med nästa steg när det passar.");
+        }} />
       )}
       {section === "jobs" && tab === "deadlines" && (
         <button className="text-button" onClick={() => setTab("applications")}>
