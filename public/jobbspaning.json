@@ -1,4 +1,61 @@
 {
-  "updatedAt": null,
-  "jobs": []
+  "updatedAt": "2026-11-24T10:00:00+01:00",
+  "jobs": [
+    {
+      "role": "Enhetschef varumärke, press och public affairs",
+      "organization": "Svenska Röda Korset",
+      "url": "https://www.rodakorset.se/om-oss/jobba-hos-oss/lediga-jobb/enhetschef-varumarke-press-och-public-affairs/",
+      "location": "Stockholm",
+      "deadline": "2026-11-30",
+      "summary": "Leda arbetet med varumärke, press och samhällspåverkan i en humanitär organisation."
+    },
+    {
+      "role": "Manager Public Affairs",
+      "organization": "Fortum",
+      "url": "https://jobs.fortum.com/Fortum/job/Sth-Solna-Manager-Public-Affairs/1375709355/",
+      "location": "Solna",
+      "deadline": "2026-11-24",
+      "summary": "Politisk omvärldsanalys, externa relationer och påverkansarbete inom energi."
+    },
+    {
+      "role": "Strategisk kommunikatör",
+      "organization": "Psykologförbundet",
+      "url": "https://www.psykologforbundet.se/om-oss/lediga-jobb/",
+      "location": "Stockholm",
+      "deadline": "2026-11-29",
+      "summary": "Strategisk och operativ kommunikation i ett professions- och fackförbund."
+    },
+    {
+      "role": "Intressepolitisk handläggare",
+      "organization": "Synskadades Riksförbund",
+      "url": "https://www.srf.nu/om-oss/jobba-hos-oss/intressepolitisk-handlaggare/",
+      "location": "Stockholm",
+      "deadline": "2026-12-07",
+      "summary": "Politiskt påverkansarbete för synskadades rättigheter. Deltid."
+    },
+    {
+      "role": "Verksamhetsutvecklare på konsultbasis",
+      "organization": "RFSU Stockholm",
+      "url": "https://jobb.rfsu.se/job/e1bf9ddf919a4dfeabb05ea8f1e57e19",
+      "location": "Stockholm",
+      "deadline": "2026-11-25",
+      "summary": "Utveckla och paketera verksamhetsnära tjänster för breddad finansiering. Deltid."
+    },
+    {
+      "role": "Sakkunnig inom intressepolitik",
+      "organization": "Svenska Epilepsiförbundet",
+      "url": "https://www.epilepsi.se/var-med-och-flytta-fragor-om-epilepsi-hogre-upp-pa-dagordningen/",
+      "location": "Sundbyberg",
+      "deadline": "2026-12-01",
+      "summary": "Utveckla förbundets intressepolitiska arbete och opinionsbildning."
+    },
+    {
+      "role": "Projektledare affärsutveckling",
+      "organization": "Axfoundation",
+      "url": "https://novare.se/executive-search/jobb/projektledare-affarsutveckling-20417/",
+      "location": "Torsåker / Stockholm",
+      "deadline": "2026-12-06",
+      "summary": "Projektledning och affärsutveckling för hållbara lösningar inom en icke vinstdrivande verksamhet."
+    }
+  ]
 }
