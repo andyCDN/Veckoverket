@@ -1,8 +1,18 @@
-# LinkedIn-import med annonsläsning
+# Import av jobb med annonsläsning
+
+## Lägg till ett jobb från en länk
+
+Öppna Jobb → Lägg till jobb. Klistra in länken till en annons i Platsbanken eller på LinkedIn och välj Läs uppgifter. Titel, arbetsgivare, annonslänk och annonstext fylls i när de finns tillgängliga. En uttrycklig sista ansökningsdag fylls också i. Granska uppgifterna, öppna Annons och anteckningar för att kontrollera underlaget och välj Spara jobb. Inget sparas före detta steg.
+
+Platsbanken läses från Arbetsförmedlingens publika JobTech-API direkt i webbläsaren. Det kräver ingen extra serverinstallation, token eller AI-tjänst. Bara annonsens id skickas; inga uppgifter från användarkontot följer med. Annonslänken sparas utan spårningsparametrar, och olika länkar till samma Platsbanken-annons hanteras som dubbletter.
+
+Om annonsen har tagits bort eller källan inte kan nås finns länken kvar i granskningen. Klistra in annonstexten eller komplettera uppgifterna manuellt. Länkar till andra webbplatser kan sparas med manuellt ifyllda uppgifter eller inklistrad annonstext. Automatisk läsning stöder Platsbanken och LinkedIn.
+
+## Importera flera LinkedIn-jobb
 
 Den manuella länkeimporten är publicerad. Automatisk annonsläsning använder den installerade serverfunktionen `quick-responder`.
 
-1. Öppna Jobb → Importera från LinkedIn och klistra in en jobblänk per rad, högst 100.
+1. Öppna Jobb → Fler verktyg → Importera flera LinkedIn-jobb och klistra in en jobblänk per rad, högst 100.
 2. Välj Granska jobben. Två annonser åt gången läses från sina publika LinkedIn-sidor. Dubbletter hämtas inte.
 3. Titel, arbetsgivare, ort, anställningsform, publiceringsdatum, eventuell lön och annonstext fylls i när uppgifterna finns. En uttrycklig sista ansökningsdag kan fyllas i; annonsens giltighetstid visas separat och antas inte vara sista ansökningsdag.
 4. Granska och rätta uppgifterna. Egna ändringar bevaras även om ett svar kommer senare. Hämtningen går att avbryta.
@@ -45,3 +55,5 @@ Servern tillåter bara validerade LinkedIn-jobblänkar och omdirigeringar till s
 ## Kontroll
 
 `npm test -- --maxWorkers=1 --no-file-parallelism` testar parser, dubbletter, formulärdata och serverhanterare. `npm run test:linkedin` bygger en separat testkonfiguration och testar automatisk ifyllning, bevarad egen titel och blockerad annons med inklistrad reservtext på desktop/mobil. LinkedIn-svar är styrda testdata; de garanterar inte att LinkedIn släpper igenom ett verkligt anrop. Vanliga import- och bokningstester finns i `e2e/linkedin-import.spec.ts`.
+
+`e2e-cloud/job-link-import.spec.ts` kontrollerar Platsbanken-import på desktop och mobil: granskning av alla fyra uppgifter, egen redigering, sparning och omladdning, dubbletter och manuell komplettering av en borttagen annons. API-svaren och kontot är styrda testdata.

@@ -1,16 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import type { JobApplication } from "@/lib/types";
-import {
-  documentUrl,
-  validateApplicationMaterials,
-} from "@/lib/application-materials";
+import { validateApplicationMaterials } from "@/lib/application-materials";
 import {
   detailsFromPastedText,
   detailsNotes,
-  loadJobDetails,
 } from "@/lib/linkedin-details-client";
-import { linkedInJobUrl } from "@/lib/linkedin-import";
+import { jobAdvertisementUrl, readJobAdvertisement } from "@/lib/job-ad-reader";
 import { isLocalDate } from "@/lib/google-time";
 import { uid } from "@/lib/date";
 import { Modal } from "./modal";
@@ -33,9 +29,9 @@ export function JobCapture({
   useEffect(() => () => request.current?.abort(), []);
   const review = async (manual = false) => {
     const raw = source.trim(),
-      linkOnly = !/\s/.test(raw) && Boolean(documentUrl(raw)),
+      linkOnly = !/\s/.test(raw) && Boolean(jobAdvertisementUrl(raw)),
       url =
-        documentUrl(
+        jobAdvertisementUrl(
           linkOnly ? raw : (raw.match(/https?:\/\/[^\s<>"']+/)?.[0] ?? ""),
         ) ?? "";
     const controller = new AbortController();
@@ -45,9 +41,13 @@ export function JobCapture({
     setMessage("");
     setError("");
     let details = detailsFromPastedText(linkOnly ? "" : raw);
-    if (linkOnly && linkedInJobUrl(url) && !manual) {
+    if (linkOnly && !manual) {
       try {
-        details = await loadJobDetails(url, controller.signal);
+        details = await readJobAdvertisement(url, controller.signal);
+        if (!details.role || !details.organization || !details.description)
+          setMessage(
+            "Annonsen kunde bara läsas delvis. Komplettera uppgifterna som saknas nedan.",
+          );
       } catch (e) {
         if (!controller.signal.aborted)
           setMessage(
@@ -56,10 +56,7 @@ export function JobCapture({
               : "Annonsen kunde inte läsas. Fyll i uppgifterna nedan.",
           );
       }
-    } else if (linkOnly && !manual)
-      setMessage(
-        "Länken sparas med jobbet. Fyll i tjänst och arbetsgivare, eller gå tillbaka och klistra in annonstexten för att läsa fler uppgifter.",
-      );
+    }
     if (controller.signal.aborted) return;
     setDraft({
       id: uid(),
@@ -73,7 +70,7 @@ export function JobCapture({
       followUpDate: "",
       notes: detailsNotes(details).slice(0, 4000),
       advertisement: {
-        url: linkedInJobUrl(url) ?? url,
+        url,
         text: (details.description || (linkOnly ? "" : raw)).slice(0, 60000),
       },
     });
@@ -99,8 +96,9 @@ export function JobCapture({
             />
           </label>
           <p className="help">
-            LinkedIn-länkar kan läsas automatiskt. Annonstext tolkas lokalt.
-            Uppgifter som saknas fyller du i själv.
+            Länkar från Platsbanken och LinkedIn kan läsas automatiskt. Du kan
+            också klistra in annonstexten. Granska titel, arbetsgivare och
+            annonstext innan du sparar.
           </p>
           <button
             className="button primary"
@@ -137,7 +135,7 @@ export function JobCapture({
               return;
             }
             const key = (value: string) =>
-              linkedInJobUrl(value) ?? documentUrl(value)?.replace(/#.*$/, "");
+              jobAdvertisementUrl(value)?.replace(/#.*$/, "");
             if (
               draft.advertisement?.url &&
               applications.some(
