@@ -1,0 +1,53 @@
+name: Update job sources
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/job-watch.yml"
+      - "scripts/scan-jobs.mjs"
+      - "scripts/job-watch-sources.mjs"
+      - "src/lib/job-watch-config.ts"
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: job-watch
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Scan public job sources
+        id: scan
+        continue-on-error: true
+        run: npm run scan:jobs
+      - name: Publish feed and source status
+        if: ${{ !cancelled() && steps.scan.outcome != 'skipped' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/jobbspaning.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Update public job sources"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Report source failure
+        if: ${{ !cancelled() && steps.scan.outcome == 'failure' }}
+        run: exit 1

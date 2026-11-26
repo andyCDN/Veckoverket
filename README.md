@@ -78,6 +78,8 @@ Utan ett konfigurerat molnprojekt sparas planen på den här enheten. Med Supaba
 
 ## Jobb, nätverk och deadlines
 
+**Jobbspaning** hämtar automatiskt relevanta annonser från Ideella jobb och Stockholms stads jobbdatabas varje dag, tillsammans med det tidigare publicerade urvalet. Fullständig annonstext och ansökningslänk följer med till granskningen. **Källor och sökurval** visar urval och senaste lyckade kontroll per källa. [Hämtning, källor och felsökning](docs/job-watch.md).
+
 **Jobbsök** och **Nätverkande** är separata livsområden. Deras gemensamma tidsbudget delas 75/25; ett ändrat tidsmål i inställningarna justerar båda. Planeraren fördelar även extra ledig tid mellan dem och tar hänsyn till minsta passlängd. Kontaktbokningar får Nätverkande som förvald kategori, ansökningsuppföljningar får Jobbsök. Äldre arbetsytor får kategoridelningen vid inläsning utan att sparade pass, genomförda aktiviteter eller historiska veckomål ändras. Äldre gemensamma pass ligger kvar i sin ursprungliga kategori och kan kategoriseras manuellt.
 
 Jobbets nästa steg kan filtreras på **Idag**, **Kommande sju dagar**, **Försenade** och **Utan datum** inne i dess detaljvy. Avslag och avslutade ansökningar ingår inte i åtgärdsfiltren. **Markera nästa steg klart** registrerar utfallet i historiken och tömmer åtgärden och dess uppföljningsdatum; kalenderpassens status ändras inte.

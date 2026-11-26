@@ -5,35 +5,20 @@ import type { JobApplication } from "@/lib/types";
 import { appPath } from "@/lib/app-path";
 import { jobUrlKey } from "@/lib/job-ad-url";
 import { applicationAdvertisementUrls } from "@/lib/job-identity";
+import {
+  JOB_WATCH_SOURCES,
+  JOB_WATCH_PROFILE,
+  type JobWatchFeed,
+} from "@/lib/job-watch-config";
+import {
+  parseJobWatchFeed,
+  uniqueWatchJobs,
+  watchJobUrls,
+} from "@/lib/job-watch-feed";
 
-type Job = {
-  role: string;
-  organization: string;
-  url: string;
-  location: string;
-  deadline: string;
-  summary: string;
-  text?: string;
-};
-type Feed = { updatedAt: string | null; jobs: Job[] };
-function validJob(value: unknown): value is Job {
-  if (!value || typeof value !== "object") return false;
-  const j = value as Job;
-  return (
-    [j.role, j.organization, j.url, j.location, j.deadline, j.summary].every(
-      (v) => typeof v === "string",
-    ) &&
-    !!j.role.trim() &&
-    !!j.organization.trim() &&
-    j.url.length <= 2048 &&
-    /^https:\/\//i.test(j.url) &&
-    !!jobUrlKey(j.url) &&
-    (j.text === undefined ||
-      (typeof j.text === "string" && j.text.length <= 60000)) &&
-    (!j.deadline || /^\d{4}-\d{2}-\d{2}$/.test(j.deadline))
-  );
-}
 const key = (url: string) => jobUrlKey(url) ?? "";
+const localTime = (value: string) =>
+  new Date(value).toLocaleString("sv-SE", { timeZone: "Europe/Stockholm" });
 export function JobWatch({
   applications,
   dismissedUrls,
@@ -47,7 +32,7 @@ export function JobWatch({
   onDismiss: (url: string) => void;
   onRestore: (url?: string) => void;
 }) {
-  const [feed, setFeed] = useState<Feed | null>(null);
+  const [feed, setFeed] = useState<JobWatchFeed | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
@@ -72,27 +57,27 @@ export function JobWatch({
   }, []);
   useEffect(() => {
     const controller = new AbortController();
-    fetch(
+    const read = async (url: string) => {
+      const response = await fetch(url, {
+        cache: "no-store",
+        signal: controller.signal,
+        credentials: "omit",
+        referrerPolicy: "no-referrer",
+      });
+      if (!response.ok) throw new Error("Jobbspaningen kunde inte hämtas.");
+      return parseJobWatchFeed(await response.json());
+    };
+    read(
       "https://raw.githubusercontent.com/andyCDN/Veckoverket/main/public/jobbspaning.json?t=" +
         Date.now(),
-      { cache: "no-store", signal: controller.signal },
     )
-      .catch(() =>
-        fetch(appPath("/jobbspaning.json"), {
-          cache: "no-store",
-          signal: controller.signal,
-        }),
-      )
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Jobbspaningen kunde inte hämtas.");
-        const value = (await response.json()) as Feed;
-        if (!Array.isArray(value.jobs)) throw new Error("Ogiltig jobbspaning.");
+      .catch((error) => {
+        if (controller.signal.aborted) throw error;
+        return read(appPath("/jobbspaning.json"));
+      })
+      .then((value) => {
         if (!controller.signal.aborted) {
-          setFeed({
-            updatedAt:
-              typeof value.updatedAt === "string" ? value.updatedAt : null,
-            jobs: value.jobs.filter(validJob),
-          });
+          setFeed(value);
           setError("");
         }
       })
@@ -109,11 +94,12 @@ export function JobWatch({
     applications.flatMap(applicationAdvertisementUrls).map(key),
   );
   const hidden = new Set([...dismissedUrls, ...legacyHidden].map(key));
-  const visible = (feed?.jobs ?? []).filter(
+  const visible = uniqueWatchJobs(feed?.jobs ?? []).filter(
     (j) =>
       (!j.deadline || j.deadline >= today()) &&
-      !seen.has(key(j.url)) &&
-      !hidden.has(key(j.url)),
+      !watchJobUrls(j).some(
+        (url) => seen.has(key(url)) || hidden.has(key(url)),
+      ),
   );
   return (
     <section className="job-workspace stack" aria-label="Jobbspaning">
@@ -122,10 +108,7 @@ export function JobWatch({
           <h2>Jobbspaning</h2>
           <p>
             {feed?.updatedAt
-              ? "Senast uppdaterad: " +
-                new Date(feed.updatedAt).toLocaleString("sv-SE", {
-                  timeZone: "Europe/Stockholm",
-                })
+              ? "Senast uppdaterad: " + localTime(feed.updatedAt)
               : "Ingen rapport publicerad ännu."}
           </p>
         </div>
@@ -140,6 +123,38 @@ export function JobWatch({
           Uppdatera
         </button>
       </div>
+      {!!feed?.sources?.length && (
+        <details className="career-card">
+          <summary>Källor och sökurval</summary>
+          <p>{JOB_WATCH_PROFILE}</p>
+          <p>
+            Källorna kontrolleras automatiskt varje dag. Uppdatera hämtar
+            senaste resultatet.
+          </p>
+          <ul>
+            {feed.sources.map((source) => {
+              const info = JOB_WATCH_SOURCES.find((s) => s.id === source.id)!;
+              return (
+                <li key={source.id}>
+                  <a href={info.url} target="_blank" rel="noopener noreferrer">
+                    {info.name}
+                  </a>
+                  {source.status === "ok"
+                    ? ` · ${source.count} ${source.count === 1 ? "träff" : "träffar"} · kontrollerad ${localTime(source.checkedAt)}`
+                    : source.lastSuccessfulAt
+                      ? ` · kunde inte uppdateras · visar senaste lyckade hämtningen från ${localTime(source.lastSuccessfulAt)}`
+                      : " · kunde inte hämtas ännu"}
+                </li>
+              );
+            })}
+          </ul>
+        </details>
+      )}
+      {feed?.sources?.some((source) => source.status === "error") && (
+        <p role="status">
+          En annonskälla kunde inte uppdateras. Se Källor och sökurval.
+        </p>
+      )}
       {loading && <p role="status">Hämtar jobb…</p>}
       {error && <p role="alert">{error}</p>}
       {lastDismissed && hidden.has(key(lastDismissed.url)) && (
@@ -169,6 +184,15 @@ export function JobWatch({
           <p>
             {j.organization} · {j.location}
           </p>
+          {j.sourceId && (
+            <p className="muted">
+              Källa:{" "}
+              {
+                JOB_WATCH_SOURCES.find((source) => source.id === j.sourceId)
+                  ?.name
+              }
+            </p>
+          )}
           <p>
             {j.deadline
               ? "Sök senast " + j.deadline
@@ -198,7 +222,16 @@ export function JobWatch({
                   nextActionOwner: "Jag",
                   followUpDate: "",
                   notes: j.summary,
-                  advertisement: { url: j.url, text: j.text ?? "" },
+                  advertisement: {
+                    url: j.url,
+                    text: j.text ?? "",
+                    ...(j.additionalUrls?.length
+                      ? { additionalUrls: j.additionalUrls }
+                      : {}),
+                    ...(j.applicationUrl
+                      ? { applicationUrl: j.applicationUrl }
+                      : {}),
+                  },
                 })
               }
             >
