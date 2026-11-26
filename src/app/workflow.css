@@ -128,6 +128,33 @@
   outline: 3px solid var(--blue);
   outline-offset: 4px;
 }
+.job-review-overview {
+  padding: 12px 0;
+}
+.job-review-overview p,
+.job-review-reason {
+  margin: 0;
+}
+.job-review-evidence {
+  margin: 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--blue);
+  background: #253aab08;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.job-review-requirements {
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.job-review-requirements h4 {
+  margin: 12px 0 4px;
+}
+.job-review-requirements li + li {
+  margin-top: 8px;
+}
 @media (max-width: 700px) {
   .action-control-buttons .primary {
     flex-basis: 100%;
