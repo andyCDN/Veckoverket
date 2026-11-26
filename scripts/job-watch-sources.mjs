@@ -4,7 +4,7 @@ import { JOB_WATCH_SOURCES } from "../src/lib/job-watch-config.ts";
 export { JOB_WATCH_SOURCES };
 const normalize = (value) => value.normalize("NFKC").toLocaleLowerCase("sv-SE");
 const rolePattern =
-  /utred|handlägg|sakkunn|strateg|projektled|projektchef|projektansvar|projektkoord|samordn|verksamhetsutveckl|organisationsutveckl|utvecklingsled|kommunikat|kommunikation|pressansvar|presschef|public affairs|opinions|påverkan|intressepolit|policy|politiskt|kansli|generalsekreter|förbundssekreter|förbundschef|verksamhetschef|enhetschef|avdelningschef|förvaltningschef|insaml|fundrais|chefssekreter/iu;
+  /utred|handlägg|sakkunn|strateg|projektled|projektchef|projektansvar|projektkoord|samordn|verksamhetsutveckl|organisationsutveckl|utvecklingsled|kommunikat|kommunikation|pressansvar|presschef|public affairs|opinions|påverkan|intressepolit|policy|politiskt|kansli(?:chef|samordn|handlägg|sekreter)|generalsekreter|förbundssekreter|förbundschef|verksamhetschef|enhetschef|avdelningschef|förvaltningschef|insaml|fundrais|chefssekreter/iu;
 const specialistPattern =
   /sjuksköter|undersköter|socialsekreter|socionom|biståndshandlägg|hemtjänst|vård|omsorgsboende|gruppbostad|servicehus|\blss\b|förskol|\brektor\b/iu;
 const locationPattern =

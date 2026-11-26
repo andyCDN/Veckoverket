@@ -15,6 +15,7 @@ import {
   uniqueWatchJobs,
   watchJobUrls,
 } from "@/lib/job-watch-feed";
+import { orderedJobReviews } from "@/lib/job-review";
 
 const key = (url: string) => jobUrlKey(url) ?? "";
 const localTime = (value: string) =>
@@ -36,6 +37,7 @@ export function JobWatch({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
+  const [showAll, setShowAll] = useState(false);
   const [legacyHidden, setLegacyHidden] = useState<string[]>([]);
   const [lastDismissed, setLastDismissed] = useState<{
     url: string;
@@ -101,6 +103,11 @@ export function JobWatch({
         (url) => seen.has(key(url)) || hidden.has(key(url)),
       ),
   );
+  const reviewed = orderedJobReviews(visible, applications);
+  const priorities = reviewed.filter(
+    ({ review }) => review.kind === "priority",
+  );
+  const showing = showAll ? reviewed : priorities.slice(0, 8);
   return (
     <section className="job-workspace stack" aria-label="Jobbspaning">
       <div className="job-toolbar">
@@ -140,7 +147,7 @@ export function JobWatch({
                     {info.name}
                   </a>
                   {source.status === "ok"
-                    ? ` · ${source.count} ${source.count === 1 ? "träff" : "träffar"} · kontrollerad ${localTime(source.checkedAt)}`
+                    ? ` · ${source.count} lästa annonser · kontrollerad ${localTime(source.checkedAt)}`
                     : source.lastSuccessfulAt
                       ? ` · kunde inte uppdateras · visar senaste lyckade hämtningen från ${localTime(source.lastSuccessfulAt)}`
                       : " · kunde inte hämtas ännu"}
@@ -174,7 +181,46 @@ export function JobWatch({
       {!loading && !error && feed?.updatedAt && !visible.length && (
         <p>Inga nya öppna jobb att visa.</p>
       )}
-      {visible.map((j) => (
+      {!loading && !!visible.length && (
+        <div className="job-review-overview stack">
+          <p>
+            <strong>{Math.min(8, priorities.length)} jobb att börja med</strong>{" "}
+            av {visible.length} öppna träffar.
+          </p>
+          <p>
+            Prioriterat efter arbetsuppgifter, krav och roller i dina aktiva
+            ansökningar. Behörigheten behöver jämföras med din utbildning och
+            erfarenhet.
+          </p>
+          <div
+            className="career-actions job-lanes"
+            role="group"
+            aria-label="Visa jobbträffar"
+          >
+            <button
+              className="button secondary"
+              aria-pressed={!showAll}
+              onClick={() => setShowAll(false)}
+            >
+              Prioriterade
+            </button>
+            <button
+              className="button secondary"
+              aria-pressed={showAll}
+              onClick={() => setShowAll(true)}
+            >
+              Alla träffar ({reviewed.length})
+            </button>
+          </div>
+          {!showAll && !priorities.length && (
+            <p>
+              Inga tydliga förslag efter granskningen. Alla träffar finns kvar
+              att gå igenom.
+            </p>
+          )}
+        </div>
+      )}
+      {showing.map(({ job: j, review }) => (
         <article
           key={j.url}
           className="career-card stack"
@@ -198,7 +244,63 @@ export function JobWatch({
               ? "Sök senast " + j.deadline
               : "Sista ansökningsdag saknas"}
           </p>
-          <p>{j.summary}</p>
+          <p className="job-review-reason">
+            <strong>
+              {review.kind === "priority"
+                ? "Därför lyfts jobbet fram"
+                : review.kind === "possible"
+                  ? "Behöver granskas närmare"
+                  : review.kind === "incomplete"
+                    ? "Underlag saknas"
+                    : "Utanför sökinriktningen"}
+              :
+            </strong>{" "}
+            {review.reason}
+          </p>
+          {review.preference && <p>{review.preference}</p>}
+          {review.evidence ? (
+            <blockquote className="job-review-evidence">
+              {review.evidence}
+            </blockquote>
+          ) : (
+            review.kind === "incomplete" && j.summary && <p>{j.summary}</p>
+          )}
+          {review.concerns.map((concern) => (
+            <p key={concern}>{concern}</p>
+          ))}
+          {!!review.requirements.length && (
+            <details className="job-review-requirements">
+              <summary>Utvalda krav ur annonsen</summary>
+              {review.requirements.some((item) => item.kind === "required") && (
+                <>
+                  <h4>Angivna krav</h4>
+                  <ul>
+                    {review.requirements
+                      .filter((item) => item.kind === "required")
+                      .slice(0, 6)
+                      .map((item) => (
+                        <li key={item.text}>{item.text}</li>
+                      ))}
+                  </ul>
+                </>
+              )}
+              {review.requirements.some(
+                (item) => item.kind === "preferred",
+              ) && (
+                <>
+                  <h4>Meriterande</h4>
+                  <ul>
+                    {review.requirements
+                      .filter((item) => item.kind === "preferred")
+                      .slice(0, 3)
+                      .map((item) => (
+                        <li key={item.text}>{item.text}</li>
+                      ))}
+                  </ul>
+                </>
+              )}
+            </details>
+          )}
           <div className="career-actions">
             <a
               className="button secondary"

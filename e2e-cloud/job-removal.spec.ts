@@ -11,6 +11,8 @@ async function watch(page: Page) {
   await expect(
     region.getByText("Hämtar jobb…", { exact: true }),
   ).not.toBeVisible();
+  const all = region.getByRole("button", { name: /^Alla träffar/ });
+  if (await all.isVisible()) await all.click();
   return region;
 }
 async function feed(page: Page) {

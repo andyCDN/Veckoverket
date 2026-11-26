@@ -173,6 +173,7 @@ test("jobbspaning använder publicerad fulltext och bevarar uppgifter när annon
   await navigateTo(page, "Jobb");
   await page.getByRole("button", { name: "Jobbspaning", exact: true }).click();
   const watch = page.getByRole("region", { name: "Jobbspaning", exact: true });
+  await watch.getByRole("button", { name: /^Alla träffar/ }).click();
   await watch
     .getByRole("article", { name: "Utvecklare · Formbolaget", exact: true })
     .getByRole("button", { name: "Granska jobbet", exact: true })
@@ -374,6 +375,10 @@ for (const width of [1440, 390]) {
     await navigateTo(page, "Jobb");
     await page
       .getByRole("button", { name: "Jobbspaning", exact: true })
+      .click();
+    await page
+      .getByRole("region", { name: "Jobbspaning", exact: true })
+      .getByRole("button", { name: /^Alla träffar/ })
       .click();
     await page
       .getByRole("region", { name: "Jobbspaning", exact: true })
