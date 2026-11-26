@@ -9,6 +9,11 @@ export const JOB_WATCH_SOURCES = [
     name: "Stockholms stads jobbdatabas",
     url: "https://jobba.stockholm/lediga-jobb/",
   },
+  {
+    id: "jobba-statligt",
+    name: "Jobba statligt",
+    url: "https://www.jobbastatligt.se/sok",
+  },
 ] as const;
 
 export const JOB_WATCH_PROFILE =

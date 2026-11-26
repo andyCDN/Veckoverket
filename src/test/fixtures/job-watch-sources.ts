@@ -16,8 +16,54 @@ export const stockholmJob: JobWatchJob = {
   url: "https://jobba.stockholm/lediga-jobb/platsannonser/utredare-12345",
   sourceId: "stockholms-stad",
 };
+export const statligtJob: JobWatchJob = {
+  ...sourceJob,
+  role: "Utredare",
+  organization: "Myndigheten",
+  url: "https://www.jobbastatligt.se/jobb/2026/november/2611/utredare-31781856-myndigheten/",
+  sourceId: "jobba-statligt",
+};
 export const sourceText =
   "En fullständig annons med arbetsuppgifter, kvalifikationer och information om hur ansökan ska lämnas in. Arbeta med strategi, projektledning och hållbar utveckling tillsammans med oss.";
+
+export function statligtListing(
+  jobs = [statligtJob],
+  count = jobs.length,
+  filters: unknown[] = [],
+) {
+  const items = jobs.map((job) => ({
+    modelType: "GovJobAdPage",
+    heading: job.role,
+    agency: job.organization,
+    location: job.location,
+    url: job.url,
+  }));
+  const model = {
+    props: {
+      pageProps: {
+        data: {
+          body: {
+            jobTab: {
+              items,
+              pagination: { totalDisplay: count },
+              search: { searchFilters: filters },
+            },
+          },
+        },
+      },
+    },
+  };
+  return `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify(model)}</script>`;
+}
+export const statligtOriginal = {
+  id: "31781856",
+  headline: statligtJob.role,
+  employer: { name: statligtJob.organization },
+  workplace_address: { municipality: "Stockholm" },
+  application_deadline: "2026-12-06T23:59:59",
+  description: { text: sourceText },
+  application_details: { url: "https://example.org/apply" },
+};
 export function ideellaCard(job = sourceJob) {
   return `<div class="single-advert"><div class="content-block"><div class="title"><a href="${job.url}">${job.role}</a></div><div class="sub-title">${job.organization}</div></div><li class="address">${job.location}</li><li class="date">Ansök senast: ${job.deadline}</li></div>`;
 }
