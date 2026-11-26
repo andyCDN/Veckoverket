@@ -1,42 +1,12 @@
-import { documentUrl } from "./application-materials";
 import { isLocalDate } from "./google-time";
 import { linkedInJobUrl } from "./linkedin-import";
 import { loadJobDetails } from "./linkedin-details-client";
+import { platsbankenJobUrl } from "./job-ad-url";
+export { platsbankenJobUrl, jobAdvertisementUrl } from "./job-ad-url";
 import {
   plainText,
   type JobDetails,
 } from "../../supabase/functions/_shared/linkedin-job-details";
-
-export function platsbankenJobUrl(raw: string): string | undefined {
-  try {
-    const value = raw.trim();
-    const url = new URL(
-      /^(?:www\.)?arbetsformedlingen\.se\//i.test(value)
-        ? `https://${value}`
-        : value,
-    );
-    if (
-      !["https:", "http:"].includes(url.protocol) ||
-      url.username ||
-      url.password ||
-      url.port ||
-      !["arbetsformedlingen.se", "www.arbetsformedlingen.se"].includes(
-        url.hostname,
-      )
-    )
-      return;
-    const id = url.pathname.match(
-      /^\/platsbanken\/annonser\/([1-9]\d{0,23})\/?$/,
-    )?.[1];
-    if (id) return `https://arbetsformedlingen.se/platsbanken/annonser/${id}`;
-  } catch {
-    /* Other links can still be saved with manually completed details. */
-  }
-}
-
-export function jobAdvertisementUrl(raw: string): string | undefined {
-  return platsbankenJobUrl(raw) ?? linkedInJobUrl(raw) ?? documentUrl(raw);
-}
 
 const record = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" && !Array.isArray(value)
