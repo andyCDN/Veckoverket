@@ -245,6 +245,14 @@ export function decodeData(raw: string): AppData {
               !(a[k] as string).trim() ||
               (a[k] as string).length > 200),
         ) ||
+        (a.jobApplicationIds !== undefined &&
+          (!Array.isArray(a.jobApplicationIds) ||
+            a.jobApplicationIds.length > 20 ||
+            new Set(a.jobApplicationIds).size !== a.jobApplicationIds.length ||
+            a.jobApplicationIds.some(
+              (id: unknown) =>
+                typeof id !== "string" || !id.trim() || id.length > 200,
+            ))) ||
         (a.routine !== undefined &&
           !["week-start", "week-review"].includes(String(a.routine))) ||
         (a.followUpOf !== undefined &&

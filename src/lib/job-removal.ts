@@ -1,6 +1,7 @@
 import type { AppData } from "./types";
 import { jobUrlKey } from "./job-ad-url";
 import { NO_DAILY_FOCUS } from "./daily-check-in";
+import { applicationAdvertisementUrls } from "./job-identity";
 
 export function validateDismissedJobUrls(value: unknown) {
   if (value === undefined) return;
@@ -39,6 +40,24 @@ export function removeJobApplication(data: AppData, id: string): AppData {
   const key = `application:${id}`;
   const next: AppData = {
     ...data,
+    weeks: Object.fromEntries(
+      Object.entries(data.weeks).map(([week, plan]) => [
+        week,
+        {
+          ...plan,
+          activities: plan.activities.map((activity) =>
+            activity.jobApplicationIds?.includes(id)
+              ? {
+                  ...activity,
+                  jobApplicationIds: activity.jobApplicationIds.filter(
+                    (value) => value !== id,
+                  ),
+                }
+              : activity,
+          ),
+        },
+      ]),
+    ),
     applications: data.applications!.filter(
       (application) => application.id !== id,
     ),
@@ -84,5 +103,8 @@ export function removeJobApplication(data: AppData, id: string): AppData {
         }
       : {}),
   };
-  return dismissJobUrl(next, job.advertisement?.url ?? "");
+  return applicationAdvertisementUrls(job).reduce(
+    (state, url) => dismissJobUrl(state, url),
+    next,
+  );
 }

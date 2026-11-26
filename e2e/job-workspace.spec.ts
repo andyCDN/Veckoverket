@@ -75,14 +75,13 @@ for (const width of [1440, 390]) {
       .getByRole("searchbox", { name: "Sök jobb", exact: true })
       .fill("Utredare");
     await list
-      .getByRole("button", { name: "Fortsätt med CV", exact: true })
+      .getByRole("button", { name: "Fortsätt ansökan", exact: true })
       .click();
-    const cv = page.getByRole("dialog", {
-      name: "Skapa CV för jobbet",
-      exact: true,
-    });
-    await expect(cv).toContainText("Utredare · Kommunen");
-    await cv.getByRole("button", { name: "Stäng dialog", exact: true }).click();
+    await expect(
+      page
+        .getByRole("region", { name: "Ansökans arbetsläge", exact: true })
+        .getByRole("link", { name: "Anpassa CV ↗", exact: true }),
+    ).toBeVisible();
     const detail = page.getByRole("region", {
       name: "Ansökans detaljer",
       exact: true,
@@ -90,6 +89,7 @@ for (const width of [1440, 390]) {
     await expect(detail).toContainText("Personligt brev · Version 1");
     await detail.getByText("Läs annonsen", { exact: true }).click();
     await expect(detail).toContainText("Erfarenhet av analys behövs");
+    await detail.getByText("Fler verktyg för ansökan", { exact: true }).click();
     await detail.getByText("Historik", { exact: true }).click();
     await expect(detail).toContainText("Tidigare notering");
     await detail

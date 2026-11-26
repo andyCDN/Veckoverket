@@ -2,6 +2,7 @@ import type { AppData, DailyCheckIn, DailyFocus } from "./types";
 import { planningBoundary, today } from "./date";
 import { isLocalDate } from "./google-time";
 import { networkGroups } from "./network-overview";
+import { applicationStage } from "./application-flow";
 
 export const NO_DAILY_FOCUS: DailyFocus = {
   kind: "none",
@@ -30,6 +31,12 @@ export function dailyFocusStep(focus: DailyFocus, data?: AppData) {
   switch (focus.kind) {
     case "application": {
       const app = data?.applications?.find((a) => a.id === focus.id);
+      if (app?.status === "draft") {
+        const stage = applicationStage(app);
+        if (stage === "apply")
+          return "Öppna ansökningssidan och välj ditt anpassade CV.";
+        if (stage === "send") return "Bekräfta när ansökan är skickad.";
+      }
       return app &&
         !app.advertisement?.text.trim() &&
         !app.advertisement?.url.trim()

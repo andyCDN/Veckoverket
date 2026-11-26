@@ -2,8 +2,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { JobApplication } from "@/lib/types";
 import { CV_AGENT_URL, cvAgentPrompt } from "@/lib/cv-agent";
-import { loadJobDetails } from "@/lib/linkedin-details-client";
-import { linkedInJobUrl } from "@/lib/linkedin-import";
+import { readJobAdvertisement } from "@/lib/job-ad-reader";
+import { jobAdvertisementUrl } from "@/lib/job-ad-url";
 import { Modal } from "./modal";
 
 export function CvAgent({
@@ -17,7 +17,7 @@ export function CvAgent({
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const request = useRef<AbortController | null>(null);
-  const source = linkedInJobUrl(application.advertisement?.url ?? "");
+  const source = jobAdvertisementUrl(application.advertisement?.url ?? "");
   const prompt = cvAgentPrompt(application, text);
   useEffect(() => () => request.current?.abort(), []);
   const copy = async () => {
@@ -65,7 +65,7 @@ export function CvAgent({
         {!text.trim() && (
           <p>
             Annonsen saknar sparad text. Klistra in den här
-            {source ? " eller läs den från LinkedIn-länken" : ""} innan du
+            {source ? " eller läs den från annonslänken" : ""} innan du
             fortsätter.
           </p>
         )}
@@ -88,7 +88,11 @@ export function CvAgent({
               setLoading(true);
               setMessage("");
               try {
-                const details = await loadJobDetails(source, controller.signal);
+                const details = await readJobAdvertisement(
+                  source,
+                  controller.signal,
+                  application,
+                );
                 if (controller.signal.aborted) return;
                 if (!details.description?.trim())
                   throw new Error(
@@ -110,7 +114,7 @@ export function CvAgent({
               }
             }}
           >
-            {loading ? "Läser annonsen…" : "Läs annons från LinkedIn"}
+            {loading ? "Läser annonsen…" : "Läs annons från länken"}
           </button>
         )}
         {prompt && (

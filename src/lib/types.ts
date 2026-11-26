@@ -42,6 +42,7 @@ export type Activity = {
   taskId?: string;
   habitId?: string;
   applicationId?: string;
+  jobApplicationIds?: string[];
   contactId?: string;
   careerActionId?: string;
   deadlineId?: string;
@@ -62,6 +63,7 @@ export type RecurringActivity = Omit<
   | "followUpOf"
   | "external"
   | "routine"
+  | "jobApplicationIds"
 > & {
   id: string;
   weekdays: number[];
@@ -188,7 +190,13 @@ export type JobApplication = {
   organization: string;
   contactIds?: string[];
   history?: ApplicationHistoryEntry[];
-  advertisement?: { url: string; text: string };
+  advertisement?: {
+    url: string;
+    text: string;
+    additionalUrls?: string[];
+    applicationUrl?: string;
+  };
+  preparation?: { cvReadyAt?: string; applicationOpenedAt?: string };
   materials?: ApplicationMaterial[];
   interviews?: ApplicationInterview[];
   role: string;

@@ -4,6 +4,7 @@ import type { AppData, JobApplication } from "./types";
 import { saveApplication } from "./applications";
 import { today, uid } from "./date";
 import { isLocalDate } from "./google-time";
+import { applicationAdvertisementUrls, jobMatches } from "./job-identity";
 export const LINKEDIN_STEPS = ["Bedöm jobbet", "Förbered ansökan", ""] as const;
 export type LinkedInDraft = {
   key: string;
@@ -21,7 +22,29 @@ export type LinkedInDraft = {
   editedFields?: string[];
   fetchState?: "loading" | "ready" | "partial" | "error";
   fetchMessage?: string;
+  separateConfirmed?: boolean;
 };
+export function linkedInApplicationDraft(
+  draft: LinkedInDraft,
+  id = draft.key,
+): JobApplication {
+  return {
+    id,
+    role: draft.role.trim(),
+    organization: draft.organization.trim(),
+    status: "draft",
+    deadline: draft.deadline,
+    nextAction: draft.nextAction,
+    followUpDate: draft.nextAction ? draft.followUpDate : "",
+    nextActionKind: "task",
+    nextActionOwner: "Jag",
+    notes: (draft.notes ?? "").slice(0, 4000),
+    advertisement: {
+      url: linkedInJobUrl(draft.url) ?? draft.url,
+      text: (draft.advertisementText ?? "").slice(0, 60000),
+    },
+  };
+}
 
 export function linkedInDrafts(
   text: string,
@@ -37,8 +60,10 @@ export function linkedInDrafts(
     throw new Error("Importera högst 100 länkar åt gången.");
   const seen = new Map<string, string>();
   for (const a of applications) {
-    const url = linkedInJobUrl(a.advertisement?.url ?? "");
-    if (url) seen.set(url, `${a.role} · ${a.organization}`);
+    for (const source of applicationAdvertisementUrls(a)) {
+      const url = linkedInJobUrl(source);
+      if (url) seen.set(url, `${a.role} · ${a.organization}`);
+    }
   }
   return lines.map((line) => {
     const url = linkedInJobUrl(line);
@@ -67,7 +92,8 @@ export function importLinkedInJobs(data: AppData, drafts: LinkedInDraft[]) {
     throw new Error("Importera högst 100 länkar åt gången.");
   const seen = new Set(
     (data.applications ?? [])
-      .map((a) => linkedInJobUrl(a.advertisement?.url ?? ""))
+      .flatMap(applicationAdvertisementUrls)
+      .map((url) => linkedInJobUrl(url))
       .filter(Boolean),
   );
   const added: JobApplication[] = [],
@@ -98,23 +124,18 @@ export function importLinkedInJobs(data: AppData, drafts: LinkedInDraft[]) {
       throw new Error("Ange giltiga datum.");
     if (!LINKEDIN_STEPS.some((step) => step === draft.nextAction))
       throw new Error("Välj ett giltigt nästa steg.");
+    if (
+      draft.separateConfirmed !== true &&
+      jobMatches(linkedInApplicationDraft(draft), [
+        ...(data.applications ?? []),
+        ...added,
+      ]).some((match) => match.reason === "title")
+    )
+      throw new Error(
+        "Möjlig dubblett mellan annonskällor. Samla under befintligt jobb eller bekräfta att det är en annan tjänst.",
+      );
     added.push(
-      saveApplication(undefined, {
-        id: uid(),
-        role: draft.role.trim(),
-        organization: draft.organization.trim(),
-        status: "draft",
-        deadline: draft.deadline,
-        nextAction: draft.nextAction,
-        followUpDate: draft.nextAction ? draft.followUpDate : "",
-        nextActionKind: "task",
-        nextActionOwner: "Jag",
-        notes: (draft.notes ?? "").slice(0, 4000),
-        advertisement: {
-          url,
-          text: (draft.advertisementText ?? "").slice(0, 20000),
-        },
-      }),
+      saveApplication(undefined, linkedInApplicationDraft(draft, uid())),
     );
     seen.add(url);
   }

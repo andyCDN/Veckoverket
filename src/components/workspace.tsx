@@ -141,6 +141,11 @@ import {
   type GoogleSnapshot,
 } from "@/lib/google-calendar";
 import { CareerView, BookingForm } from "./career";
+import { JobSearchSession, JobSessionLauncher } from "./job-search-session";
+import {
+  jobSearchSessions,
+  type JobSessionRef,
+} from "@/lib/job-search-sessions";
 import { saveInterviewNotes } from "@/lib/application-interviews";
 import { careerActions, type TrackedAction } from "@/lib/career-actions";
 import { resolveCareerTask } from "@/lib/career-task-resolution";
@@ -218,6 +223,9 @@ export function Workspace({
   const [gentleOpen, setGentleOpen] = useState(false);
   const [habitEditing, setHabitEditing] = useState(false);
   const [careerEditing, setCareerEditing] = useState(false);
+  const [jobSessionEditing, setJobSessionEditing] = useState<{
+    target?: JobSessionRef;
+  } | null>(null);
   const [newHabit, setNewHabit] = useState<HabitDraft | null>(null);
   const [queueAction, setQueueAction] = useState<
     (TrackedAction & { minutes?: number }) | null
@@ -228,6 +236,7 @@ export function Workspace({
   const [studioTaskDate, setStudioTaskDate] = useState<string | null>(null);
   const [careerEntry, setCareerEntry] = useState<{
     id: string;
+    session?: JobSessionRef;
     tab?: "actions";
     record?: {
       kind: "application" | "contact";
@@ -309,6 +318,7 @@ export function Workspace({
         account ||
         view === "settings" ||
         careerEditing ||
+        jobSessionEditing ||
         habitEditing ||
         workPlanning ||
         resolutionTaskId,
@@ -378,6 +388,7 @@ export function Workspace({
   const undoAvailable = Boolean(
     undoLabel &&
     !editor &&
+    !jobSessionEditing &&
     !scheduleImportOpen &&
     !generator &&
     !newGoal &&
@@ -509,6 +520,7 @@ export function Workspace({
     routineId,
     view,
     careerEditing,
+    jobSessionEditing,
     habitEditing,
     workPlanning,
     resolutionTaskId,
@@ -520,11 +532,40 @@ export function Workspace({
       window.scrollTo({ top: 0, behavior: "instant" }),
     );
   };
+  const startJobSession = (applicationId: string, target: JobSessionRef) => {
+    if (
+      !data?.applications?.some(
+        (job) => job.id === applicationId && job.status === "draft",
+      )
+    ) {
+      notify("Jobbet är redan hanterat. Välj ett annat jobb för passet.");
+      return;
+    }
+    setCareerEntry({
+      id: `session:${target.week}:${target.activityId}:${applicationId}`,
+      session: target,
+      record: {
+        kind: "application",
+        id: applicationId,
+        instruction: "Fortsätt med nästa steg för jobbet i ditt valda pass.",
+      },
+    });
+    navigate("career");
+  };
   const startDailyFocus = (focus: DailyFocus) => {
     if (!data) return;
     if (focus.kind === "application" || focus.kind === "contact") {
       setCareerEntry({
         id: `${focus.kind}:${focus.id}`,
+        ...(focus.kind === "application"
+          ? {
+              session: jobSearchSessions(data).find(
+                (session) =>
+                  session.activity.date === today() &&
+                  session.activity.jobApplicationIds?.includes(focus.id),
+              ),
+            }
+          : {}),
         record: {
           kind: focus.kind,
           id: focus.id,
@@ -1765,6 +1806,12 @@ export function Workspace({
                   </details>
                 </aside>
                 <div className="planner-calendar">
+                  <JobSessionLauncher
+                    data={data}
+                    week={week}
+                    onChoose={(target) => setJobSessionEditing({ target })}
+                    onStart={startJobSession}
+                  />
                   <DailyStart
                     data={data}
                     week={week}
@@ -2104,6 +2151,8 @@ export function Workspace({
                 careerEntry?.tab === "actions" ? careerEntry.id : undefined
               }
               initialRecord={careerEntry?.record}
+              session={careerEntry?.session}
+              onSessionStart={startJobSession}
               section={view === "network" ? "network" : "jobs"}
               data={data}
               onEditing={setCareerEditing}
@@ -2355,6 +2404,33 @@ export function Workspace({
           onClose={() => setGoogleOpen(false)}
         />
       )}
+      {jobSessionEditing && (
+        <JobSearchSession
+          data={data}
+          initialTarget={jobSessionEditing.target}
+          onClose={() => setJobSessionEditing(null)}
+          onSave={(next, target, startId) => {
+            setData(
+              (current) => {
+                if (
+                  !current ||
+                  JSON.stringify(current) !== JSON.stringify(data)
+                ) {
+                  notify("Planen har ändrats. Öppna passet igen.");
+                  return current;
+                }
+                return next;
+              },
+              { undoLabel: "valda jobb för jobbsökarpass" },
+            );
+            setJobSessionEditing(null);
+            if (startId) startJobSession(startId, target);
+            notify(
+              "Jobben är valda för ditt befintliga pass. Inga tider har ändrats.",
+            );
+          }}
+        />
+      )}
       {editor && (
         <ActivityEditor
           activity={editor.activity}
@@ -2366,6 +2442,25 @@ export function Workspace({
           date={editor.date}
           onSave={saveActivity}
           onSwap={swap}
+          onJobSearch={
+            editor.activity &&
+            jobSearchSessions(data).some(
+              (session) =>
+                session.activityId === editor.activity?.id &&
+                session.activity.date === editor.activity?.date,
+            )
+              ? () => {
+                  if (!editor.activity) return;
+                  setJobSessionEditing({
+                    target: {
+                      week: monday(editor.activity.date),
+                      activityId: editor.activity.id,
+                    },
+                  });
+                  setEditor(null);
+                }
+              : undefined
+          }
           onSaveInterview={(applicationId, interviewId, input, complete) => {
             setData(
               (current) =>

@@ -4,6 +4,7 @@ import { today, uid } from "@/lib/date";
 import type { JobApplication } from "@/lib/types";
 import { appPath } from "@/lib/app-path";
 import { jobUrlKey } from "@/lib/job-ad-url";
+import { applicationAdvertisementUrls } from "@/lib/job-identity";
 
 type Job = {
   role: string;
@@ -12,6 +13,7 @@ type Job = {
   location: string;
   deadline: string;
   summary: string;
+  text?: string;
 };
 type Feed = { updatedAt: string | null; jobs: Job[] };
 function validJob(value: unknown): value is Job {
@@ -26,6 +28,8 @@ function validJob(value: unknown): value is Job {
     j.url.length <= 2048 &&
     /^https:\/\//i.test(j.url) &&
     !!jobUrlKey(j.url) &&
+    (j.text === undefined ||
+      (typeof j.text === "string" && j.text.length <= 60000)) &&
     (!j.deadline || /^\d{4}-\d{2}-\d{2}$/.test(j.deadline))
   );
 }
@@ -102,7 +106,7 @@ export function JobWatch({
     return () => controller.abort();
   }, [reload]);
   const seen = new Set(
-    applications.map((a) => key(a.advertisement?.url || "")),
+    applications.flatMap(applicationAdvertisementUrls).map(key),
   );
   const hidden = new Set([...dismissedUrls, ...legacyHidden].map(key));
   const visible = (feed?.jobs ?? []).filter(
@@ -194,11 +198,11 @@ export function JobWatch({
                   nextActionOwner: "Jag",
                   followUpDate: "",
                   notes: j.summary,
-                  advertisement: { url: j.url, text: "" },
+                  advertisement: { url: j.url, text: j.text ?? "" },
                 })
               }
             >
-              Spara jobb
+              Granska jobbet
             </button>
             <button
               className="text-button"

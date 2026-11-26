@@ -47,7 +47,11 @@ for (const mobile of [false, true]) {
       localStorage.getItem("veckoverket.workspace.v1"),
     );
     await page
-      .getByRole("button", { name: "Fortsätt med CV", exact: true })
+      .getByRole("button", { name: "Fortsätt ansökan", exact: true })
+      .click();
+    await page.getByText("Fler verktyg för ansökan", { exact: true }).click();
+    await page
+      .getByRole("button", { name: "Skapa CV för jobbet ↗", exact: true })
       .click();
     const dialog = page.getByRole("dialog");
     await expect(

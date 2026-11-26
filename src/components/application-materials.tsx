@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ApplicationMaterial, JobApplication } from "@/lib/types";
 import {
   documentUrl,
@@ -7,6 +7,8 @@ import {
 } from "@/lib/application-materials";
 import { today, uid } from "@/lib/date";
 import { Modal } from "./modal";
+import { readJobAdvertisement } from "@/lib/job-ad-reader";
+import { jobUrlKey } from "@/lib/job-ad-url";
 export function ApplicationMaterials({
   value,
   onSave,
@@ -25,6 +27,16 @@ export function ApplicationMaterials({
     structuredClone(value.materials ?? []),
   );
   const [error, setError] = useState("");
+  const [reading, setReading] = useState(false);
+  const request = useRef<AbortController | null>(null);
+  useEffect(() => () => request.current?.abort(), []);
+  const changeAd = (
+    patch: Partial<NonNullable<JobApplication["advertisement"]>>,
+  ) => {
+    request.current?.abort();
+    setReading(false);
+    setAd((current) => ({ ...current, ...patch }));
+  };
   const patch = (id: string, changes: Partial<ApplicationMaterial>) =>
     setMaterials((items) =>
       items.map((m) => (m.id === id ? { ...m, ...changes } : m)),
@@ -72,9 +84,71 @@ export function ApplicationMaterials({
             type="url"
             maxLength={2048}
             value={ad.url}
-            onChange={(e) => setAd({ ...ad, url: e.target.value })}
+            onChange={(e) => changeAd({ url: e.target.value })}
           />
         </label>
+        {documentUrl(ad.url) && (
+          <button
+            type="button"
+            className="button secondary"
+            disabled={reading}
+            onClick={async () => {
+              if (
+                ad.text.trim() &&
+                !window.confirm(
+                  "Ersätta den sparade annonstexten med text från länken?",
+                )
+              )
+                return;
+              request.current?.abort();
+              const controller = new AbortController();
+              request.current = controller;
+              setReading(true);
+              setError("");
+              try {
+                const details = await readJobAdvertisement(
+                  ad.url,
+                  controller.signal,
+                  value,
+                );
+                if (controller.signal.aborted) return;
+                if (!details.description.trim())
+                  throw new Error(
+                    "Ingen fullständig annonstext kunde läsas. Klistra in den nedan.",
+                  );
+                const seen = new Set<string>();
+                const additionalUrls = [
+                  ...(ad.additionalUrls ?? []),
+                  ...(details.additionalUrls ?? []),
+                ].filter((url) => {
+                  const key = jobUrlKey(url)!;
+                  if (key === jobUrlKey(ad.url) || seen.has(key)) return false;
+                  seen.add(key);
+                  return true;
+                });
+                setAd({
+                  ...ad,
+                  text: details.description,
+                  ...(additionalUrls.length ? { additionalUrls } : {}),
+                  ...(!ad.applicationUrl && details.applicationUrl
+                    ? { applicationUrl: details.applicationUrl }
+                    : {}),
+                });
+              } catch (issue) {
+                if (!controller.signal.aborted)
+                  setError(
+                    issue instanceof Error
+                      ? issue.message
+                      : "Annonsen kunde inte läsas.",
+                  );
+              } finally {
+                if (!controller.signal.aborted) setReading(false);
+              }
+            }}
+          >
+            {reading ? "Läser annonsen…" : "Läs annonstext från länken"}
+          </button>
+        )}
         {documentUrl(ad.url) && (
           <a
             href={documentUrl(ad.url)}
@@ -90,9 +164,70 @@ export function ApplicationMaterials({
             rows={6}
             maxLength={60000}
             value={ad.text}
-            onChange={(e) => setAd({ ...ad, text: e.target.value })}
+            onChange={(e) => changeAd({ text: e.target.value })}
           />
         </label>
+        <details>
+          <summary>Annonskällor och ansökningslänk</summary>
+          <div className="stack">
+            <label>
+              Ansökningssida (valfritt)
+              <input
+                type="url"
+                maxLength={2048}
+                value={ad.applicationUrl ?? ""}
+                onChange={(event) =>
+                  changeAd({ applicationUrl: event.target.value })
+                }
+              />
+            </label>
+            {(ad.additionalUrls ?? []).map((url, index) => (
+              <div className="stack" key={index}>
+                <label>
+                  Ytterligare annonslänk {index + 1}
+                  <input
+                    type="url"
+                    maxLength={2048}
+                    value={url}
+                    onChange={(event) =>
+                      changeAd({
+                        additionalUrls: ad.additionalUrls!.map((current, i) =>
+                          index === i ? event.target.value : current,
+                        ),
+                      })
+                    }
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() =>
+                    changeAd({
+                      additionalUrls: ad.additionalUrls!.filter(
+                        (_, i) => i !== index,
+                      ),
+                    })
+                  }
+                >
+                  Ta bort annonskälla {index + 1}
+                </button>
+              </div>
+            ))}
+            {(ad.additionalUrls?.length ?? 0) < 20 && (
+              <button
+                type="button"
+                className="text-button"
+                onClick={() =>
+                  changeAd({
+                    additionalUrls: [...(ad.additionalUrls ?? []), ""],
+                  })
+                }
+              >
+                Lägg till annonskälla
+              </button>
+            )}
+          </div>
+        </details>
         {materials.map((m, i) => (
           <fieldset className="stack" key={m.id}>
             <legend>Dokument {i + 1}</legend>
@@ -193,7 +328,9 @@ export function ApplicationMaterials({
           Lägg till dokument
         </button>
         {error && <p role="alert">{error}</p>}
-        <button className="button primary">Spara dokumentunderlag</button>
+        <button className="button primary" disabled={reading}>
+          Spara dokumentunderlag
+        </button>
       </form>
     </Modal>
   );

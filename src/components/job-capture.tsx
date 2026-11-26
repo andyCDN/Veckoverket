@@ -7,26 +7,35 @@ import {
   detailsNotes,
 } from "@/lib/linkedin-details-client";
 import { jobAdvertisementUrl, readJobAdvertisement } from "@/lib/job-ad-reader";
+import type { JobAdDetails } from "@/lib/job-ad-reader";
+import { jobMatches } from "@/lib/job-identity";
 import { isLocalDate } from "@/lib/google-time";
 import { uid } from "@/lib/date";
+import { APPLICATION_STATUSES } from "@/lib/applications";
 import { Modal } from "./modal";
 
 export function JobCapture({
   applications,
   onSave,
   onClose,
+  initialJob,
+  onMerge,
+  onOpenExisting,
 }: {
   applications: JobApplication[];
   onSave: (application: JobApplication) => string | undefined;
   onClose: () => void;
+  initialJob?: JobApplication;
+  onMerge?: (id: string, application: JobApplication) => string | undefined;
+  onOpenExisting?: (id: string) => void;
 }) {
-  const [source, setSource] = useState("");
+  const [source, setSource] = useState(initialJob?.advertisement?.url ?? "");
   const [draft, setDraft] = useState<JobApplication | null>(null);
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState(""),
     [error, setError] = useState("");
   const request = useRef<AbortController | null>(null);
-  useEffect(() => () => request.current?.abort(), []);
+  const [separate, setSeparate] = useState(false);
   const review = async (manual = false) => {
     const raw = source.trim(),
       linkOnly = !/\s/.test(raw) && Boolean(jobAdvertisementUrl(raw)),
@@ -40,10 +49,14 @@ export function JobCapture({
     setBusy(true);
     setMessage("");
     setError("");
-    let details = detailsFromPastedText(linkOnly ? "" : raw);
-    if (linkOnly && !manual) {
+    let details: JobAdDetails = detailsFromPastedText(linkOnly ? "" : raw);
+    if (linkOnly && !manual && !initialJob?.advertisement?.text.trim()) {
       try {
-        details = await readJobAdvertisement(url, controller.signal);
+        details = await readJobAdvertisement(
+          url,
+          controller.signal,
+          initialJob,
+        );
         if (!details.role || !details.organization || !details.description)
           setMessage(
             "Annonsen kunde bara läsas delvis. Komplettera uppgifterna som saknas nedan.",
@@ -60,22 +73,54 @@ export function JobCapture({
     if (controller.signal.aborted) return;
     setDraft({
       id: uid(),
-      role: details.role.slice(0, 200),
-      organization: details.organization.slice(0, 200),
+      role: (details.role || initialJob?.role || "").slice(0, 200),
+      organization: (
+        details.organization ||
+        initialJob?.organization ||
+        ""
+      ).slice(0, 200),
       status: "draft",
-      deadline: isLocalDate(details.deadline) ? details.deadline : "",
+      deadline: isLocalDate(details.deadline)
+        ? details.deadline
+        : (initialJob?.deadline ?? ""),
       nextAction: "Förbered ansökan",
       nextActionKind: "task",
       nextActionOwner: "Jag",
       followUpDate: "",
-      notes: detailsNotes(details).slice(0, 4000),
+      notes: [initialJob?.notes, detailsNotes(details)]
+        .filter(Boolean)
+        .join("\n")
+        .slice(0, 4000),
       advertisement: {
+        ...initialJob?.advertisement,
         url,
-        text: (details.description || (linkOnly ? "" : raw)).slice(0, 60000),
+        text: (
+          details.description ||
+          initialJob?.advertisement?.text ||
+          (linkOnly ? "" : raw)
+        ).slice(0, 60000),
+        ...(details.additionalUrls
+          ? { additionalUrls: details.additionalUrls }
+          : {}),
+        ...(details.applicationUrl || initialJob?.advertisement?.applicationUrl
+          ? {
+              applicationUrl:
+                details.applicationUrl ||
+                initialJob?.advertisement?.applicationUrl,
+            }
+          : {}),
       },
     });
     setBusy(false);
   };
+  useEffect(() => {
+    if (initialJob) void review();
+    return () => request.current?.abort();
+    // The seed is fixed for this capture; later edits belong to the user.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const matches = draft ? jobMatches(draft, applications) : [];
+  const exact = matches.some((match) => match.reason === "url");
   return (
     <Modal
       title="Lägg till jobb"
@@ -134,18 +179,11 @@ export function JobCapture({
               );
               return;
             }
-            const key = (value: string) =>
-              jobAdvertisementUrl(value)?.replace(/#.*$/, "");
-            if (
-              draft.advertisement?.url &&
-              applications.some(
-                (a) =>
-                  a.advertisement?.url &&
-                  key(a.advertisement.url) === key(draft.advertisement!.url),
-              )
-            ) {
+            if (exact || (matches.length && !separate)) {
               setError(
-                "Det här jobbet finns redan i din lista. Sök efter tjänsten innan du lägger till det igen.",
+                exact
+                  ? "Det här jobbet finns redan i din lista. Koppla underlaget till jobbet eller öppna den befintliga ansökan."
+                  : "Granska den möjliga dubbletten eller bekräfta att detta är en annan tjänst.",
               );
               return;
             }
@@ -164,6 +202,12 @@ export function JobCapture({
         >
           <h3>Granska jobbet</h3>
           {message && <p role="status">{message}</p>}
+          {Boolean(draft.advertisement?.additionalUrls?.length) && (
+            <p className="help">
+              Ursprungslänken och ytterligare annonskällor sparas tillsammans.
+              Kontrollera att underlaget gäller rätt tjänst.
+            </p>
+          )}
           <label>
             Tjänst
             <input
@@ -173,6 +217,65 @@ export function JobCapture({
               onChange={(e) => setDraft({ ...draft, role: e.target.value })}
             />
           </label>
+          {matches.length > 0 && (
+            <section
+              className="application-duplicate"
+              aria-label="Möjliga dubbletter"
+            >
+              <h3>
+                {exact
+                  ? "Jobbet finns redan"
+                  : "Möjlig dubblett mellan annonskällor"}
+              </h3>
+              {matches.map(({ job, reason }) => (
+                <div className="stack" key={job.id}>
+                  <p>
+                    <strong>
+                      {job.role} · {job.organization}
+                    </strong>
+                    <br />
+                    {reason === "url"
+                      ? "Samma annonslänk"
+                      : "Samma tjänst och arbetsgivare"}
+                  </p>
+                  <p>
+                    Status: {APPLICATION_STATUSES[job.status]}
+                    {job.deadline
+                      ? ` · Sista ansökningsdag ${job.deadline}`
+                      : ""}
+                  </p>
+                  {onMerge && (
+                    <button
+                      className="button secondary"
+                      type="button"
+                      onClick={() => setError(onMerge(job.id, draft) ?? "")}
+                    >
+                      Samla under befintligt jobb
+                    </button>
+                  )}
+                  {onOpenExisting && (
+                    <button
+                      className="text-button"
+                      type="button"
+                      onClick={() => onOpenExisting(job.id)}
+                    >
+                      Öppna befintlig ansökan
+                    </button>
+                  )}
+                </div>
+              ))}
+              {!exact && (
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={separate}
+                    onChange={(event) => setSeparate(event.target.checked)}
+                  />
+                  Det är en annan tjänst – spara separat
+                </label>
+              )}
+            </section>
+          )}
           <label>
             Arbetsgivare
             <input
@@ -195,6 +298,16 @@ export function JobCapture({
           <details>
             <summary>Annons och anteckningar</summary>
             <div className="stack">
+              {draft.advertisement?.additionalUrls?.map((url, index) => (
+                <a
+                  key={url}
+                  href={jobAdvertisementUrl(url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Ytterligare annonskälla {index + 1}
+                </a>
+              ))}
               <label>
                 Annonslänk
                 <input
@@ -205,6 +318,7 @@ export function JobCapture({
                     setDraft({
                       ...draft,
                       advertisement: {
+                        ...draft.advertisement,
                         url: e.target.value,
                         text: draft.advertisement?.text ?? "",
                       },
@@ -222,6 +336,7 @@ export function JobCapture({
                     setDraft({
                       ...draft,
                       advertisement: {
+                        ...draft.advertisement,
                         url: draft.advertisement?.url ?? "",
                         text: e.target.value,
                       },
@@ -242,8 +357,7 @@ export function JobCapture({
             </div>
           </details>
           <p className="help">
-            Jobbet sparas som utkast. Du fortsätter med ansökan och planerar
-            arbetstid från jobbets detaljvy.
+            Jobbet sparas som utkast. Fortsätt med CV och ansökan i arbetsvyn.
           </p>
           {error && <p role="alert">{error}</p>}
           <div className="career-actions">
