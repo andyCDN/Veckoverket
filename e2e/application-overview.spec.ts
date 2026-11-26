@@ -112,6 +112,9 @@ for (const mobile of [false, true]) {
     await dialog
       .getByRole("button", { name: "Spara ansökan", exact: true })
       .click();
+    await expect(
+      detail.getByRole("region", { name: "Ansökans arbetsläge", exact: true }),
+    ).toContainText("Skicka arbetsprov");
     await detail
       .getByRole("button", { name: "Till jobblistan", exact: true })
       .click();

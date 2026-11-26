@@ -11,7 +11,7 @@ it("samlar nästa steg, väntan och arkiv och ignorerar gamla ansökningsdeadlin
   const rows = jobWorkspace(data, boundary);
   expect(rows.find((r) => r.application.id === "draft")).toMatchObject({
     lane: "todo",
-    primary: "Fortsätt med CV",
+    primary: "Fortsätt ansökan",
   });
   expect(rows.find((r) => r.application.id === "waiting")).toMatchObject({
     lane: "waiting",

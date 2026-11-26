@@ -1,22 +1,27 @@
 "use client";
 import { useState } from "react";
 import type { JobApplication } from "@/lib/types";
-import { addDays, today } from "@/lib/date";
+import { today } from "@/lib/date";
+import { suggestedFollowUpDate } from "@/lib/application-flow";
 import { Modal } from "./modal";
 export function ApplicationSent({
   application,
   onSave,
   onClose,
+  mode = "send",
 }: {
   application: JobApplication;
   onSave: (date: string) => string | undefined;
   onClose: () => void;
+  mode?: "send" | "follow-up";
 }) {
-  const [date, setDate] = useState(addDays(today(), 7)),
+  const [date, setDate] = useState(
+      mode === "send" ? suggestedFollowUpDate() : application.followUpDate,
+    ),
     [error, setError] = useState("");
   return (
     <Modal
-      title="Markera ansökan skickad"
+      title={mode === "send" ? "Markera ansökan skickad" : "Ändra uppföljning"}
       description={`${application.role} · ${application.organization}`}
       onClose={onClose}
     >
@@ -27,11 +32,18 @@ export function ApplicationSent({
           setError(onSave(date) ?? "");
         }}
       >
-        <p>
-          Bekräfta när du har skickat ansökan. Status och historik uppdateras i
-          Veckoverket.
-        </p>
-        {application.nextAction && (
+        {mode === "send" ? (
+          <p>
+            Bekräfta när du har skickat ansökan. Status och historik uppdateras
+            i Veckoverket.
+          </p>
+        ) : (
+          <p>
+            Välj när du vill följa upp den skickade ansökan. Status och dokument
+            bevaras.
+          </p>
+        )}
+        {mode === "send" && application.nextAction && (
           <p>
             Nuvarande nästa steg ”{application.nextAction}” ersätts med väntan
             på arbetsgivaren.
@@ -47,11 +59,26 @@ export function ApplicationSent({
           />
         </label>
         <p className="help">
-          Fram till bevakningsdatumet visas jobbet under Väntar på svar. Inget
-          kalenderpass bokas och sparade dokument och kalenderutfall behålls.
+          Uppföljningsdatumet avgör när appen påminner dig. Sparade dokument och
+          kalenderutfall behålls. Inget nytt kalenderpass bokas.
         </p>
+        <p className="help">
+          Förslag: följ upp om en vecka. Ändra datumet om arbetsgivaren har
+          angett när du får besked.
+        </p>
+        {date && (
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => setDate("")}
+          >
+            Ingen bevakning för den här ansökan
+          </button>
+        )}
         {error && <p role="alert">{error}</p>}
-        <button className="button primary">Bekräfta skickad</button>
+        <button className="button primary">
+          {mode === "send" ? "Bekräfta skickad" : "Spara bevakning"}
+        </button>
       </form>
     </Modal>
   );

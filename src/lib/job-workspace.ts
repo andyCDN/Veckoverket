@@ -1,10 +1,15 @@
 import type { AppData, JobApplication } from "./types";
 import { planningBoundary } from "./date";
-import { careerActions, type TrackedAction } from "./career-actions";
+import {
+  careerActions,
+  completeCareerAction,
+  type TrackedAction,
+} from "./career-actions";
 import { interviewActivity } from "./application-interviews";
 import { isClosedApplication } from "./application-overview";
 import { saveApplication, completeApplicationAction } from "./applications";
 import { isLocalDate } from "./google-time";
+import { applicationNextStep } from "./application-flow";
 
 export type JobLane = "todo" | "waiting" | "closed";
 export const JOB_LANES: Record<JobLane, string> = {
@@ -85,18 +90,23 @@ export function jobWorkspace(data: AppData, boundary = planningBoundary()) {
       const next =
         lane === "closed"
           ? "Processen är avslutad"
-          : step?.title ||
-            (application.status === "draft"
-              ? "Förbered ansökan"
-              : application.status === "interview"
-                ? interview
-                  ? interview.upcoming
-                    ? "Förbered intervju"
-                    : "Följ upp intervjun"
-                  : "Boka intervju"
-                : application.status === "offer"
-                  ? "Gå igenom erbjudandet"
-                  : "Invänta svar från arbetsgivaren");
+          : application.status === "draft" &&
+              (!step ||
+                (step.legacy === "application" &&
+                  /^(?:förbered ansökan|bedöm jobbet)$/iu.test(step.title)))
+            ? applicationNextStep(application)
+            : step?.title ||
+              (application.status === "draft"
+                ? "Förbered ansökan"
+                : application.status === "interview"
+                  ? interview
+                    ? interview.upcoming
+                      ? "Förbered intervju"
+                      : "Följ upp intervjun"
+                    : "Boka intervju"
+                  : application.status === "offer"
+                    ? "Gå igenom erbjudandet"
+                    : "Invänta svar från arbetsgivaren");
       const primary =
         lane === "closed" || lane === "waiting"
           ? "Visa ansökan"
@@ -119,9 +129,7 @@ export function jobWorkspace(data: AppData, boundary = planningBoundary()) {
                     ? !application.advertisement?.text &&
                       !application.advertisement?.url
                       ? "Förbered ansökan"
-                      : application.materials?.some((m) => m.kind === "cv")
-                        ? "Fortsätt ansökan"
-                        : "Fortsätt med CV"
+                      : "Fortsätt ansökan"
                     : "Gör nästa steg";
       return { application, lane, step, steps, interview, date, next, primary };
     })
@@ -169,8 +177,24 @@ export function markApplicationSent(
     },
     now,
   );
+  const finished = (data.careerActions ?? [])
+    .filter(
+      (action) =>
+        action.applicationId === id &&
+        action.status === "open" &&
+        action.kind !== "waiting" &&
+        /^(?:förbered ansökan|(?:skapa|anpassa).*cv|skriv.*(?:ansökan|brev)|läs annons(?:en)?|bedöm jobbet|skicka ansökan)/iu.test(
+          action.title,
+        ),
+    )
+    .reduce(
+      (state, action) => completeCareerAction(state, action.id, now),
+      data,
+    );
   return {
-    ...data,
-    applications: data.applications!.map((a) => (a.id === id ? updated : a)),
+    ...finished,
+    applications: finished.applications!.map((a) =>
+      a.id === id ? updated : a,
+    ),
   };
 }

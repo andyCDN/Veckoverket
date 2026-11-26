@@ -177,6 +177,13 @@ for (const width of [1440, 390]) {
         exact: true,
       })
       .click();
+    await expect(
+      page.getByRole("region", { name: "Ansökans arbetsläge", exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole("region", { name: "Ansökans detaljer", exact: true })
+      .getByRole("button", { name: "Dokumentunderlag", exact: true })
+      .click();
     const materials = page.getByRole("dialog", {
       name: "Dokumentunderlag",
       exact: true,

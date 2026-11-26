@@ -56,7 +56,10 @@ import { CvAgent } from "./cv-agent";
 import { ApplicationMessage } from "./application-message";
 import { applyApplicationMessage } from "@/lib/application-message";
 import { LinkedInImport } from "./linkedin-import";
-import { importLinkedInJobs } from "@/lib/linkedin-import";
+import {
+  importLinkedInJobs,
+  linkedInApplicationDraft,
+} from "@/lib/linkedin-import";
 import { Modal } from "./modal";
 import { PlanningConsequences } from "./planning-consequences";
 import {
@@ -66,6 +69,20 @@ import {
 
 import { JobList } from "./job-list";
 import { JobWatch } from "./job-watch";
+import { ApplicationWork } from "./application-work";
+import { JobSearchSession } from "./job-search-session";
+import {
+  updateApplicationPreparation,
+  updateApplicationFollowUp,
+} from "@/lib/application-flow";
+import {
+  mergeJobAdvertisement,
+  applicationAdvertisementUrls,
+} from "@/lib/job-identity";
+import {
+  jobSessionApplications,
+  type JobSessionRef,
+} from "@/lib/job-search-sessions";
 import {
   dismissJobUrl,
   removeJobApplication,
@@ -82,6 +99,8 @@ import {
 
 const statuses = APPLICATION_STATUSES;
 type Props = {
+  session?: JobSessionRef;
+  onSessionStart?: (applicationId: string, session: JobSessionRef) => void;
   onWeek: () => void;
   initialActionId?: string;
   initialTab?: "actions";
@@ -107,6 +126,8 @@ export function CareerView({
   initialTab,
   initialRecord,
   onWeek,
+  session,
+  onSessionStart,
 }: Props) {
   const [detailId, setDetailId] = useState<string | null>(() =>
     initialRecord?.kind === "application"
@@ -117,15 +138,18 @@ export function CareerView({
         : null,
   );
   const [addJobOpen, setAddJobOpen] = useState(false);
+  const [captureSeed, setCaptureSeed] = useState<JobApplication>();
+  const [sessionEditing, setSessionEditing] = useState<string | null>(null);
+  const [sessionTarget, setSessionTarget] = useState<JobSessionRef | undefined>(
+    session,
+  );
   const [sentId, setSentId] = useState<string | null>(null);
   const [jobLane, setJobLane] = useState<JobLane>("todo");
   const [messageApplicationId, setMessageApplicationId] = useState<string>();
   const [cvId, setCvId] = useState<string | null>(null);
   const [messageOpen, setMessageOpen] = useState(false);
   const [linkedinOpen, setLinkedinOpen] = useState(false);
-  const [materialsId, setMaterialsId] = useState<string | null>(
-    initialRecord?.kind === "application" ? initialRecord.id : null,
-  );
+  const [materialsId, setMaterialsId] = useState<string | null>(null);
   const [actionEditing, setActionEditing] = useState(false);
   const [interviewBookingId, setInterviewBookingId] = useState<string | null>(
     null,
@@ -157,6 +181,7 @@ export function CareerView({
   } | null>(null);
   const editing = Boolean(
     detailId ||
+    sessionEditing ||
     addJobOpen ||
     sentId ||
     cvId ||
@@ -248,10 +273,9 @@ export function CareerView({
   };
   const primaryJobAction = (row: JobRow) => {
     openJob(row.application);
-    if (row.primary === "Fortsätt med CV") setCvId(row.application.id);
-    else if (row.primary === "Förbered ansökan")
-      setMaterialsId(row.application.id);
-    else if (row.primary === "Boka intervju")
+    if (row.step && ["Gör nästa steg", "Följ upp"].includes(row.primary))
+      setFocusActionId(row.step.id);
+    if (row.primary === "Boka intervju")
       setInterviewBookingId(row.application.id);
     else if (
       ["Förbered intervju", "Följ upp intervjun"].includes(row.primary) &&
@@ -278,6 +302,20 @@ export function CareerView({
     const step = jobWorkspace(data).find(
       (row) => row.application.id === a.id,
     )?.step;
+    const sessionActivity =
+      sessionTarget &&
+      data.weeks[sessionTarget.week]?.activities.find(
+        (pass) => pass.id === sessionTarget.activityId,
+      );
+    const sessionJobs = sessionActivity
+      ? jobSessionApplications(data, sessionActivity)
+      : [];
+    const nextSessionJob = sessionJobs.find(
+      (job) =>
+        job.id !== a.id &&
+        job.status === "draft" &&
+        (!job.deadline || job.deadline >= today()),
+    );
     return (
       <article className="career-card stack job-detail-card" key={a.id}>
         <h2>
@@ -292,27 +330,112 @@ export function CareerView({
           )}
         </div>
         {a.deadline && <p>Deadline: {a.deadline}</p>}
-        <section className="application-next-step">
-          <h3>{step?.kind === "waiting" ? "Väntar på svar" : "Nästa steg"}</h3>
-          <p>
-            {step?.title ||
-              (isClosedApplication(a)
-                ? "Processen är avslutad."
-                : "Välj vad du vill göra härnäst.")}
+        {initialRecord?.kind === "application" && initialRecord.id === a.id && (
+          <p className="check-in-plan">
+            <strong>Första lilla steget</strong>
+            <br />
+            {initialRecord.instruction}
           </p>
-          {!step && !isClosedApplication(a) && (
-            <button
-              className="button secondary"
-              onClick={() => setApplication(a)}
-            >
-              Lägg till nästa steg
-            </button>
-          )}
-        </section>
-        {a.status === "draft" && (
-          <button className="button primary" onClick={() => setSentId(a.id)}>
-            Markera skickad
+        )}
+        {sessionActivity && sessionJobs.some((job) => job.id === a.id) && (
+          <section
+            className="job-session-context"
+            aria-label="Pågående jobbsökarpass"
+          >
+            <p>
+              <strong>{sessionActivity.title}</strong> · {sessionActivity.date}{" "}
+              {time(sessionActivity.start)}–{time(sessionActivity.end)}
+            </p>
+            <p>
+              Jobb {sessionJobs.findIndex((job) => job.id === a.id) + 1} av{" "}
+              {sessionJobs.length}
+            </p>
+            {a.status !== "draft" &&
+              (nextSessionJob ? (
+                <button
+                  className="button primary"
+                  onClick={() => {
+                    if (onSessionStart && sessionTarget)
+                      onSessionStart(nextSessionJob.id, sessionTarget);
+                    else setDetailId(nextSessionJob.id);
+                  }}
+                >
+                  Fortsätt med nästa jobb
+                </button>
+              ) : (
+                <p>Passets valda jobb är hanterade.</p>
+              ))}
+          </section>
+        )}
+        {(a.status === "draft" || a.status === "sent") && (
+          <ApplicationWork
+            application={a}
+            nextStep={step}
+            onSent={() => setSentId(a.id)}
+            onMaterials={() => setMaterialsId(a.id)}
+            onSession={() => setSessionEditing(a.id)}
+            onFollowUp={() => setSentId(a.id)}
+            onNextStep={() => {
+              if (!step) {
+                setSentId(a.id);
+                return;
+              }
+              const more = document.querySelector<HTMLDetailsElement>(
+                ".application-details > details",
+              );
+              if (more) more.open = true;
+              setFocusActionId(step.id);
+              requestAnimationFrame(() => {
+                const card = document.getElementById(`action-${step.id}`);
+                card?.focus({ preventScroll: true });
+                (
+                  card ?? document.querySelector(".job-scoped-actions")
+                )?.scrollIntoView({ block: "center", behavior: "smooth" });
+              });
+            }}
+            onUpdate={(action, url) => {
+              try {
+                onChange(
+                  updateApplicationPreparation(data, a.id, action, url),
+                  data,
+                );
+                return undefined;
+              } catch (error) {
+                return error instanceof Error
+                  ? error.message
+                  : "Arbetssteget kunde inte sparas.";
+              }
+            }}
+          />
+        )}
+        {a.status === "sent" && !step && (
+          <button
+            className="button secondary"
+            onClick={() => setApplication(a)}
+          >
+            Lägg till nästa steg
           </button>
+        )}
+        {a.status !== "draft" && a.status !== "sent" && (
+          <section className="application-next-step">
+            <h3>
+              {step?.kind === "waiting" ? "Väntar på svar" : "Nästa steg"}
+            </h3>
+            <p>
+              {step?.title ||
+                (isClosedApplication(a)
+                  ? "Processen är avslutad."
+                  : "Välj vad du vill göra härnäst.")}
+            </p>
+            {!step && !isClosedApplication(a) && (
+              <button
+                className="button secondary"
+                onClick={() => setApplication(a)}
+              >
+                Lägg till nästa steg
+              </button>
+            )}
+          </section>
         )}
         <button
           className="button secondary"
@@ -326,282 +449,298 @@ export function CareerView({
         <button className="text-button" onClick={() => removeJob(a)}>
           Ta bort jobbet
         </button>
-        <section
-          className="job-material-summary stack"
-          aria-label="Annons och dokument"
-        >
-          <h3>Annons och dokument</h3>
-          {documentUrl(a.advertisement?.url ?? "") && (
-            <a
-              href={documentUrl(a.advertisement!.url)}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Öppna annons
-            </a>
-          )}
-          {a.advertisement?.text && (
-            <details>
-              <summary>Läs annonsen</summary>
-              <p className="career-notes">{a.advertisement.text}</p>
-            </details>
-          )}
-          {!a.advertisement?.url && !a.advertisement?.text && (
-            <p>Annons saknas. Lägg till den under Dokumentunderlag.</p>
-          )}
-          {a.materials?.map((m) => (
-            <a
-              key={m.id}
-              href={documentUrl(m.url)}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {m.title} · {m.version || "Ingen version"}
-              {m.sentOn ? ` · Skickat ${m.sentOn}` : ""}
-            </a>
-          ))}
-        </section>
-        <div className="career-actions">
-          <button className="button secondary" onClick={() => setCvId(a.id)}>
-            Skapa CV för jobbet ↗
-          </button>
-        </div>
+        {a.status !== "draft" && a.status !== "sent" && (
+          <section
+            className="job-material-summary stack"
+            aria-label="Annons och dokument"
+          >
+            <h3>Annons och dokument</h3>
+            {applicationAdvertisementUrls(a).map((url, index) => (
+              <a key={url} href={url} target="_blank" rel="noopener noreferrer">
+                {index === 0
+                  ? "Öppna annons"
+                  : `Ytterligare annonskälla ${index + 1}`}
+              </a>
+            ))}
+            {a.advertisement?.text && (
+              <details>
+                <summary>Läs annonsen</summary>
+                <p className="career-notes">{a.advertisement.text}</p>
+              </details>
+            )}
+            {!a.advertisement?.url && !a.advertisement?.text && (
+              <p>Annons saknas. Lägg till den under Dokumentunderlag.</p>
+            )}
+            {a.materials?.map((m) => (
+              <a
+                key={m.id}
+                href={documentUrl(m.url)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {m.title} · {m.version || "Ingen version"}
+                {m.sentOn ? ` · Skickat ${m.sentOn}` : ""}
+              </a>
+            ))}
+          </section>
+        )}
         <section
           className="application-details"
           aria-label="Dokument, intervjuer och historik"
         >
-          <div className="stack">
-            {!isClosedApplication(a) && (
-              <section
-                className="job-scoped-actions"
-                aria-label="Jobbets nästa steg"
-              >
-                <h3>Uppgifter och bevakningar</h3>
-                <CareerActions
-                  data={data}
-                  scope="jobs"
-                  applicationId={a.id}
-                  onChange={onChange}
-                  onOpen={onOpen}
-                  onEditing={setActionEditing}
-                  onBook={bookStep}
-                  initialActionId={focusActionId}
-                />
-              </section>
-            )}
-            {!!a.contactIds?.length && (
-              <div className="stack" aria-label="Kopplade kontakter">
-                {a.contactIds.map((id) => {
-                  const c = contacts.find((c) => c.id === id);
-                  return c ? (
-                    <button
-                      className="text-button"
-                      key={id}
-                      onClick={() => setContact(c)}
-                    >
-                      {c.name}
-                      {c.organization && ` · ${c.organization}`}
-                    </button>
-                  ) : (
-                    <span key={id}>Borttagen kontakt</span>
-                  );
-                })}
-              </div>
-            )}
-            {a.notes && <p className="career-notes">{a.notes}</p>}
-            <div className="career-actions">
-              <a
-                className="button secondary"
-                href={recordingHref({ applicationId: a.id })}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Spela in samtal
-              </a>
+          <details
+            open={
+              (a.status !== "draft" && a.status !== "sent") ||
+              Boolean(focusActionId)
+                ? true
+                : undefined
+            }
+          >
+            <summary>Fler verktyg för ansökan</summary>
+            <div className="stack">
               <button
                 className="button secondary"
-                onClick={() => setMaterialsId(a.id)}
+                onClick={() => setCvId(a.id)}
               >
-                Dokumentunderlag
+                Skapa CV för jobbet ↗
               </button>
-              <button
-                className="button secondary"
-                onClick={() => setInterviewBookingId(a.id)}
-              >
-                Boka intervju
-              </button>
-              <button
-                className="button secondary"
-                onClick={() => setHistoryId(a.id)}
-              >
-                Visa historik
-              </button>
-              {a.status === "draft" && (
+              {!isClosedApplication(a) && (
+                <section
+                  className="job-scoped-actions"
+                  aria-label="Jobbets nästa steg"
+                >
+                  <h3>Uppgifter och bevakningar</h3>
+                  <CareerActions
+                    data={data}
+                    scope="jobs"
+                    applicationId={a.id}
+                    onChange={onChange}
+                    onOpen={onOpen}
+                    onEditing={setActionEditing}
+                    onBook={bookStep}
+                    initialActionId={focusActionId}
+                  />
+                </section>
+              )}
+              {!!a.contactIds?.length && (
+                <div className="stack" aria-label="Kopplade kontakter">
+                  {a.contactIds.map((id) => {
+                    const c = contacts.find((c) => c.id === id);
+                    return c ? (
+                      <button
+                        className="text-button"
+                        key={id}
+                        onClick={() => setContact(c)}
+                      >
+                        {c.name}
+                        {c.organization && ` · ${c.organization}`}
+                      </button>
+                    ) : (
+                      <span key={id}>Borttagen kontakt</span>
+                    );
+                  })}
+                </div>
+              )}
+              {a.notes && <p className="career-notes">{a.notes}</p>}
+              <div className="career-actions">
+                <a
+                  className="button secondary"
+                  href={recordingHref({ applicationId: a.id })}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Spela in samtal
+                </a>
+                {a.status !== "draft" && a.status !== "sent" && (
+                  <button
+                    className="button secondary"
+                    onClick={() => setMaterialsId(a.id)}
+                  >
+                    Dokumentunderlag
+                  </button>
+                )}
                 <button
                   className="button secondary"
-                  onClick={() =>
-                    setDeadline({
-                      id: uid(),
-                      title: `${a.role} · ${a.organization}`,
-                      date: nextDate(a.deadline),
-                      minute: data.settings.end,
-                      categoryId: data.categories.some((c) => c.id === "career")
-                        ? "career"
-                        : data.categories[0].id,
-                      applicationId: a.id,
-                      steps: [],
-                    })
-                  }
+                  onClick={() => setInterviewBookingId(a.id)}
                 >
-                  Planera från deadline
+                  Boka intervju
                 </button>
-              )}
-            </div>
-            {!!a.interviews?.length && (
-              <section
-                className="stack"
-                aria-label={`Intervjuer för ${a.role}`}
-              >
-                <h3>Intervjuer</h3>
-                {a.interviews.map((i) => {
-                  const meeting = interviewActivity(
-                    data,
-                    i.meetingActivityId,
-                  )?.activity;
-                  const prep = interviewActivity(
-                    data,
-                    i.preparationActivityId,
-                  )?.activity;
-                  const date = meeting?.date ?? i.date,
-                    start = meeting?.start ?? i.start,
-                    end = meeting?.end ?? i.end;
-                  const late =
-                    meeting &&
-                    prep &&
-                    (prep.date > meeting.date ||
-                      (prep.date === meeting.date && prep.end > meeting.start));
-                  return (
-                    <div className="career-interview stack" key={i.id}>
-                      <h4>{i.title}</h4>
-                      <a
-                        className="text-button"
-                        href={recordingHref({
-                          applicationId: a.id,
-                          interviewId: i.id,
-                          ...(i.contactId ? { contactId: i.contactId } : {}),
-                        })}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Spela in intervju
-                      </a>
-                      <p>
-                        {date} · {time(start)}–{time(end)} ·{" "}
-                        {meeting
-                          ? meeting.status === "done"
-                            ? "Genomförd"
-                            : meeting.status === "skipped"
-                              ? "Blev inte av"
-                              : "Planerad"
-                          : "Kalenderpass saknas"}
-                      </p>
-                      {i.location && (
-                        <p className="career-notes">
-                          {i.location}
-                          {documentUrl(i.location) && (
-                            <>
-                              {" "}
-                              ·{" "}
-                              <a
-                                href={documentUrl(i.location)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                Öppna möteslänk
-                              </a>
-                            </>
-                          )}
-                        </p>
-                      )}
-                      {i.contactId && (
-                        <p>
-                          Kontakt:{" "}
-                          {contacts.find((c) => c.id === i.contactId)?.name ??
-                            "Borttagen kontakt"}
-                        </p>
-                      )}
-                      {prep && (
-                        <p>
-                          Förberedelse: {prep.date} {time(prep.start)}–
-                          {time(prep.end)}
-                        </p>
-                      )}
-                      {i.preparationActivityId && !prep && (
-                        <p>Förberedelsepasset saknas i kalendern.</p>
-                      )}
-                      {late && (
-                        <p role="status">
-                          Förberedelsepasset ligger inte före intervjun.
-                          Kontrollera tiderna i kalendern.
-                        </p>
-                      )}
-                      <div className="career-actions">
-                        <button
-                          className="button secondary"
-                          onClick={() =>
-                            setInterviewNotes({
-                              applicationId: a.id,
-                              interviewId: i.id,
-                            })
-                          }
+                <button
+                  className="button secondary"
+                  onClick={() => setHistoryId(a.id)}
+                >
+                  Visa historik
+                </button>
+                {a.status === "draft" && (
+                  <button
+                    className="button secondary"
+                    onClick={() =>
+                      setDeadline({
+                        id: uid(),
+                        title: `${a.role} · ${a.organization}`,
+                        date: nextDate(a.deadline),
+                        minute: data.settings.end,
+                        categoryId: data.categories.some(
+                          (c) => c.id === "career",
+                        )
+                          ? "career"
+                          : data.categories[0].id,
+                        applicationId: a.id,
+                        steps: [],
+                      })
+                    }
+                  >
+                    Planera från deadline
+                  </button>
+                )}
+              </div>
+              {!!a.interviews?.length && (
+                <section
+                  className="stack"
+                  aria-label={`Intervjuer för ${a.role}`}
+                >
+                  <h3>Intervjuer</h3>
+                  {a.interviews.map((i) => {
+                    const meeting = interviewActivity(
+                      data,
+                      i.meetingActivityId,
+                    )?.activity;
+                    const prep = interviewActivity(
+                      data,
+                      i.preparationActivityId,
+                    )?.activity;
+                    const date = meeting?.date ?? i.date,
+                      start = meeting?.start ?? i.start,
+                      end = meeting?.end ?? i.end;
+                    const late =
+                      meeting &&
+                      prep &&
+                      (prep.date > meeting.date ||
+                        (prep.date === meeting.date &&
+                          prep.end > meeting.start));
+                    return (
+                      <div className="career-interview stack" key={i.id}>
+                        <h4>{i.title}</h4>
+                        <a
+                          className="text-button"
+                          href={recordingHref({
+                            applicationId: a.id,
+                            interviewId: i.id,
+                            ...(i.contactId ? { contactId: i.contactId } : {}),
+                          })}
+                          target="_blank"
+                          rel="noopener noreferrer"
                         >
-                          Intervjuanteckningar
-                        </button>
-                        <button
-                          className="button secondary"
-                          onClick={() =>
-                            setInterviewNotes({
-                              applicationId: a.id,
-                              interviewId: i.id,
-                            })
-                          }
-                        >
-                          Öppna intervjuunderlag
-                        </button>
-                        {meeting && (
-                          <button
-                            className="button secondary"
-                            onClick={() => onOpen(meeting)}
-                          >
-                            Öppna intervjupass
-                          </button>
+                          Spela in intervju
+                        </a>
+                        <p>
+                          {date} · {time(start)}–{time(end)} ·{" "}
+                          {meeting
+                            ? meeting.status === "done"
+                              ? "Genomförd"
+                              : meeting.status === "skipped"
+                                ? "Blev inte av"
+                                : "Planerad"
+                            : "Kalenderpass saknas"}
+                        </p>
+                        {i.location && (
+                          <p className="career-notes">
+                            {i.location}
+                            {documentUrl(i.location) && (
+                              <>
+                                {" "}
+                                ·{" "}
+                                <a
+                                  href={documentUrl(i.location)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  Öppna möteslänk
+                                </a>
+                              </>
+                            )}
+                          </p>
+                        )}
+                        {i.contactId && (
+                          <p>
+                            Kontakt:{" "}
+                            {contacts.find((c) => c.id === i.contactId)?.name ??
+                              "Borttagen kontakt"}
+                          </p>
                         )}
                         {prep && (
+                          <p>
+                            Förberedelse: {prep.date} {time(prep.start)}–
+                            {time(prep.end)}
+                          </p>
+                        )}
+                        {i.preparationActivityId && !prep && (
+                          <p>Förberedelsepasset saknas i kalendern.</p>
+                        )}
+                        {late && (
+                          <p role="status">
+                            Förberedelsepasset ligger inte före intervjun.
+                            Kontrollera tiderna i kalendern.
+                          </p>
+                        )}
+                        <div className="career-actions">
                           <button
                             className="button secondary"
-                            onClick={() => onOpen(prep)}
+                            onClick={() =>
+                              setInterviewNotes({
+                                applicationId: a.id,
+                                interviewId: i.id,
+                              })
+                            }
                           >
-                            Öppna förberedelsepass
+                            Intervjuanteckningar
                           </button>
-                        )}
+                          <button
+                            className="button secondary"
+                            onClick={() =>
+                              setInterviewNotes({
+                                applicationId: a.id,
+                                interviewId: i.id,
+                              })
+                            }
+                          >
+                            Öppna intervjuunderlag
+                          </button>
+                          {meeting && (
+                            <button
+                              className="button secondary"
+                              onClick={() => onOpen(meeting)}
+                            >
+                              Öppna intervjupass
+                            </button>
+                          )}
+                          {prep && (
+                            <button
+                              className="button secondary"
+                              onClick={() => onOpen(prep)}
+                            >
+                              Öppna förberedelsepass
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </section>
-            )}
-            {passes(linked("applicationId", a.id))}
-            <details>
-              <summary>Historik</summary>
-              <ApplicationHistory
-                embedded
-                value={a}
-                contacts={contacts}
-                onSave={saveTrackedApplication}
-                onClose={() => {}}
-              />
-            </details>
-          </div>
+                    );
+                  })}
+                </section>
+              )}
+              {passes(linked("applicationId", a.id))}
+              <details>
+                <summary>Historik</summary>
+                <ApplicationHistory
+                  embedded
+                  value={a}
+                  contacts={contacts}
+                  onSave={saveTrackedApplication}
+                  onClose={() => {}}
+                />
+              </details>
+            </div>
+          </details>
         </section>
       </article>
     );
@@ -670,19 +809,8 @@ export function CareerView({
           onDismiss={(url) => onChange(dismissJobUrl(data, url), data)}
           onRestore={(url) => onChange(restoreDismissedJobs(data, url), data)}
           onSave={(a) => {
-            onChange(
-              {
-                ...data,
-                applications: [...applications, saveApplication(undefined, a)],
-              },
-              data,
-            );
-            setTab("applications");
-            setDetailId(a.id);
-            setJobLane("todo");
-            setMessage(
-              "Jobbet är sparat. Fortsätt med nästa steg när det passar.",
-            );
+            setCaptureSeed(a);
+            setAddJobOpen(true);
           }}
         />
       )}
@@ -726,7 +854,10 @@ export function CareerView({
             onLane={setJobLane}
             query={query}
             onQuery={setQuery}
-            onAdd={() => setAddJobOpen(true)}
+            onAdd={() => {
+              setCaptureSeed(undefined);
+              setAddJobOpen(true);
+            }}
             onOpen={openJob}
             onPrimary={primaryJobAction}
             onMessage={(a) => {
@@ -909,8 +1040,41 @@ export function CareerView({
       </details>
       {addJobOpen && (
         <JobCapture
+          key={captureSeed?.id ?? "manual"}
+          initialJob={captureSeed}
           applications={applications}
-          onClose={() => setAddJobOpen(false)}
+          onClose={() => {
+            setAddJobOpen(false);
+            setCaptureSeed(undefined);
+          }}
+          onOpenExisting={(id) => {
+            setAddJobOpen(false);
+            setCaptureSeed(undefined);
+            setTab("applications");
+            setDetailId(id);
+          }}
+          onMerge={(id, incoming) => {
+            try {
+              const next = mergeJobAdvertisement(data, id, incoming);
+              onChange(next, data);
+              setAddJobOpen(false);
+              setCaptureSeed(undefined);
+              setTab("applications");
+              setDetailId(id);
+              setJobLane(
+                jobWorkspace(next).find((row) => row.application.id === id)
+                  ?.lane ?? "todo",
+              );
+              setMessage(
+                "Annonskällorna är samlade under den befintliga ansökan. Status, dokument och historik är bevarade.",
+              );
+              return undefined;
+            } catch (error) {
+              return error instanceof Error
+                ? error.message
+                : "Annonskällan kunde inte kopplas.";
+            }
+          }}
           onSave={(a) => {
             onChange(
               {
@@ -920,6 +1084,8 @@ export function CareerView({
               data,
             );
             setAddJobOpen(false);
+            setCaptureSeed(undefined);
+            setTab("applications");
             setDetailId(a.id);
             setJobLane("todo");
             setMessage(
@@ -929,13 +1095,37 @@ export function CareerView({
           }}
         />
       )}
+      {sessionEditing && (
+        <JobSearchSession
+          data={data}
+          initialTarget={sessionTarget}
+          applicationId={sessionEditing}
+          onClose={() => setSessionEditing(null)}
+          onSave={(next, target, startId) => {
+            onChange(next, data);
+            setSessionTarget(target);
+            setSessionEditing(null);
+            if (startId) {
+              if (onSessionStart) onSessionStart(startId, target);
+              else setDetailId(startId);
+            }
+            setMessage(
+              "Jobben är kopplade till ditt befintliga pass. Kalenderns tider är oförändrade.",
+            );
+          }}
+        />
+      )}
       {sentApplication && (
         <ApplicationSent
           application={sentApplication}
+          mode={sentApplication.status === "sent" ? "follow-up" : "send"}
           onClose={() => setSentId(null)}
           onSave={(date) => {
             try {
-              const next = markApplicationSent(data, sentApplication.id, date);
+              const next =
+                sentApplication.status === "sent"
+                  ? updateApplicationFollowUp(data, sentApplication.id, date)
+                  : markApplicationSent(data, sentApplication.id, date);
               onChange(next, data);
               setSentId(null);
               setJobLane(
@@ -943,7 +1133,11 @@ export function CareerView({
                   (row) => row.application.id === sentApplication.id,
                 )?.lane ?? "waiting",
               );
-              setMessage("Ansökan är markerad som skickad.");
+              setMessage(
+                sentApplication.status === "sent"
+                  ? "Uppföljningen är sparad."
+                  : "Ansökan är markerad som skickad.",
+              );
               return undefined;
             } catch (e) {
               return e instanceof Error
@@ -1063,6 +1257,23 @@ export function CareerView({
       {linkedinOpen && (
         <LinkedInImport
           applications={applications}
+          onMerge={(id, draft) => {
+            try {
+              onChange(
+                mergeJobAdvertisement(
+                  data,
+                  id,
+                  linkedInApplicationDraft(draft),
+                ),
+                data,
+              );
+              return undefined;
+            } catch (error) {
+              return error instanceof Error
+                ? error.message
+                : "Annonskällan kunde inte kopplas.";
+            }
+          }}
           onClose={() => setLinkedinOpen(false)}
           onImport={(drafts) => {
             const result = importLinkedInJobs(data, drafts);

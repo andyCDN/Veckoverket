@@ -5,7 +5,9 @@ import {
   linkedInDrafts,
   LINKEDIN_STEPS,
   type LinkedInDraft,
+  linkedInApplicationDraft,
 } from "@/lib/linkedin-import";
+import { jobMatches } from "@/lib/job-identity";
 import {
   loadJobDetails,
   applyJobDetails,
@@ -16,10 +18,12 @@ export function LinkedInImport({
   applications,
   onImport,
   onClose,
+  onMerge,
 }: {
   applications: JobApplication[];
   onImport: (drafts: LinkedInDraft[]) => { added: number; skipped: number };
   onClose: () => void;
+  onMerge?: (id: string, draft: LinkedInDraft) => string | undefined;
 }) {
   const reading = useRef<AbortController | null>(null);
   useEffect(() => () => reading.current?.abort(), []);
@@ -95,6 +99,24 @@ export function LinkedInImport({
     void Promise.all([worker(), worker()]);
   };
   const selected = drafts?.filter((d) => d.selected).length ?? 0;
+  const candidates = [
+    ...applications,
+    ...(drafts ?? [])
+      .filter(
+        (draft) =>
+          draft.selected &&
+          !draft.issue &&
+          draft.role.trim() &&
+          draft.organization.trim(),
+      )
+      .map((draft) => linkedInApplicationDraft(draft)),
+  ];
+  const duplicates = new Map(
+    (drafts ?? []).map((draft) => [
+      draft.key,
+      jobMatches(linkedInApplicationDraft(draft), candidates),
+    ]),
+  );
   return (
     <Modal title="Importera från LinkedIn" onClose={onClose} wide>
       <div className="stack linkedin-import">
@@ -228,6 +250,54 @@ export function LinkedInImport({
                     {draft.fetchMessage && (
                       <p role="status">{draft.fetchMessage}</p>
                     )}
+                    {Boolean(duplicates.get(draft.key)?.length) && (
+                      <section
+                        className="application-duplicate stack"
+                        aria-label={`Möjliga dubbletter för jobb ${i + 1}`}
+                      >
+                        <h3>Möjlig dubblett mellan annonskällor</h3>
+                        {duplicates.get(draft.key)!.map(({ job }) => (
+                          <div key={job.id}>
+                            <p>
+                              {job.role} · {job.organization}
+                            </p>
+                            {onMerge &&
+                              applications.some(
+                                (existing) => existing.id === job.id,
+                              ) && (
+                                <button
+                                  type="button"
+                                  className="button secondary"
+                                  disabled={draft.fetchState === "loading"}
+                                  onClick={() => {
+                                    const issue = onMerge(job.id, draft);
+                                    if (issue) setError(issue);
+                                    else
+                                      change(draft.key, {
+                                        selected: false,
+                                        issue: `Annonskällan är kopplad till ${job.role} · ${job.organization}.`,
+                                      });
+                                  }}
+                                >
+                                  Samla under befintligt jobb
+                                </button>
+                              )}
+                          </div>
+                        ))}
+                        <label className="routine-task">
+                          <input
+                            type="checkbox"
+                            checked={draft.separateConfirmed ?? false}
+                            onChange={(event) =>
+                              change(draft.key, {
+                                separateConfirmed: event.target.checked,
+                              })
+                            }
+                          />
+                          Det är en annan tjänst – spara separat
+                        </label>
+                      </section>
+                    )}
                     <div className="form-row">
                       <label>
                         Tjänst
@@ -351,7 +421,15 @@ export function LinkedInImport({
               Valda nästa steg visas i veckovyn. Kalenderpass skapas först när
               du väljer att boka tid.
             </p>
-            <button className="button primary" disabled={!selected}>
+            <button
+              className="button primary"
+              disabled={
+                !selected ||
+                drafts.some(
+                  (draft) => draft.selected && draft.fetchState === "loading",
+                )
+              }
+            >
               Importera {selected} jobb
             </button>
             <button

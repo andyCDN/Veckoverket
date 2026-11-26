@@ -41,6 +41,7 @@ export function ActivityEditor({
   onCategorize,
   onSwap,
   onSaveInterview,
+  onJobSearch,
 }: {
   activity?: Activity;
   data: AppData;
@@ -64,6 +65,7 @@ export function ActivityEditor({
     input: InterviewNotesInput,
     complete: boolean,
   ) => void;
+  onJobSearch?: () => void;
 }) {
   const initialCategory = activity?.external
     ? (googleCategoryChoices(data)[googleEventKey(activity)] ?? AUTO_CATEGORY)
@@ -175,6 +177,7 @@ export function ActivityEditor({
         followUpOf: _followUp,
         external: _external,
         routine: _routine,
+        jobApplicationIds: _jobApplicationIds,
         ...values
       } = updated;
       recurring = {
@@ -310,6 +313,14 @@ export function ActivityEditor({
       description="Ange område, datum och tid för passet."
       onClose={onClose}
     >
+      {onJobSearch && (
+        <section className="activity-job-session stack">
+          <p>Välj ansökningar att arbeta med under det här passet.</p>
+          <button className="button secondary" onClick={onJobSearch}>
+            Öppna jobbsökarpasset
+          </button>
+        </section>
+      )}
       <form onSubmit={submit} className="stack">
         {(form.taskId || form.habitId) && (
           <div className="activity-work-source">

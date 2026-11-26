@@ -8,6 +8,22 @@ Platsbanken läses från Arbetsförmedlingens publika JobTech-API direkt i webbl
 
 Om annonsen har tagits bort eller källan inte kan nås finns länken kvar i granskningen. Klistra in annonstexten eller komplettera uppgifterna manuellt. Länkar till andra webbplatser kan sparas med manuellt ifyllda uppgifter eller inklistrad annonstext. Automatisk läsning stöder Platsbanken och LinkedIn.
 
+## Ett sammanhållet ansökningsflöde
+
+Öppna ett jobb för att fortsätta i arbetsvyn: Annons → CV → Ansökan → Uppföljning. Anpassa CV öppnar den befintliga CV-agenten i ett nytt fönster och kopierar annonsunderlaget. Privat anteckningstext skickas inte med. Jobbet ligger kvar öppet i Veckoverket. Bekräfta CV klart när du är färdig; en dokumentlänk kan sparas samtidigt. Öppna ansökningssidan går till annonsens ansökningslänk när en sådan finns, annars till annonsen. Att öppna sidan ändrar inte status till skickad.
+
+Markera skickad kräver en egen bekräftelse. Ett uppföljningsdatum en vecka framåt föreslås och kan ändras eller tas bort. Kända förberedelseuppgifter avslutas, medan egna andra uppgifter och kalenderutfall bevaras. Skickade ansökningar visar bevakningen i samma arbetsvy, där datumet också kan ändras.
+
+Jobbspaning → Granska jobbet använder samma granskning som länkimporten. Finns fullständig annonstext i det publicerade urvalets valfria fält `text` används den. För en arbetsgivarlänk med känd titel och organisation söker appen annars efter en entydigt motsvarande annons i det publika JobTech-API:et. Ursprungslänken och Platsbanken-länken sparas tillsammans. Flera likadana träffar eller en annan arbetsgivare väljs inte automatiskt. Vid saknat eller blockerat underlag kan hela annonstexten klistras in före sparning.
+
+Samma annonslänk eller samma normaliserade titel och arbetsgivare ger ett förslag på befintlig ansökan. Samla under befintligt jobb kräver ett eget val och bevarar status, dokument, egna texter och historik. En extra annonslänk läggs till och tomt annonsunderlag kan kompletteras. Det är en annan tjänst – spara separat tillåter nya rekryteringar med samma titel när länken skiljer sig. Även LinkedIn-import och jobbspaning känner igen sparade extra annonskällor.
+
+## Jobb i befintliga jobbsökarpass
+
+Välj befintligt jobbsökarpass i arbetsvyn, Välj jobb för passet vid dagens pass, eller Öppna jobbsökarpasset från kalenderpassets dialog. Välj aktuella utkast i arbetsordning och spara. Bara jobbköfältet på det befintliga passet ändras; tider, antal pass, skydd, regler och återkommande scheman bevaras. Ett nytt pass skapas aldrig genom jobbvalet.
+
+Börja jobbsökarpasset öppnar första kvarvarande utkastet. När en ansökan är skickad finns Fortsätt med nästa jobb. När alla valda jobb är hanterade döljs startknappen. Kalenderpassets faktiska utfall bekräftas separat. Kön kopieras inte till framtida återkommande pass. De nya arbetsstegen, extra länkarna och jobbkön är valfria fält i befintlig arbetsyta, vilket inte kräver någon databasändring.
+
 ## Ta bort ointressanta jobb
 
 I Mina jobb finns Ta bort på varje jobbrad och Ta bort jobbet i detaljvyn. Efter bekräftelse tas jobbet, dess nästa steg och val i dagsinchecken bort. Kalenderpass och deadlines bevaras. Jobbet visas inte heller som nytt i jobbspaningen.

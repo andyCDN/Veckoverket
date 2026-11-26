@@ -2,6 +2,8 @@ import { isLocalDate } from "./google-time";
 import { linkedInJobUrl } from "./linkedin-import";
 import { loadJobDetails } from "./linkedin-details-client";
 import { platsbankenJobUrl } from "./job-ad-url";
+import { documentUrl } from "./application-materials";
+import { sameJobTitle } from "./job-identity";
 export { platsbankenJobUrl, jobAdvertisementUrl } from "./job-ad-url";
 import {
   plainText,
@@ -16,8 +18,12 @@ const date = (value: unknown) => {
   const day = typeof value === "string" ? value.slice(0, 10) : "";
   return isLocalDate(day) ? day : "";
 };
+export type JobAdDetails = JobDetails & {
+  additionalUrls?: string[];
+  applicationUrl?: string;
+};
 
-export function parsePlatsbankenAd(input: unknown, id: string): JobDetails {
+export function parsePlatsbankenAd(input: unknown, id: string): JobAdDetails {
   const ad = record(input);
   if (ad.removed === true)
     throw new Error(
@@ -30,7 +36,11 @@ export function parsePlatsbankenAd(input: unknown, id: string): JobDetails {
   const employer = record(ad.employer),
     description = record(ad.description),
     address = record(ad.workplace_address);
+  const apply = record(ad.application_details).url;
+  const applicationUrl =
+    typeof apply === "string" ? documentUrl(apply) : undefined;
   return {
+    ...(applicationUrl ? { applicationUrl } : {}),
     role: plainText(ad.headline, 200),
     organization:
       plainText(employer.name, 200) || plainText(employer.workplace, 200),
@@ -55,10 +65,59 @@ export function parsePlatsbankenAd(input: unknown, id: string): JobDetails {
 export async function readJobAdvertisement(
   url: string,
   signal: AbortSignal,
-): Promise<JobDetails> {
+  hint?: { role: string; organization: string },
+): Promise<JobAdDetails> {
   const platsbanken = platsbankenJobUrl(url);
   if (!platsbanken) {
     if (linkedInJobUrl(url)) return loadJobDetails(url, signal);
+    if (hint?.role.trim() && hint.organization.trim()) {
+      let result: Response;
+      try {
+        result = await fetch(
+          `https://jobsearch.api.jobtechdev.se/search?${new URLSearchParams({ q: `${hint.role} ${hint.organization}`, limit: "10" })}`,
+          {
+            credentials: "omit",
+            referrerPolicy: "no-referrer",
+            redirect: "error",
+            headers: { Accept: "application/json" },
+            signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]),
+          },
+        );
+      } catch (error) {
+        if (signal.aborted) throw error;
+        throw new Error(
+          "Annonsunderlaget kunde inte hämtas. Klistra in den fullständiga annonstexten nedan.",
+        );
+      }
+      if (!result.ok)
+        throw new Error(
+          "Annonsunderlaget kunde inte hämtas. Klistra in den fullständiga annonstexten nedan.",
+        );
+      const body = await result.json().catch(() => null);
+      const hits: unknown[] = Array.isArray(body?.hits) ? body.hits : [];
+      const matches = hits.filter((value) => {
+        const ad = record(value);
+        return (
+          typeof ad.id === "string" &&
+          /^[1-9]\d{0,23}$/.test(ad.id) &&
+          sameJobTitle(hint, {
+            role: plainText(ad.headline, 200),
+            organization: plainText(record(ad.employer).name, 200),
+          })
+        );
+      });
+      if (matches.length !== 1)
+        throw new Error(
+          "Ingen entydig annons hittades i Platsbanken. Klistra in den fullständiga annonstexten nedan och granska uppgifterna.",
+        );
+      const ad = record(matches[0]);
+      return {
+        ...parsePlatsbankenAd(ad, ad.id as string),
+        additionalUrls: [
+          `https://arbetsformedlingen.se/platsbanken/annonser/${ad.id}`,
+        ],
+      };
+    }
     throw new Error(
       "Automatisk läsning stöder Platsbanken och LinkedIn. Länken är kvar; klistra in annonstexten eller fyll i uppgifterna nedan.",
     );

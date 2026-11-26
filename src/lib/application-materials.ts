@@ -26,10 +26,32 @@ export function validateApplicationMaterials(a: JobApplication) {
       Array.isArray(ad) ||
       !text(ad.url, 2048) ||
       (ad.url !== "" && !documentUrl(ad.url)) ||
-      !text(ad.text, 60000)
+      !text(ad.text, 60000) ||
+      (ad.applicationUrl !== undefined &&
+        (!text(ad.applicationUrl, 2048) ||
+          (ad.applicationUrl !== "" && !documentUrl(ad.applicationUrl)))) ||
+      (ad.additionalUrls !== undefined &&
+        (!Array.isArray(ad.additionalUrls) ||
+          ad.additionalUrls.length > 20 ||
+          ad.additionalUrls.some(
+            (url) => !text(url, 2048) || !documentUrl(url),
+          )))
     )
       throw new Error("Annonsunderlaget är ogiltigt.");
   }
+  if (
+    a.preparation !== undefined &&
+    (!a.preparation ||
+      typeof a.preparation !== "object" ||
+      Array.isArray(a.preparation) ||
+      Object.entries(a.preparation).some(
+        ([key, value]) =>
+          !["cvReadyAt", "applicationOpenedAt"].includes(key) ||
+          !text(value, 100) ||
+          !Number.isFinite(Date.parse(value)),
+      ))
+  )
+    throw new Error("Ansökans arbetssteg är ogiltiga.");
   if (a.materials !== undefined) {
     if (!Array.isArray(a.materials) || a.materials.length > 100)
       throw new Error("Dokumentunderlaget är ogiltigt.");
