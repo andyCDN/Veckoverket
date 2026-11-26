@@ -230,7 +230,7 @@ export function parseWatchAdvertisement(html, job) {
         .find("a.btn-theme")
         .filter((_, e) => /ansök/iu.test($(e).text()))
         .first()
-    : $("article a.btn--primary").first();
+    : $(".job-ad__application-info a.btn--primary").first();
   const applicationUrl = safeApplicationUrl(application.attr("href"), job.url);
   return {
     ...job,
