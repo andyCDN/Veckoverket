@@ -1,6 +1,22 @@
 {
-  "updatedAt": "2026-11-25T08:15:55+01:00",
+  "updatedAt": "2026-11-26T08:14:00+01:00",
   "jobs": [
+    {
+      "role": "Projektledare för regeringsuppdrag",
+      "organization": "Naturvårdsverket",
+      "url": "https://www.naturvardsverket.se/om-oss/jobba-hos-oss/lediga-jobb/projektledare-for-regeringsuppdrag-till-naturvardsverket/",
+      "location": "Stockholm eller Östersund",
+      "deadline": "2026-12-06",
+      "summary": "Leda regeringsuppdrag och samordna beslutsunderlag och remissvar inom klimat- och miljöpolitik. Tillsvidare."
+    },
+    {
+      "role": "Handläggare – konkurrenskraft och klimat inom de areella näringarna",
+      "organization": "Regeringskansliet",
+      "url": "https://web103.reachmee.com/ext/I003/584/job?site=19&lang=SE&validator=60988ba3b4a8fb26b1d3dbdf5e1a013e&job_id=16695",
+      "location": "Stockholm",
+      "deadline": "2026-11-30",
+      "summary": "Policyutveckling, EU-samordning och beslutsunderlag inom skog, bioekonomi och klimat."
+    },
     {
       "role": "Politiskt sakkunnig",
       "organization": "Djurens Rätt",
@@ -32,14 +48,6 @@
       "location": "Stockholm",
       "deadline": "2026-12-07",
       "summary": "Politiskt påverkansarbete för synskadades rättigheter. Deltid."
-    },
-    {
-      "role": "Verksamhetsutvecklare på konsultbasis",
-      "organization": "RFSU Stockholm",
-      "url": "https://jobb.rfsu.se/job/e1bf9ddf919a4dfeabb05ea8f1e57e19",
-      "location": "Stockholm",
-      "deadline": "2026-11-25",
-      "summary": "Utveckla och paketera verksamhetsnära tjänster för breddad finansiering. Deltid."
     },
     {
       "role": "Sakkunnig inom intressepolitik",
