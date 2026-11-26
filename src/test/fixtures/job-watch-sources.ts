@@ -27,6 +27,6 @@ export function stockholmListing(jobs = [stockholmJob], count = jobs.length) {
 }
 export function sourceAdvertisement(job = sourceJob) {
   if (job.sourceId === "stockholms-stad")
-    return `<article><h1 id="job-ad-heading">${job.role}</h1><dl class="job-ad__infobox"><time datetime="${job.deadline}"></time></dl><div class="job-ad__description"><p>${sourceText}</p></div><a class="btn--primary" href="https://stockholmsstad.varbi.com/se/what:login/jobID:12345/apply:1">Ansök</a></article>`;
+    return `<article><h1 id="job-ad-heading">${job.role}</h1><dl class="job-ad__infobox"><time datetime="${job.deadline}"></time></dl><div class="job-ad__description"><p>${sourceText}</p></div></article><aside><div class="job-ad__application-info"><a class="btn--primary" href="https://stockholmsstad.varbi.com/se/what:login/jobID:12345/apply:1">Ansök</a></div></aside>`;
   return `<main><div class="single-advert"><div class="content-block"><div class="title">${job.role}</div><div class="description"><p>${sourceText}</p></div></div><li class="date">Ansök senast: ${job.deadline}</li><a class="btn-theme" href="https://example.org/apply">Ansök här</a></div></main>`;
 }
