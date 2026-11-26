@@ -14,6 +14,8 @@ Källflödet skriver endast denna JSON-fil med arbetsflödets `contents: write`-
 
 Ett misslyckat källanrop eller förändrat sidformat ger felstatus. Tidigare fortfarande öppna annonser från den källan bevaras med datumet för senaste lyckade hämtningen; andra källor kan uppdateras. Vid en lyckad hämtning ersätts enbart den källans tidigare poster, så att borttagna och utgångna annonser försvinner. Ursprungliga manuella poster bevaras. Arbetsflödet publicerar även felstatusen och markerar sedan körningen som misslyckad.
 
+Tillfälliga nätavbrott, timeout och HTTP 5xx får högst tre försök med en respektive tre sekunders väntan. Nekad åtkomst, borttagna sidor och HTTP 429 upprepas inte. Vid bestående fel visas den senast lyckade hämtningen enligt ovan.
+
 ## I appen
 
 **Jobb → Jobbspaning → Källor och sökurval** visar källorna, sökurvalet och respektive källas senaste kontroll. **Uppdatera** hämtar den senaste rapporten; knappen startar inte en ny genomsökning av externa sajter.

@@ -212,6 +212,40 @@ it("hämtar endast tillåtna offentliga källor utan kontouppgifter", async () =
   expect(fetcher.mock.calls[0][1].headers).not.toHaveProperty("Authorization");
 });
 
+it("försöker igen efter tillfälligt nätavbrott eller serverfel och begränsar försöken", async () => {
+  const fetcher = vi
+    .fn()
+    .mockRejectedValueOnce(new TypeError("fetch failed"))
+    .mockResolvedValueOnce(new Response("Unavailable", { status: 503 }))
+    .mockResolvedValueOnce(new Response("Fullständig sida"));
+  vi.stubGlobal("fetch", fetcher);
+  const pause = vi.fn(async () => {});
+  expect(await fetchSourcePage(JOB_WATCH_SOURCES[1].url, {}, pause)).toBe(
+    "Fullständig sida",
+  );
+  expect(fetcher).toHaveBeenCalledTimes(3);
+  expect(pause.mock.calls).toEqual([[1000], [3000]]);
+  fetcher.mockReset().mockRejectedValue(new TypeError("fetch failed"));
+  await expect(
+    fetchSourcePage(JOB_WATCH_SOURCES[1].url, {}, pause),
+  ).rejects.toThrow("/lediga-jobb/: fetch failed");
+  expect(fetcher).toHaveBeenCalledTimes(3);
+});
+
+it("upprepar inte nekad åtkomst, borttagna sidor eller en källas anropsgräns", async () => {
+  const fetcher = vi.fn(),
+    pause = vi.fn(async () => {});
+  vi.stubGlobal("fetch", fetcher);
+  for (const status of [403, 404, 429]) {
+    fetcher.mockReset().mockResolvedValue(new Response("Error", { status }));
+    await expect(
+      fetchSourcePage(JOB_WATCH_SOURCES[0].url, {}, pause),
+    ).rejects.toThrow(`HTTP ${status}`);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  }
+  expect(pause).not.toHaveBeenCalled();
+});
+
 it("bevarar befintligt urval och senaste lyckade källa när en källa misslyckas", async () => {
   const prior = "2026-11-25T08:00:00Z",
     now = new Date("2026-11-26T08:00:00Z");

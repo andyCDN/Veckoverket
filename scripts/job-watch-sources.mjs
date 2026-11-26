@@ -255,27 +255,55 @@ async function mapLimit(values, action) {
   return output;
 }
 
-export async function fetchSourcePage(url, options = {}) {
+class SourceHttpError extends Error {
+  constructor(status) {
+    super(`HTTP ${status}`);
+    this.retryable = status === 408 || status >= 500;
+  }
+}
+
+export async function fetchSourcePage(
+  url,
+  options = {},
+  pause = (milliseconds) =>
+    new Promise((resolve) => setTimeout(resolve, milliseconds)),
+) {
   const source = JOB_WATCH_SOURCES.find((s) => sourceUrl(url, s));
   if (!source) throw new Error("Okänd annonskälla.");
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      "User-Agent":
-        "Veckoverket-JobWatch/1.0 (+https://github.com/andyCDN/Veckoverket)",
-      Accept: "text/html,application/json",
-      ...options.headers,
-    },
-    credentials: "omit",
-    redirect: "error",
-    signal: AbortSignal.timeout(30000),
-  });
-  if (!response.ok)
-    throw new Error(`${source.name} svarade med HTTP ${response.status}.`);
-  const text = await response.text();
-  if (text.length > 5_000_000)
-    throw new Error("Annonskällans svar är för stort.");
-  return text;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          "User-Agent":
+            "Veckoverket-JobWatch/1.0 (+https://github.com/andyCDN/Veckoverket)",
+          Accept: "text/html,application/json",
+          ...options.headers,
+        },
+        credentials: "omit",
+        redirect: "error",
+        signal: AbortSignal.timeout(30000),
+      });
+      if (!response.ok) throw new SourceHttpError(response.status);
+      const text = await response.text();
+      if (text.length > 5_000_000)
+        throw new Error("Annonskällans svar är för stort.");
+      return text;
+    } catch (error) {
+      const retryable =
+        error instanceof SourceHttpError
+          ? error.retryable
+          : error instanceof TypeError ||
+            ["TimeoutError", "AbortError"].includes(error?.name);
+      if (!retryable || attempt >= 2) {
+        const detail = error?.cause?.code ? ` (${error.cause.code})` : "";
+        throw new Error(`${new URL(url).pathname}: ${error.message}${detail}`, {
+          cause: error,
+        });
+      }
+      await pause(attempt === 0 ? 1000 : 3000);
+    }
+  }
 }
 
 export async function scanWatchSource(source, day, read = fetchSourcePage) {
