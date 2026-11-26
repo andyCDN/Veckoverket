@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-26T12:54:38.327Z",
+  "updatedAt": "2026-11-26T12:57:59.947Z",
   "jobs": [
     {
       "role": "Projektledare för regeringsuppdrag",
@@ -408,16 +408,16 @@
   "sources": [
     {
       "id": "ideella-jobb",
-      "checkedAt": "2026-11-26T12:54:38.327Z",
-      "lastSuccessfulAt": "2026-11-26T12:54:38.327Z",
+      "checkedAt": "2026-11-26T12:57:59.947Z",
+      "lastSuccessfulAt": "2026-11-26T12:57:59.947Z",
       "status": "ok",
       "count": 14
     },
     {
       "id": "stockholms-stad",
-      "checkedAt": "2026-11-26T12:54:38.327Z",
+      "checkedAt": "2026-11-26T12:57:59.947Z",
       "lastSuccessfulAt": "2026-11-26T12:54:38.327Z",
-      "status": "ok",
+      "status": "error",
       "count": 19
     }
   ]
