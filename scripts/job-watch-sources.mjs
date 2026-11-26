@@ -8,7 +8,13 @@ const rolePattern =
 const specialistPattern =
   /sjuksköter|undersköter|socialsekreter|socionom|biståndshandlägg|hemtjänst|vård|omsorgsboende|gruppbostad|servicehus|\blss\b|förskol|\brektor\b/iu;
 const locationPattern =
-  /stockholm|sundbyberg|solna|nacka|huddinge|haninge|tyresö|täby|danderyd|lidingö|sollentuna|järfälla|botkyrka|södertälje|salem|vaxholm|värmdö|vallentuna|upplands|sigtuna|nynäshamn|norrtälje|ekerö|österåker|distans|remote|flexibelt|hela sverige|ej specificerad/iu;
+  /stockholm|sundbyberg|solna|nacka|huddinge|haninge|tyresö|täby|danderyd|lidingö|sollentuna|järfälla|botkyrka|södertälje|salem|vaxholm|värmdö|vallentuna|upplands|sigtuna|nynäshamn|norrtälje|ekerö|österåker|bromma|farsta|kista|hägersten|älvsjö|skarpnäck|skärholmen|vällingby|hässelby|spånga|enskede|distans|remote|flexibelt|hela sverige|ej specificerad/iu;
+
+const adPaths = {
+  "ideella-jobb": /^\/jobs\/[^/]+\/?$/u,
+  "stockholms-stad": /^\/lediga-jobb\/platsannonser\/[^/]+\/?$/u,
+  "jobba-statligt": /^\/jobb\/\d{4}\/[a-z]+\/\d{2,4}\/[^/]+\/?$/iu,
+};
 
 export function matchesWatchProfile(job) {
   return (
@@ -31,15 +37,7 @@ export function sourceUrl(raw, source, advertisement = false) {
       url.password
     )
       return;
-    if (
-      advertisement &&
-      !(
-        source.id === "ideella-jobb"
-          ? /^\/jobs\/[^/]+\/?$/u
-          : /^\/lediga-jobb\/platsannonser\/[^/]+\/?$/u
-      ).test(url.pathname)
-    )
-      return;
+    if (advertisement && !adPaths[source.id]?.test(url.pathname)) return;
     url.hash = "";
     return url.href;
   } catch {
@@ -241,6 +239,192 @@ export function parseWatchAdvertisement(html, job) {
   };
 }
 
+function statligtAdId(url) {
+  return [...new URL(url).pathname.matchAll(/-([1-9]\d{6,9})(?=-|\/$|$)/gu)].at(
+    -1,
+  )?.[1];
+}
+
+export function parseStatligtListing(html) {
+  const $ = load(html);
+  let tab;
+  try {
+    tab = JSON.parse($("#__NEXT_DATA__").html()).props.pageProps.data.body
+      .jobTab;
+  } catch {
+    /* Validate the public search model below. */
+  }
+  const count = tab?.pagination?.totalDisplay;
+  if (
+    !Array.isArray(tab?.items) ||
+    !Number.isInteger(count) ||
+    count < 0 ||
+    count > 10000 ||
+    (count > 0 && !tab.items.length)
+  )
+    throw new Error("Jobba statligts sökresultat kunde inte läsas.");
+  const source = JOB_WATCH_SOURCES.find((s) => s.id === "jobba-statligt");
+  const jobs = tab.items.map((item) => {
+    const url = sourceUrl(item.url, source, true),
+      role = clean(item.heading),
+      organization = clean(item.agency);
+    if (
+      item.modelType !== "GovJobAdPage" ||
+      !url ||
+      !statligtAdId(url) ||
+      !role
+    )
+      throw new Error("Jobba statligts annonslista har ändrat format.");
+    return {
+      role,
+      organization,
+      url,
+      location: clean(item.location),
+      deadline: "",
+      summary: "",
+      sourceId: source.id,
+    };
+  });
+  return { jobs, count, filters: tab.search?.searchFilters ?? [] };
+}
+
+export function statligtPartitions(listing, params) {
+  const leaves = (items) =>
+    items.flatMap((item) => (item.items?.length ? leaves(item.items) : [item]));
+  for (const key of ["Occupation", "Area", "Agency"]) {
+    const filter = listing.filters.find((f) => f.queryName === key);
+    if (!Array.isArray(filter?.items)) continue;
+    const values = params.get(key)?.split(",");
+    const options = values
+      ? leaves(filter.items).filter((item) => values.includes(item.value))
+      : filter.items;
+    const active = (options ?? []).filter(
+      (item) =>
+        /^\d{1,12}$/u.test(item.value) &&
+        Number.isInteger(item.hitCount) &&
+        item.hitCount > 0,
+    );
+    if (
+      active.length < 2 ||
+      active.reduce((sum, item) => sum + item.hitCount, 0) < listing.count
+    )
+      continue;
+    return active.map((item) => {
+      const partition = new URLSearchParams(params);
+      // Parent occupation values are headings; the public form sends their leaves.
+      partition.set(
+        key,
+        leaves([item])
+          .filter((leaf) => /^\d{1,12}$/u.test(leaf.value) && leaf.hitCount > 0)
+          .map((leaf) => leaf.value)
+          .join(","),
+      );
+      return partition;
+    });
+  }
+  throw new Error(
+    "Jobba statligts träffgräns nåddes utan ett fullständigt sökurval.",
+  );
+}
+
+export function parseStatligtAdvertisement(ad, job) {
+  const id = statligtAdId(job.url);
+  if (
+    ad?.id !== id ||
+    (ad.removed !== true &&
+      (typeof ad.headline !== "string" || !ad.headline.trim()))
+  )
+    throw new Error(
+      "Platsbankens original stämmer inte med Jobba statligts annons.",
+    );
+  if (ad.removed === true) return null;
+  const text =
+    ad.description?.text?.trim().slice(0, 60000) ||
+    htmlText(ad.description?.text_formatted);
+  if (!text || text.length < 100)
+    throw new Error("Jobba statligts fullständiga annonsunderlag saknas.");
+  const address = ad.workplace_address ?? {};
+  const organization =
+    clean(ad.employer?.name || ad.employer?.workplace) || job.organization;
+  if (!organization)
+    throw new Error(
+      "Jobba statligts arbetsgivare saknas även i originalannonsen.",
+    );
+  const applicationUrl = safeApplicationUrl(
+    ad.application_details?.url,
+    job.url,
+  );
+  return {
+    ...job,
+    role: clean(ad.headline),
+    organization,
+    location: clean(address.municipality || address.city || job.location),
+    deadline: ad.application_deadline
+      ? date(ad.application_deadline.slice(0, 10))
+      : "",
+    text,
+    summary: clean(text, 420),
+    additionalUrls: [
+      `https://arbetsformedlingen.se/platsbanken/annonser/${id}`,
+    ],
+    ...(applicationUrl ? { applicationUrl } : {}),
+  };
+}
+
+async function scanStatligtSource(source, day, read) {
+  const queue = [new URLSearchParams({ display: "250" })],
+    jobs = [];
+  let requests = 0,
+    total = 0,
+    covered = 0;
+  while (queue.length) {
+    const batch = queue.splice(0, 2);
+    requests += batch.length;
+    if (requests > 100)
+      throw new Error(
+        "Jobba statligts sökurval kräver för många delhämtningar.",
+      );
+    const pages = await mapLimit(batch, async (params) => ({
+      params,
+      listing: parseStatligtListing(await read(`${source.url}?${params}`)),
+    }));
+    for (const { params, listing } of pages) {
+      if (requests === 1) total = listing.count;
+      jobs.push(...listing.jobs);
+      if (listing.jobs.length < listing.count)
+        queue.push(...statligtPartitions(listing, params));
+      else covered += listing.count;
+    }
+  }
+  const unique = [...new Map(jobs.map((job) => [job.url, job])).values()];
+  if (covered < total)
+    throw new Error(
+      `Alla delar av Jobba statligts sökurval kunde inte läsas (${covered}/${total}).`,
+    );
+  const selected = unique.filter(matchesWatchProfile);
+  const completed = await mapLimit(selected, async (job) => {
+    try {
+      const data = JSON.parse(
+        await read(
+          `https://jobsearch.api.jobtechdev.se/ad/${statligtAdId(job.url)}`,
+        ),
+      );
+      return parseStatligtAdvertisement(data, job);
+    } catch (error) {
+      if (
+        error.cause instanceof SourceHttpError &&
+        [404, 410].includes(error.cause.status)
+      )
+        return null;
+      throw error;
+    }
+  });
+  return completed.filter(
+    (job) =>
+      job && (!job.deadline || job.deadline >= day) && matchesWatchProfile(job),
+  );
+}
+
 async function mapLimit(values, action) {
   const output = new Array(values.length);
   let index = 0;
@@ -258,6 +442,7 @@ async function mapLimit(values, action) {
 class SourceHttpError extends Error {
   constructor(status) {
     super(`HTTP ${status}`);
+    this.status = status;
     this.retryable = status === 408 || status >= 500;
   }
 }
@@ -269,7 +454,9 @@ export async function fetchSourcePage(
     new Promise((resolve) => setTimeout(resolve, milliseconds)),
 ) {
   const source = JOB_WATCH_SOURCES.find((s) => sourceUrl(url, s));
-  if (!source) throw new Error("Okänd annonskälla.");
+  const jobTech =
+    /^https:\/\/jobsearch\.api\.jobtechdev\.se\/ad\/[1-9]\d{0,23}$/u.test(url);
+  if (!source && !jobTech) throw new Error("Okänd annonskälla.");
   for (let attempt = 0; ; attempt++) {
     try {
       const response = await fetch(url, {
@@ -307,6 +494,8 @@ export async function fetchSourcePage(
 }
 
 export async function scanWatchSource(source, day, read = fetchSourcePage) {
+  if (source.id === "jobba-statligt")
+    return scanStatligtSource(source, day, read);
   const first = await read(source.url);
   let jobs;
   if (source.id === "ideella-jobb") {
@@ -329,7 +518,7 @@ export async function scanWatchSource(source, day, read = fetchSourcePage) {
       },
     );
     jobs = [...listing.jobs, ...rest.flat()];
-  } else {
+  } else if (source.id === "stockholms-stad") {
     const listing = parseStockholmListing(first);
     const rest = await mapLimit(
       Array.from({ length: listing.pages - 1 }, (_, i) => i + 2),
@@ -343,7 +532,7 @@ export async function scanWatchSource(source, day, read = fetchSourcePage) {
       throw new Error(
         "Alla sidor i Stockholms stads annonslista kunde inte läsas.",
       );
-  }
+  } else throw new Error("Okänd annonskälla.");
   const unique = [...new Map(jobs.map((job) => [job.url, job])).values()];
   return mapLimit(
     unique.filter((job) => job.deadline >= day && matchesWatchProfile(job)),
@@ -365,7 +554,7 @@ export async function refreshWatchFeed(
       const old = previous.sources?.find((s) => s.id === source.id);
       try {
         const jobs = (await scan(source, day)).filter(
-          (job) => job.deadline >= day,
+          (job) => !job.deadline || job.deadline >= day,
         );
         return {
           jobs,
@@ -382,7 +571,9 @@ export async function refreshWatchFeed(
           `${source.name}: ${error instanceof Error ? error.message : "Hämtningen misslyckades."}`,
         );
         const jobs = previous.jobs.filter(
-          (job) => job.sourceId === source.id && job.deadline >= day,
+          (job) =>
+            job.sourceId === source.id &&
+            (!job.deadline || job.deadline >= day),
         );
         return {
           jobs,

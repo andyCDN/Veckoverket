@@ -6,6 +6,7 @@ import {
   sourceJob,
   sourceText,
   stockholmJob,
+  statligtJob,
 } from "../src/test/fixtures/job-watch-sources";
 import type { JobWatchFeed } from "../src/lib/job-watch-config";
 
@@ -27,6 +28,13 @@ const feed: JobWatchFeed = {
       lastSuccessfulAt: checkedAt,
       count: 1,
     },
+    {
+      id: "jobba-statligt",
+      status: "ok",
+      checkedAt,
+      lastSuccessfulAt: checkedAt,
+      count: 1,
+    },
   ],
   jobs: [
     {
@@ -36,6 +44,14 @@ const feed: JobWatchFeed = {
       additionalUrls: ["https://example.org/other-ad"],
     },
     { ...stockholmJob, text: sourceText },
+    {
+      ...statligtJob,
+      text: sourceText,
+      applicationUrl: "https://example.org/apply",
+      additionalUrls: [
+        "https://arbetsformedlingen.se/platsbanken/annonser/31781856",
+      ],
+    },
   ],
 };
 async function openWatch(page: Page) {
@@ -50,8 +66,13 @@ async function openWatch(page: Page) {
   return watch;
 }
 
-for (const width of [1440, 390]) {
-  test(`nya jobbskällor visar fulltext och ansökningslänk genom granskning och sparning ${width}`, async ({
+for (const [width, selectedJob] of [
+  [1440, sourceJob],
+  [390, sourceJob],
+  [1440, statligtJob],
+  [390, statligtJob],
+] as const) {
+  test(`jobbkällan ${selectedJob.sourceId} visar fulltext och ansökningslänk genom granskning och sparning ${width}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 1000 });
@@ -67,7 +88,7 @@ for (const width of [1440, 390]) {
       return route.abort();
     });
     const watch = await openWatch(page);
-    await expect(watch.getByRole("article")).toHaveCount(2);
+    await expect(watch.getByRole("article")).toHaveCount(3);
     await watch.getByText("Källor och sökurval", { exact: true }).click();
     await expect(
       watch.getByRole("link", { name: "Ideella jobb", exact: true }),
@@ -78,12 +99,15 @@ for (const width of [1440, 390]) {
         exact: true,
       }),
     ).toHaveAttribute("href", "https://jobba.stockholm/lediga-jobb/");
+    await expect(
+      watch.getByRole("link", { name: "Jobba statligt", exact: true }),
+    ).toHaveAttribute("href", "https://www.jobbastatligt.se/sok");
     await expect(watch).toContainText(
       "Källorna kontrolleras automatiskt varje dag",
     );
     await watch
       .getByRole("article", {
-        name: `${sourceJob.role} · ${sourceJob.organization}`,
+        name: `${selectedJob.role} · ${selectedJob.organization}`,
         exact: true,
       })
       .getByRole("button", { name: "Granska jobbet", exact: true })
@@ -93,11 +117,11 @@ for (const width of [1440, 390]) {
       exact: true,
     });
     await expect(dialog.getByLabel("Tjänst", { exact: true })).toHaveValue(
-      sourceJob.role,
+      selectedJob.role,
     );
     await expect(
       dialog.getByLabel("Arbetsgivare", { exact: true }),
-    ).toHaveValue(sourceJob.organization);
+    ).toHaveValue(selectedJob.organization);
     await dialog.getByText("Annons och anteckningar", { exact: true }).click();
     await expect(
       dialog.getByRole("textbox", { name: "Annonstext", exact: true }),
@@ -113,10 +137,13 @@ for (const width of [1440, 390]) {
     expect(
       f.documents.get(userA)!.data.applications!.at(-1)?.advertisement,
     ).toEqual({
-      url: sourceJob.url,
+      url: selectedJob.url,
       text: sourceText,
       applicationUrl: "https://example.org/apply",
-      additionalUrls: ["https://example.org/other-ad"],
+      additionalUrls:
+        selectedJob.sourceId === "jobba-statligt"
+          ? ["https://arbetsformedlingen.se/platsbanken/annonser/31781856"]
+          : ["https://example.org/other-ad"],
     });
     expect(f.documents.get(userA)!.data.weeks).toEqual(original.weeks);
     expect(f.documents.get(userA)!.data.settings).toEqual(original.settings);
@@ -157,10 +184,10 @@ for (const mode of ["http-error", "invalid-json"]) {
     await expect(watch).toContainText("En annonskälla kunde inte uppdateras");
     await watch.getByText("Källor och sökurval", { exact: true }).click();
     await expect(watch).toContainText("visar senaste lyckade hämtningen från");
-    await expect(watch.getByRole("article")).toHaveCount(2);
+    await expect(watch.getByRole("article")).toHaveCount(3);
     await watch.getByRole("button", { name: "Uppdatera", exact: true }).click();
     await expect.poll(() => fallbackReads).toBe(2);
-    await expect(watch.getByRole("article")).toHaveCount(2);
+    await expect(watch.getByRole("article")).toHaveCount(3);
     expect(f.writes).toHaveLength(0);
     expect(f.errors).toEqual([]);
   });

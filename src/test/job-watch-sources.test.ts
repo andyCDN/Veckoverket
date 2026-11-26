@@ -284,7 +284,7 @@ it("bevarar befintligt urval och senaste lyckade källa när en källa misslycka
       async (source: { id: string }, day: string) => {
         expect(day).toBe("2026-11-26");
         if (source.id === "ideella-jobb") throw new Error("HTTP 503");
-        return [stockholmJob];
+        return source.id === "stockholms-stad" ? [stockholmJob] : [];
       },
     );
     expect(previous).toEqual(before);

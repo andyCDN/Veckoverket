@@ -1,6 +1,6 @@
 # Jobbspaning
 
-Jobbspaningen kombinerar det befintliga publicerade urvalet med automatisk läsning av [Ideella jobb](https://ideellajobb.se/jobs/) och [Stockholms stads jobbdatabas](https://jobba.stockholm/lediga-jobb/).
+Jobbspaningen kombinerar det befintliga publicerade urvalet med automatisk läsning av [Ideella jobb](https://ideellajobb.se/jobs/), [Stockholms stads jobbdatabas](https://jobba.stockholm/lediga-jobb/) och [Jobba statligt](https://www.jobbastatligt.se/sok).
 
 Det automatiska urvalet gäller Stockholmsområdet eller distans och titlar inom utredning, handläggning, projektledning, samordning, kommunikation, påverkan och verksamhetsledning. Kliniska vårdroller, socialsekreterare och förskole-/rektorsroller ingår inte. Det är ett titel- och ortsfilter, inte en individuell bedömning av behörighet. Filteruttrycken finns i `scripts/job-watch-sources.mjs`; beskrivningen i appen finns i `src/lib/job-watch-config.ts`.
 
@@ -10,7 +10,11 @@ GitHub Actions-flödet **Update job sources** körs dagligen kl. 06.17 UTC och n
 
 `npm run scan:jobs` hämtar alla sidor i de publika annonslistorna, inklusive Ideella jobbs **Visa fler**, filtrerar och läser hela annonstexten för matchande jobb. Titeln kontrolleras mot annonsen. Titel, organisation/förvaltning, annonslänk, ort, sista ansökningsdag, fulltext och eventuell separat ansökningslänk publiceras i `public/jobbspaning.json`. Inga konton, privata ansökningar eller kalenderuppgifter läses av flödet. Saknas förvaltning i Stockholms stads lista används den övergripande organisationen Stockholms stad.
 
-Källflödet skriver endast denna JSON-fil med arbetsflödets `contents: write`-behörighet och GitHubs inbyggda token. Inga egna token eller Supabase-funktioner behöver installeras. Eftersom en push med GitHubs inbyggda token inte startar Pages-flödet läser appen i första hand senaste JSON-filen från `main`. Den publicerade Pages-kopian används om den läsningen misslyckas. Nästa vanliga apppublicering uppdaterar även reservkopian. Hämtningar från källorna är begränsade till två samtidiga anrop per källa och följer aldrig en annonslänk till en annan värd.
+Källflödet skriver endast denna JSON-fil med arbetsflödets `contents: write`-behörighet och GitHubs inbyggda token. Inga egna token eller Supabase-funktioner behöver installeras. Eftersom en push med GitHubs inbyggda token inte startar Pages-flödet läser appen i första hand senaste JSON-filen från `main`. Den publicerade Pages-kopian används om den läsningen misslyckas. Nästa vanliga apppublicering uppdaterar även reservkopian. Hämtningar från källorna är begränsade till två samtidiga anrop per källa. Godtyckliga externa annonslänkar följs inte.
+
+Jobba statligts offentliga sökmodell används för källans annonsurval. Sökningar som överskrider portalens gräns på 250 annonser delas efter de publicerade yrkes-, orts- och myndighetsfiltren. Övergripande yrkesrubriker översätts till sina faktiska underkategorier, på samma sätt som sajtens filterformulär. Ett ofullständigt eller oläsbart urval ger felstatus, inte ett tomt lyckat resultat.
+
+Jobba statligt hämtar sina annonser från Platsbanken. För utvalda annonser läser adaptern motsvarande exakta annons-id från det publika JobTech-API:et. Därifrån kommer fulltext, arbetsgivare, faktisk ort, exakt ansökningsdag med årtal och ansökningslänk. Portalens korta datum används inte för att gissa ett årtal. Originalets ort granskas mot sökurvalet igen. Jobba statligts egen annonslänk och Platsbanken-länken bevaras tillsammans. Borttagna original visas inte som nya öppna jobb; övriga läsfel behåller senaste lyckade hämtningen. API-läsningen är begränsad till `https://jobsearch.api.jobtechdev.se/ad/{annons-id}` utan kontouppgifter.
 
 Ett misslyckat källanrop eller förändrat sidformat ger felstatus. Tidigare fortfarande öppna annonser från den källan bevaras med datumet för senaste lyckade hämtningen; andra källor kan uppdateras. Vid en lyckad hämtning ersätts enbart den källans tidigare poster, så att borttagna och utgångna annonser försvinner. Ursprungliga manuella poster bevaras. Arbetsflödet publicerar även felstatusen och markerar sedan körningen som misslyckad.
 
