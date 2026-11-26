@@ -279,6 +279,7 @@ export type AppData = {
   version: 1;
   habits?: Habit[];
   applications?: JobApplication[];
+  dismissedJobUrls?: string[];
   contacts?: NetworkContact[];
   careerActions?: CareerAction[];
   deadlines?: Deadline[];

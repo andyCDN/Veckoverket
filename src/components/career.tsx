@@ -66,6 +66,11 @@ import {
 
 import { JobList } from "./job-list";
 import { JobWatch } from "./job-watch";
+import {
+  dismissJobUrl,
+  removeJobApplication,
+  restoreDismissedJobs,
+} from "@/lib/job-removal";
 import { JobCapture } from "./job-capture";
 import { ApplicationSent } from "./application-sent";
 import {
@@ -257,6 +262,18 @@ export function CareerView({
         interviewId: row.interview.interview.id,
       });
   };
+  const removeJob = (job: JobApplication) => {
+    if (
+      !window.confirm(
+        `Ta bort ${job.role} · ${job.organization}?\n\nJobbets uppgifter och nästa steg tas bort. Eventuella kalenderpass och deadlines finns kvar.`,
+      )
+    )
+      return;
+    onChange(removeJobApplication(data, job.id), data);
+    setApplication(null);
+    setDetailId(null);
+    setMessage(`${job.role} · ${job.organization} har tagits bort.`);
+  };
   const renderApplication = (a: JobApplication) => {
     const step = jobWorkspace(data).find(
       (row) => row.application.id === a.id,
@@ -305,6 +322,9 @@ export function CareerView({
           }}
         >
           Klistra in besked
+        </button>
+        <button className="text-button" onClick={() => removeJob(a)}>
+          Ta bort jobbet
         </button>
         <section
           className="job-material-summary stack"
@@ -627,18 +647,44 @@ export function CareerView({
       )}
       {section === "jobs" && !detailedApplication && tab !== "deadlines" && (
         <div className="career-tabs" role="group" aria-label="Jobbverktyg">
-          <button className="button secondary" aria-pressed={tab === "applications"} onClick={() => setTab("applications")}>Mina jobb</button>
-          <button className="button secondary" aria-pressed={tab === "watch"} onClick={() => setTab("watch")}>Jobbspaning</button>
+          <button
+            className="button secondary"
+            aria-pressed={tab === "applications"}
+            onClick={() => setTab("applications")}
+          >
+            Mina jobb
+          </button>
+          <button
+            className="button secondary"
+            aria-pressed={tab === "watch"}
+            onClick={() => setTab("watch")}
+          >
+            Jobbspaning
+          </button>
         </div>
       )}
       {section === "jobs" && tab === "watch" && (
-        <JobWatch applications={applications} onSave={(a) => {
-          onChange({...data, applications: [...applications, saveApplication(undefined, a)]}, data);
-          setTab("applications");
-          setDetailId(a.id);
-          setJobLane("todo");
-          setMessage("Jobbet är sparat. Fortsätt med nästa steg när det passar.");
-        }} />
+        <JobWatch
+          applications={applications}
+          dismissedUrls={data.dismissedJobUrls ?? []}
+          onDismiss={(url) => onChange(dismissJobUrl(data, url), data)}
+          onRestore={(url) => onChange(restoreDismissedJobs(data, url), data)}
+          onSave={(a) => {
+            onChange(
+              {
+                ...data,
+                applications: [...applications, saveApplication(undefined, a)],
+              },
+              data,
+            );
+            setTab("applications");
+            setDetailId(a.id);
+            setJobLane("todo");
+            setMessage(
+              "Jobbet är sparat. Fortsätt med nästa steg när det passar.",
+            );
+          }}
+        />
       )}
       {section === "jobs" && tab === "deadlines" && (
         <button className="text-button" onClick={() => setTab("applications")}>
@@ -687,6 +733,7 @@ export function CareerView({
               setMessageApplicationId(a.id);
               setMessageOpen(true);
             }}
+            onRemove={removeJob}
             onImport={() => setLinkedinOpen(true)}
             onGlobalMessage={() => {
               setMessageApplicationId(undefined);
@@ -1077,25 +1124,7 @@ export function CareerView({
                   : "Ansökan är sparad.",
             );
           }}
-          onDelete={() => {
-            if (
-              window.confirm(
-                "Ta bort ansökan? Kalenderpass och deadlines bevaras.",
-              )
-            ) {
-              onChange(
-                {
-                  ...data,
-                  applications: applications.filter(
-                    (a) => a.id !== application.id,
-                  ),
-                },
-                data,
-              );
-              setApplication(null);
-              setDetailId(null);
-            }
-          }}
+          onDelete={() => removeJob(application)}
         />
       )}
       {contactLog && (

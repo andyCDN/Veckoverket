@@ -1,6 +1,7 @@
 import { dayBounds, fixedDayBreaks, usesWeekTemplate } from "./week-template";
 import { applicationDeadlineActive } from "./application-deadlines";
 import { validateApplicationMaterials } from "./application-materials";
+import { validateDismissedJobUrls } from "./job-removal";
 import { validateCareerAction } from "./career-actions";
 import {
   activityDeadline,
@@ -409,6 +410,7 @@ export function planDeadline(
 }
 
 export function validateCareerData(d: AppData) {
+  validateDismissedJobUrls(d.dismissedJobUrls);
   const text = (v: unknown, max = 4000): v is string =>
     typeof v === "string" && v.length <= max;
   const date = (v: unknown) =>

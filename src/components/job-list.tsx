@@ -18,6 +18,7 @@ export function JobList({
   onOpen,
   onPrimary,
   onMessage,
+  onRemove,
   onImport,
   onGlobalMessage,
   onDeadlines,
@@ -31,6 +32,7 @@ export function JobList({
   onOpen: (application: JobApplication) => void;
   onPrimary: (row: JobRow) => void;
   onMessage: (application: JobApplication) => void;
+  onRemove: (application: JobApplication) => void;
   onImport: () => void;
   onGlobalMessage: () => void;
   onDeadlines: () => void;
@@ -200,6 +202,13 @@ export function JobList({
                 onClick={() => onMessage(row.application)}
               >
                 Klistra in besked
+              </button>
+              <button
+                className="text-button"
+                aria-label={`Ta bort jobb: ${row.application.role} · ${row.application.organization}`}
+                onClick={() => onRemove(row.application)}
+              >
+                Ta bort
               </button>
             </div>
           </article>

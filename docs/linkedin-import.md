@@ -8,6 +8,12 @@ Platsbanken läses från Arbetsförmedlingens publika JobTech-API direkt i webbl
 
 Om annonsen har tagits bort eller källan inte kan nås finns länken kvar i granskningen. Klistra in annonstexten eller komplettera uppgifterna manuellt. Länkar till andra webbplatser kan sparas med manuellt ifyllda uppgifter eller inklistrad annonstext. Automatisk läsning stöder Platsbanken och LinkedIn.
 
+## Ta bort ointressanta jobb
+
+I Mina jobb finns Ta bort på varje jobbrad och Ta bort jobbet i detaljvyn. Efter bekräftelse tas jobbet, dess nästa steg och val i dagsinchecken bort. Kalenderpass och deadlines bevaras. Jobbet visas inte heller som nytt i jobbspaningen.
+
+I Jobbspaning väljer du Inte intressant. Bortvalet sparas i kontot. Ångra bortval visar det senaste jobbet igen; Visa bortvalda jobb igen återställer bortvalen även efter omladdning.
+
 ## Importera flera LinkedIn-jobb
 
 Den manuella länkeimporten är publicerad. Automatisk annonsläsning använder den installerade serverfunktionen `quick-responder`.
