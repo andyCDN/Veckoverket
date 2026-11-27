@@ -2,6 +2,8 @@ import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import {
   appendCvDocument,
+  cvImportDiagnostic,
+  CvFileImportError,
   CV_FILE_SIZE_LIMIT,
   readCvFile,
   validateCvFiles,
@@ -48,6 +50,36 @@ it("läser en verklig binär PowerPoint med svensk text och tabellceller", async
   expect(result.text.indexOf("[Bild 1]")).toBeLessThan(
     result.text.indexOf("[Bild 2]"),
   );
+});
+
+it("läser fasta texter i bildmallen när själva PPT-bilden saknar textrutor", async () => {
+  const bytes = readFileSync(
+    new URL("./fixtures/cv-import/bildmall.ppt", import.meta.url),
+  );
+  const result = await readCvFile(file("bildmall.ppt", bytes));
+  expect(result).toMatchObject({ format: "ppt", slides: 1, emptySlides: 0 });
+  expect(result.text).toContain("Kandidatexamen i statsvetenskap");
+  expect(result.text).toContain(
+    "Projektledning och politisk rådgivning från bildmallen",
+  );
+  expect(result.text).toContain("Svenska och engelska från sidlayouten");
+  expect(result.text).not.toMatch(
+    /Click to edit|Master text styles|Second level/iu,
+  );
+  expect(result.text.match(/Kandidatexamen/gu)).toHaveLength(1);
+});
+
+it("behåller den tekniska felorsaken när en binär PPT inte kan läsas", async () => {
+  try {
+    await readCvFile(
+      file("fel.ppt", new Uint8Array([0xd0, 0xcf, 0x11, 0xe0, 0, 0, 0, 0])),
+    );
+    expect.fail("Trasig PPT ska inte lyckas");
+  } catch (error) {
+    expect(error).toBeInstanceOf(CvFileImportError);
+    expect(cvImportDiagnostic(error)).toContain("NOT_CFB:");
+    expect(cvImportDiagnostic(error).length).toBeGreaterThan(15);
+  }
 });
 
 it("känner igen PPT-innehåll även med stor bokstav eller PPTX-filändelse", async () => {
