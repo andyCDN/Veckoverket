@@ -1,4 +1,5 @@
 import { CV_TEXT_LIMIT } from "./job-cv-match";
+import { appPath } from "./app-path";
 
 export const CV_FILE_COUNT_LIMIT = 10;
 export const CV_FILE_SIZE_LIMIT = 20 * 1024 * 1024;
@@ -31,11 +32,11 @@ export function cvImportDiagnostic(error: unknown) {
 export type CvImportFile = Pick<File, "name" | "size" | "arrayBuffer" | "text">;
 export type CvImportedDocument = {
   name: string;
-  format: "ppt" | "pptx" | "text";
+  format: "pdf" | "ppt" | "pptx" | "text";
   text: string;
-  slides: number;
-  hiddenSlides: number;
-  emptySlides: number;
+  pages: number;
+  hiddenPages: number;
+  emptyPages: number;
 };
 type ImportedSlide = { number: number; text: string; hidden: boolean };
 const clean = (text: string) =>
@@ -58,31 +59,36 @@ export function validateCvFiles(files: CvImportFile[]) {
 
 function documentText(
   name: string,
-  format: "ppt" | "pptx",
+  format: "pdf" | "ppt" | "pptx",
   slides: ImportedSlide[],
 ): CvImportedDocument {
   const visible = slides.filter((slide) => !slide.hidden);
   const content = visible.filter((slide) => /\p{L}/u.test(slide.text));
   if (!content.length)
     throw new CvFileImportError(
-      "Ingen läsbar text hittades på presentationsbilderna. Text som ligger i foton eller skärmbilder behöver kopieras in manuellt.",
-      "NO_SLIDE_TEXT",
+      format === "pdf"
+        ? "PDF-filen saknar läsbar text. Om sidorna är skannade bilder behöver texten kopieras in från en OCR-behandlad kopia."
+        : "Ingen läsbar text hittades på presentationsbilderna. Text som ligger i foton eller skärmbilder behöver kopieras in manuellt.",
+      format === "pdf" ? "PDF_NO_TEXT" : "NO_SLIDE_TEXT",
       `${format.toUpperCase()}; ${slides.length} bilder, ${visible.length} synliga, 0 med läsbar text.`,
     );
   const text = content
-    .map((slide) => `[Bild ${slide.number}]\n${slide.text}`)
+    .map(
+      (slide) =>
+        `[${format === "pdf" ? "Sida" : "Bild"} ${slide.number}]\n${slide.text}`,
+    )
     .join("\n\n");
   if (text.length > CV_TEXT_LIMIT)
     throw new Error(
-      "Presentationen innehåller mer än 60 000 tecken. Dela upp underlaget eller välj färre bilder.",
+      "Filen innehåller mer än 60 000 tecken. Dela upp underlaget eller välj färre sidor.",
     );
   return {
     name,
     format,
     text,
-    slides: content.length,
-    hiddenSlides: slides.length - visible.length,
-    emptySlides: visible.length - content.length,
+    pages: content.length,
+    hiddenPages: slides.length - visible.length,
+    emptyPages: visible.length - content.length,
   };
 }
 
@@ -452,13 +458,108 @@ export async function readPpt(
   }
 }
 
+async function readPdf(
+  bytes: Uint8Array,
+  name: string,
+): Promise<CvImportedDocument> {
+  const pdf = await import("pdfjs-dist").catch((error) => {
+    throw new CvFileImportError(
+      "PDF-läsaren kunde inte laddas. Kontrollera internetanslutningen och ladda om sidan.",
+      "PDF_READER_LOAD",
+      technicalReason(error),
+    );
+  });
+  const assets = appPath(`/vendor/pdfjs/${pdf.version}/`);
+  pdf.GlobalWorkerOptions.workerSrc = `${assets}pdf.worker.min.mjs`;
+  const task = pdf.getDocument({
+    data: bytes,
+    cMapUrl: `${assets}cmaps/`,
+    standardFontDataUrl: `${assets}standard_fonts/`,
+    useWorkerFetch: false,
+    useWasm: false,
+    disableFontFace: true,
+    stopAtErrors: true,
+    verbosity: 0,
+  });
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    void task.destroy().catch(() => undefined);
+  }, 30000);
+  try {
+    const document = await task.promise;
+    if (!document.numPages || document.numPages > SLIDE_LIMIT)
+      throw new CvFileImportError(
+        "PDF-filen måste innehålla mellan 1 och 250 sidor. Dela upp en längre fil och försök igen.",
+        "PDF_PAGE_LIMIT",
+      );
+    const pages: ImportedSlide[] = [];
+    let length = 0;
+    for (let number = 1; number <= document.numPages; number++) {
+      const page = await document.getPage(number);
+      const reader = page.streamTextContent().getReader();
+      const parts: string[] = [];
+      let textLimitExceeded = false;
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          for (const item of value.items as {
+            str?: string;
+            hasEOL?: boolean;
+          }[]) {
+            if (typeof item.str !== "string") continue;
+            const text = item.str + (item.hasEOL ? "\n" : "");
+            length += text.length;
+            if (length > CV_TEXT_LIMIT) textLimitExceeded = true;
+            else parts.push(text);
+          }
+        }
+      } finally {
+        reader.releaseLock();
+        page.cleanup();
+      }
+      // Finish the current page's stream before destroying the document. This
+      // avoids a race between PDF.js closing a stream and cancelling its reader.
+      if (textLimitExceeded)
+        throw new CvFileImportError(
+          "PDF-filen innehåller mer än 60 000 tecken. Dela upp underlaget eller välj färre sidor.",
+          "PDF_TEXT_LIMIT",
+        );
+      pages.push({ number, text: clean(parts.join("")), hidden: false });
+    }
+    return documentText(name, "pdf", pages);
+  } catch (error) {
+    if (error instanceof CvFileImportError) throw error;
+    const type = error instanceof Error ? error.name : "";
+    throw new CvFileImportError(
+      timedOut
+        ? "PDF-filen tog för lång tid att läsa. Dela upp filen eller spara en ny kopia och försök igen."
+        : type === "PasswordException"
+          ? "PDF-filen är lösenordsskyddad. Spara en kopia utan lösenord och välj den."
+          : "PDF-filen kunde inte läsas. Kontrollera att den går att öppna och spara gärna en ny kopia.",
+      timedOut
+        ? "PDF_TIMEOUT"
+        : type === "PasswordException"
+          ? "PDF_PASSWORD"
+          : "PDF_READ",
+      technicalReason(error),
+    );
+  } finally {
+    clearTimeout(timeout);
+    await task.destroy().catch(() => undefined);
+  }
+}
+
 export async function readCvFile(
   file: CvImportFile,
 ): Promise<CvImportedDocument> {
-  const extension = file.name.match(/\.(pptx?|txt|md)$/iu)?.[1].toLowerCase();
+  const extension = file.name
+    .match(/\.(pdf|pptx?|txt|md)$/iu)?.[1]
+    .toLowerCase();
   if (!extension)
     throw new Error(
-      "Välj PowerPoint (.ppt eller .pptx) eller en textfil (.txt eller .md).",
+      "Välj PDF (.pdf), PowerPoint (.ppt eller .pptx) eller en textfil (.txt eller .md).",
     );
   if (!file.size || file.size > CV_FILE_SIZE_LIMIT)
     throw new Error("Filen är tom eller större än 20 MB.");
@@ -476,13 +577,17 @@ export async function readCvFile(
       name: file.name,
       format: "text",
       text,
-      slides: 0,
-      hiddenSlides: 0,
-      emptySlides: 0,
+      pages: 0,
+      hiddenPages: 0,
+      emptyPages: 0,
     };
   }
   const bytes = new Uint8Array(await file.arrayBuffer());
-  // Detect the actual container, so a renamed PPT/PPTX is still read correctly.
+  // Read the actual container; a file provider's MIME type need not be correct.
+  if (
+    new TextDecoder("ascii").decode(bytes.subarray(0, 1024)).includes("%PDF-")
+  )
+    return readPdf(bytes, file.name);
   if (bytes[0] === 0x50 && bytes[1] === 0x4b) return readPptx(bytes, file.name);
   if (
     bytes[0] === 0xd0 &&
@@ -491,6 +596,11 @@ export async function readCvFile(
     bytes[3] === 0xe0
   )
     return readPpt(bytes, file.name);
+  if (extension === "pdf")
+    throw new CvFileImportError(
+      "Filen har inte ett läsbart PDF-format. Kontrollera filen eller spara en ny kopia.",
+      "PDF_SIGNATURE",
+    );
   throw new Error(
     "Filen har inte ett läsbart PowerPoint-format. Kontrollera filen eller spara en ny kopia.",
   );
@@ -510,7 +620,7 @@ export function appendCvDocument(
     : section;
   if (text.length > CV_TEXT_LIMIT)
     throw new Error(
-      "Texten får inte plats i underlaget (högst 60 000 tecken). Befintlig text är kvar. Välj färre bilder eller korta underlaget.",
+      "Texten får inte plats i underlaget (högst 60 000 tecken). Befintlig text är kvar. Välj mindre underlag eller korta texten.",
     );
   return { text, added: true };
 }

@@ -1,6 +1,9 @@
 import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
 import { buildServiceWorker } from "./build-service-worker.mjs";
+import { preparePdfReader } from "./prepare-pdf-reader.mjs";
+
+await preparePdfReader();
 
 const require = createRequire(import.meta.url);
 const result = spawnSync(

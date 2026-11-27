@@ -20,7 +20,7 @@ Kalenderkopplingen med privat iCal-länk kan installeras helt i webbläsaren. F�
 
 ## Starta lokalt
 
-Kräver Node.js 22 eller 24 och npm. Node 24 har använts vid verifiering.
+Kräver Node.js 22.13 eller senare och npm. Node 24 har använts vid verifiering.
 
 ```sh
 npm ci
@@ -84,7 +84,7 @@ Jobbspaningen lyfter först fram högst åtta jobb efter granskning av arbetsupp
 
 I **Mina jobb** väljer användaren högst tre **Veckans val** per vecka, med nästa steg och ansökningsdag direkt i översikten. Kalendern ändras inte av valen eller veckobläddringen här. Jobbvyn återupptar den öppna ansökan på rätt arbetssteg och bevarar sökning, filter, vald vecka och position i listan på enheten. Navigeringsminnet hålls isär per konto; ansökningens arbetssteg och veckans val använder kontots befintliga synkning.
 
-**CV för jobbmatchning → Läs in filer (PowerPoint eller text)** läser flera `.ppt` och `.pptx` samtidigt, tillsammans med eventuella textfiler. Texten läggs till med filnamn och bildnummer för granskning före sparning. Originalfilerna behandlas i webbläsaren. Dolda bilder och talaranteckningar hoppas över och tomma eller oläsbara filer får tydliga fel. Befintliga texter och andra lyckade importer bevaras. Upp till tio filer och 60 000 tecken stöds; fler detaljer finns i [jobbspaningens dokumentation](docs/job-watch.md).
+**CV för jobbmatchning → Läs in filer (PDF, PowerPoint eller text)** läser flera `.pdf`, `.ppt` och `.pptx` samtidigt, tillsammans med eventuella textfiler. Texten läggs till med filnamn och sid- eller bildnummer för granskning före sparning. Originalfilerna behandlas i webbläsaren. Dolda PowerPoint-bilder och talaranteckningar hoppas över. Skannade PDF:er utan läsbar text, lösenordsskyddade och trasiga filer får tydliga fel. Befintliga texter och andra lyckade importer bevaras. Upp till tio filer och 60 000 tecken stöds; fler detaljer finns i [jobbspaningens dokumentation](docs/job-watch.md).
 
 **Jobbsök** och **Nätverkande** är separata livsområden. Deras gemensamma tidsbudget delas 75/25; ett ändrat tidsmål i inställningarna justerar båda. Planeraren fördelar även extra ledig tid mellan dem och tar hänsyn till minsta passlängd. Kontaktbokningar får Nätverkande som förvald kategori, ansökningsuppföljningar får Jobbsök. Äldre arbetsytor får kategoridelningen vid inläsning utan att sparade pass, genomförda aktiviteter eller historiska veckomål ändras. Äldre gemensamma pass ligger kvar i sin ursprungliga kategori och kan kategoriseras manuellt.
 

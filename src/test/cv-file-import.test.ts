@@ -27,18 +27,18 @@ const document: CvImportedDocument = {
   name: "mitt-cv.pptx",
   format: "pptx",
   text: "[Bild 1]\nErfarenhet av projektledning och politiskt arbete.",
-  slides: 1,
-  emptySlides: 0,
-  hiddenSlides: 0,
+  pages: 1,
+  emptyPages: 0,
+  hiddenPages: 0,
 };
 
 it("läser en verklig binär PowerPoint med svensk text och tabellceller", async () => {
   const result = await readCvFile(file("kompetens.ppt"));
   expect(result).toMatchObject({
     format: "ppt",
-    slides: 2,
-    hiddenSlides: 1,
-    emptySlides: 0,
+    pages: 2,
+    hiddenPages: 1,
+    emptyPages: 0,
   });
   expect(result.text).toContain("Kandidatexamen i statsvetenskap");
   expect(result.text).toContain(
@@ -57,7 +57,7 @@ it("läser fasta texter i bildmallen när själva PPT-bilden saknar textrutor", 
     new URL("./fixtures/cv-import/bildmall.ppt", import.meta.url),
   );
   const result = await readCvFile(file("bildmall.ppt", bytes));
-  expect(result).toMatchObject({ format: "ppt", slides: 1, emptySlides: 0 });
+  expect(result).toMatchObject({ format: "ppt", pages: 1, emptyPages: 0 });
   expect(result.text).toContain("Kandidatexamen i statsvetenskap");
   expect(result.text).toContain(
     "Projektledning och politisk rådgivning från bildmallen",
@@ -98,10 +98,13 @@ it("ger begripliga fel för trasiga eller andra filformat", async () => {
       file("broken.ppt", new Uint8Array([0xd0, 0xcf, 0x11, 0xe0, 0, 0, 0, 0])),
     ),
   ).rejects.toThrow("PPT-filen kunde inte läsas");
-  await expect(readCvFile(file("document.pdf"))).rejects.toThrow(
+  await expect(readCvFile(file("document.docx"))).rejects.toThrow(
     ".ppt eller .pptx",
   );
   await expect(readCvFile(file("document.ppt.exe"))).rejects.toThrow();
+  await expect(
+    readCvFile(file("trasig.pdf", new TextEncoder().encode("Ingen PDF-fil"))),
+  ).rejects.toThrow("PDF-format");
 });
 
 it("kontrollerar storlek och antal innan filernas innehåll läses", async () => {
@@ -167,11 +170,16 @@ it("bevarar enkla textfiler och avvisar tom eller för stor text", async () => {
   ).rejects.toThrow("60 000");
 });
 
-it("använder inte filnamn eller bildrubriker som belägg för en kvalifikation", () => {
-  const cv =
-    "[Källa: underlag. Doktorsexamen.pptx]\n[Bild 1]\nProjektledning och samhällsarbete.";
-  expect(cvEvidenceSuggestions("Doktorsexamen krävs.", cv)).toEqual([]);
-  expect(
-    cvEvidenceSuggestions("Erfarenhet av projektledning krävs.", cv),
-  ).toEqual(["Projektledning och samhällsarbete."]);
+it("använder inte filnamn eller sidrubriker som belägg för en kvalifikation", () => {
+  for (const [format, heading] of [
+    ["pptx", "Bild 1"],
+    ["pdf", "Sida 1042"],
+  ]) {
+    const cv = `[Källa: underlag. Doktorsexamen.${format}]\n[${heading}]\nProjektledning och samhällsarbete.`;
+    expect(cvEvidenceSuggestions("Doktorsexamen krävs.", cv)).toEqual([]);
+    expect(cvEvidenceSuggestions("Sida 1042 krävs.", cv)).toEqual([]);
+    expect(
+      cvEvidenceSuggestions("Erfarenhet av projektledning krävs.", cv),
+    ).toEqual(["Projektledning och samhällsarbete."]);
+  }
 });
