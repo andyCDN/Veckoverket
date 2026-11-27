@@ -9,6 +9,25 @@ const P = "http://schemas.openxmlformats.org/presentationml/2006/main";
 const R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 const STRICT_A = "http://purl.oclc.org/ooxml/drawingml/main";
 const STRICT_P = "http://purl.oclc.org/ooxml/presentationml/main";
+export class CvFileImportError extends Error {
+  constructor(
+    message: string,
+    readonly code: string,
+    readonly diagnostic = "",
+  ) {
+    super(message);
+    this.name = "CvFileImportError";
+  }
+}
+const technicalReason = (error: unknown) => {
+  const reason = error instanceof Error ? error.message : String(error);
+  return reason.replace(/[\r\n]+/gu, " ").slice(0, 800);
+};
+export function cvImportDiagnostic(error: unknown) {
+  return error instanceof CvFileImportError
+    ? `${error.code}${error.diagnostic ? `: ${error.diagnostic}` : ""}`
+    : "";
+}
 export type CvImportFile = Pick<File, "name" | "size" | "arrayBuffer" | "text">;
 export type CvImportedDocument = {
   name: string;
@@ -45,8 +64,10 @@ function documentText(
   const visible = slides.filter((slide) => !slide.hidden);
   const content = visible.filter((slide) => /\p{L}/u.test(slide.text));
   if (!content.length)
-    throw new Error(
+    throw new CvFileImportError(
       "Ingen läsbar text hittades på presentationsbilderna. Text som ligger i foton eller skärmbilder behöver kopieras in manuellt.",
+      "NO_SLIDE_TEXT",
+      `${format.toUpperCase()}; ${slides.length} bilder, ${visible.length} synliga, 0 med läsbar text.`,
     );
   const text = content
     .map((slide) => `[Bild ${slide.number}]\n${slide.text}`)
@@ -128,11 +149,87 @@ function hiddenShape(paragraph: Element) {
   return false;
 }
 
+function placeholderText(paragraph: Element) {
+  for (
+    let parent = paragraph.parentElement;
+    parent;
+    parent = parent.parentElement
+  ) {
+    if (![P, STRICT_P].includes(parent.namespaceURI ?? "")) continue;
+    for (const properties of Array.from(parent.children).filter((child) =>
+      /^nv/u.test(child.localName),
+    ))
+      if (nodes(properties, [P, STRICT_P], "ph").length) return true;
+  }
+  return false;
+}
+
+function xmlText(document: Document, staticOnly = false) {
+  return nodes(document, [A, STRICT_A], "p")
+    .filter(
+      (paragraph) =>
+        !hiddenShape(paragraph) && (!staticOnly || !placeholderText(paragraph)),
+    )
+    .map((paragraph) => clean(drawingText(paragraph)))
+    .filter(Boolean);
+}
+
+function partTargets(
+  files: Record<string, Uint8Array>,
+  part: string,
+  kind: string,
+) {
+  const split = part.lastIndexOf("/");
+  const relPath = `${part.slice(0, split)}/_rels/${part.slice(split + 1)}.rels`;
+  const targets = new Map<string, string>();
+  if (!files[relPath]) return targets;
+  for (const rel of Array.from(
+    xml(files[relPath]).getElementsByTagNameNS("*", "Relationship"),
+  )) {
+    if (
+      !(rel.getAttribute("Type") ?? "").endsWith(`/${kind}`) ||
+      rel.getAttribute("TargetMode") === "External"
+    )
+      continue;
+    const target = new URL(
+      rel.getAttribute("Target") ?? "",
+      `https://powerpoint.invalid/${part}`,
+    );
+    if (
+      target.origin !== "https://powerpoint.invalid" ||
+      !/^\/ppt\/(?:slides|slideLayouts|slideMasters)\/[^/]+\.xml$/u.test(
+        target.pathname,
+      )
+    )
+      continue;
+    targets.set(rel.getAttribute("Id") ?? "", target.pathname.slice(1));
+  }
+  return targets;
+}
+
+function mergeInherited(own: string[], inherited: string[]) {
+  const used = new Set<string>();
+  const additions = inherited.filter((text) => {
+    if (used.has(text)) return false;
+    used.add(text);
+    return !own.some(
+      (paragraph) => paragraph === text || paragraph.includes(text),
+    );
+  });
+  return clean([...additions, ...own].join("\n"));
+}
+
 export async function readPptx(
   bytes: Uint8Array,
   name: string,
 ): Promise<CvImportedDocument> {
-  const { unzipSync } = await import("fflate");
+  const { unzipSync } = await import("fflate").catch((error) => {
+    throw new CvFileImportError(
+      "PPTX-läsaren kunde inte laddas. Kontrollera internetanslutningen och ladda om sidan.",
+      "PPTX_READER_LOAD",
+      technicalReason(error),
+    );
+  });
   let total = 0,
     entries = 0;
   const seen = new Set<string>();
@@ -143,7 +240,7 @@ export async function readPptx(
         if (++entries > 4096)
           throw new Error("PowerPoint-filen innehåller för många delar.");
         if (
-          !/^ppt\/(?:presentation\.xml|_rels\/presentation\.xml\.rels|slides\/[^/]+\.xml)$/u.test(
+          !/^ppt\/(?:presentation\.xml|_rels\/presentation\.xml\.rels|(?:slides|slideLayouts|slideMasters)\/(?:[^/]+\.xml|_rels\/[^/]+\.xml\.rels))$/u.test(
             entry.name,
           )
         )
@@ -163,30 +260,18 @@ export async function readPptx(
     });
   } catch (error) {
     if (typeof (error as { code?: unknown })?.code === "number")
-      throw new Error(
+      throw new CvFileImportError(
         "PPTX-filen är skadad eller lösenordsskyddad. Spara en ny kopia utan lösenord och försök igen.",
+        "PPTX_ARCHIVE",
+        technicalReason(error),
       );
     throw error;
   }
-  const presentation = xml(files["ppt/presentation.xml"]),
-    relationships = xml(files["ppt/_rels/presentation.xml.rels"]);
-  const targets = new Map<string, string>();
-  for (const rel of Array.from(
-    relationships.getElementsByTagNameNS("*", "Relationship"),
-  )) {
-    if (!/\/slide$/u.test(rel.getAttribute("Type") ?? "")) continue;
-    if (rel.getAttribute("TargetMode") === "External") continue;
-    const target = new URL(
-      rel.getAttribute("Target") ?? "",
-      "https://powerpoint.invalid/ppt/presentation.xml",
-    );
-    if (
-      target.origin !== "https://powerpoint.invalid" ||
-      !/^\/ppt\/slides\/[^/]+\.xml$/u.test(target.pathname)
-    )
-      continue;
-    targets.set(rel.getAttribute("Id") ?? "", target.pathname.slice(1));
-  }
+  const presentation = xml(files["ppt/presentation.xml"]);
+  // The presentation's current slide list is authoritative; unused parts are ignored.
+  if (!files["ppt/_rels/presentation.xml.rels"])
+    throw new Error("En del av PowerPoint-filen saknas.");
+  const targets = partTargets(files, "ppt/presentation.xml", "slide");
   const list = nodes(presentation, [P, STRICT_P], "sldIdLst")[0];
   const ids = list
     ? Array.from(list.children).filter(
@@ -213,15 +298,36 @@ export async function readPptx(
     const hidden = ["0", "false"].includes(
       slide.documentElement.getAttribute("show") ?? "",
     );
+    const inherited: string[] = [];
+    if (
+      !hidden &&
+      !["0", "false"].includes(
+        slide.documentElement.getAttribute("showMasterSp") ?? "",
+      )
+    ) {
+      const layoutPath = [
+        ...partTargets(files, path, "slideLayout").values(),
+      ][0];
+      if (layoutPath) {
+        const layout = xml(files[layoutPath]);
+        if (
+          !["0", "false"].includes(
+            layout.documentElement.getAttribute("showMasterSp") ?? "",
+          )
+        ) {
+          const masterPath = [
+            ...partTargets(files, layoutPath, "slideMaster").values(),
+          ][0];
+          if (masterPath)
+            inherited.push(...xmlText(xml(files[masterPath]), true));
+        }
+        inherited.push(...xmlText(layout, true));
+      }
+    }
     return {
       number: index + 1,
       hidden,
-      text: clean(
-        nodes(slide, [A, STRICT_A], "p")
-          .filter((paragraph) => !hiddenShape(paragraph))
-          .map(drawingText)
-          .join("\n"),
-      ),
+      text: mergeInherited(xmlText(slide), inherited),
     };
   });
   return documentText(name, "pptx", slides);
@@ -231,18 +337,22 @@ type TextShape = {
   hidden?: boolean;
   text?: { sourceText?: string; paragraphs: { runs: { text: string }[] }[] };
   wordArt?: { text: string };
+  placeholder?: unknown;
   children?: TextShape[];
 };
-function shapeText(shapes: TextShape[]): string[] {
+function shapeText(shapes: TextShape[], staticOnly = false): string[] {
   return shapes.flatMap((shape) => {
-    if (shape.hidden) return [];
-    const text = shape.text
-      ? (shape.text.sourceText ??
-        shape.text.paragraphs
-          .map((paragraph) => paragraph.runs.map((run) => run.text).join(""))
-          .join("\n"))
-      : shape.wordArt?.text;
-    return [...(text ? [clean(text)] : []), ...shapeText(shape.children ?? [])];
+    if (shape.hidden || (staticOnly && shape.placeholder)) return [];
+    const paragraphs = shape.text?.paragraphs
+      .map((paragraph) => paragraph.runs.map((run) => run.text).join(""))
+      .join("\n");
+    const text = shape.text?.sourceText?.trim()
+      ? shape.text.sourceText
+      : paragraphs || shape.wordArt?.text;
+    return [
+      ...(text ? [clean(text)] : []),
+      ...shapeText(shape.children ?? [], staticOnly),
+    ];
   });
 }
 
@@ -250,7 +360,15 @@ export async function readPpt(
   bytes: Uint8Array,
   name: string,
 ): Promise<CvImportedDocument> {
-  const { parsePpt } = await import("@file-viewer/ppt/parser");
+  const { parsePpt } = await import("@file-viewer/ppt/parser").catch(
+    (error) => {
+      throw new CvFileImportError(
+        "PPT-läsaren kunde inte laddas. Kontrollera internetanslutningen och ladda om sidan.",
+        "PPT_READER_LOAD",
+        technicalReason(error),
+      );
+    },
+  );
   try {
     const model = parsePpt(bytes, {
       limits: {
@@ -264,28 +382,71 @@ export async function readPpt(
         maxTextLength: CV_TEXT_LIMIT,
       },
     });
-    if (model.diagnostics.some((item) => item.severity === "error"))
-      throw new Error(
+    const errors = model.diagnostics.filter(
+      (item) => item.severity === "error",
+    );
+    if (errors.length)
+      throw new CvFileImportError(
         "Filen kunde inte läsas fullständigt. Spara en ny kopia i PowerPoint och försök igen.",
+        "PPT_INCOMPLETE",
+        errors.map((error) => error.code).join(", "),
       );
+    const masters = new Map(model.masters.map((master) => [master.id, master]));
+    const masterText = (
+      id: number | undefined,
+      seen = new Set<number>(),
+    ): string[] => {
+      if (id === undefined || seen.has(id)) return [];
+      const master = masters.get(id);
+      if (!master) return [];
+      seen.add(id);
+      return [
+        ...(master.showMasterShapes === false
+          ? []
+          : masterText(master.masterId, seen)),
+        ...shapeText(master.shapes, true),
+      ];
+    };
     return documentText(
       name,
       "ppt",
       model.slides.map((slide, index) => ({
         number: index + 1,
         hidden: slide.hidden ?? false,
-        text: clean(shapeText(slide.shapes).join("\n")),
+        text: mergeInherited(
+          shapeText(slide.shapes),
+          slide.hidden || slide.showMasterShapes === false
+            ? []
+            : masterText(slide.masterId),
+        ),
       })),
     );
   } catch (error) {
+    if (error instanceof CvFileImportError) throw error;
     const code = (error as { code?: string })?.code ?? "";
     if (/ENCRYPT|PASSWORD/iu.test(code))
-      throw new Error(
+      throw new CvFileImportError(
         "Filen är lösenordsskyddad. Spara en kopia utan lösenord och välj den.",
+        code,
+        technicalReason(error),
+      );
+    if (code === "NOT_PPT")
+      throw new CvFileImportError(
+        "PPT-formatet i filen stöds inte. Öppna filen i PowerPoint och spara en kopia som .pptx.",
+        code,
+        technicalReason(error),
+      );
+    if (/^LIMIT_/u.test(code))
+      throw new CvFileImportError(
+        "Presentationen är för stor eller komplex för att läsas här. Dela upp den i färre bilder och försök igen.",
+        code,
+        technicalReason(error),
       );
     if (code)
-      throw new Error(
+      throw new CvFileImportError(
         "PPT-filen kunde inte läsas. Kontrollera att den går att öppna i PowerPoint och spara gärna en ny kopia.",
+        code,
+        technicalReason(error),
       );
     throw error;
   }

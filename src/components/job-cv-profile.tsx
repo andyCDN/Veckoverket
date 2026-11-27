@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { CV_TEXT_LIMIT } from "@/lib/job-cv-match";
 import {
   appendCvDocument,
+  cvImportDiagnostic,
   readCvFile,
   validateCvFiles,
 } from "@/lib/cv-file-import";
@@ -37,6 +38,7 @@ export function JobCvProfileEditor({
       name: string;
       status: "added" | "duplicate" | "error";
       detail: string;
+      diagnostic?: string;
     }[],
   });
   const { text, error, reading, progress, files } = state;
@@ -101,6 +103,7 @@ export function JobCvProfileEditor({
                     error instanceof Error
                       ? error.message
                       : "Texten kunde inte läggas till.",
+                  diagnostic: cvImportDiagnostic(error),
                 },
               ],
             };
@@ -119,6 +122,7 @@ export function JobCvProfileEditor({
                 error instanceof Error
                   ? error.message
                   : "Filen kunde inte läsas.",
+              diagnostic: cvImportDiagnostic(error),
             },
           ],
         }));
@@ -200,6 +204,12 @@ export function JobCvProfileEditor({
                       ? "Redan inläst"
                       : "Kunde inte läsas"}
                   <p>{file.detail}</p>
+                  {file.diagnostic && (
+                    <details>
+                      <summary>Visa teknisk felorsak</summary>
+                      <p>{file.diagnostic}</p>
+                    </details>
+                  )}
                 </li>
               ))}
             </ul>

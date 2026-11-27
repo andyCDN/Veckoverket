@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { zipSync, strToU8 } from "fflate";
+import { unzipSync, zipSync, strToU8 } from "fflate";
 import { mock, row, login, userA } from "./helpers";
 import { applicationFlowFixture } from "../src/test/fixtures/application-flow";
 import { navigateTo } from "../e2e/navigation";
@@ -39,6 +39,67 @@ async function setup(page: Page, width = 1440) {
 }
 const upload = (page: Page) =>
   page.getByLabel("Läs in filer (PowerPoint eller text)", { exact: true });
+
+for (const format of ["ppt", "pptx"]) {
+  for (const width of [1440, 390]) {
+    test(`text från bildmall och sidlayout kan importeras från ${format} ${width}`, async ({
+      page,
+    }) => {
+      const { f, editor } = await setup(page, width);
+      await upload(page).setInputFiles(resolve(root, `bildmall.${format}`));
+      await expect(
+        editor.getByRole("region", { name: "Inlästa filer", exact: true }),
+      ).toContainText("1 fil tillagd");
+      const text = editor.getByLabel("Klistra in CV-text", { exact: true });
+      await expect(text).toHaveValue(/Kandidatexamen i statsvetenskap/);
+      await expect(text).toHaveValue(/Svenska och engelska från sidlayouten/);
+      const value = await text.inputValue();
+      expect(value).not.toMatch(
+        /Click to edit|Master text styles|Second level/iu,
+      );
+      expect(value.match(/Kandidatexamen/gu)).toHaveLength(1);
+      expect(f.writes).toHaveLength(0);
+      await editor
+        .getByRole("button", { name: "Spara CV-underlag", exact: true })
+        .click();
+      await expect
+        .poll(() => f.documents.get(userA)!.data.jobSearch?.cvProfile?.text)
+        .toBe(value);
+      expect(f.errors).toEqual([]);
+    });
+  }
+}
+
+test("dold bildmall används inte och teknisk felorsak kan läsas", async ({
+  page,
+}) => {
+  const { f, editor } = await setup(page);
+  const files = unzipSync(readFileSync(resolve(root, "bildmall.pptx")));
+  files["ppt/slides/slide1.xml"] = strToU8(
+    new TextDecoder()
+      .decode(files["ppt/slides/slide1.xml"])
+      .replace("<p:sld ", '<p:sld showMasterSp="0" '),
+  );
+  await upload(page).setInputFiles({
+    name: "dold-bildmall.pptx",
+    mimeType:
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    buffer: Buffer.from(zipSync(files)),
+  });
+  const results = editor.getByRole("region", {
+    name: "Inlästa filer",
+    exact: true,
+  });
+  await expect(results).toContainText("Ingen läsbar text hittades");
+  await results.getByText("Visa teknisk felorsak", { exact: true }).click();
+  await expect(results).toContainText("NO_SLIDE_TEXT");
+  await expect(results).toContainText("1 synliga");
+  await expect(
+    editor.getByLabel("Klistra in CV-text", { exact: true }),
+  ).toHaveValue(existing);
+  expect(f.writes).toHaveLength(0);
+  expect(f.errors).toEqual([]);
+});
 
 for (const width of [1440, 390]) {
   test(`flera PPT och PPTX kan blandas, granskas och sparas utan att ett trasigt dokument tar bort något ${width}`, async ({
