@@ -171,7 +171,8 @@ export function JobCvProfileEditor({
             type="file"
             multiple
             disabled={reading}
-            accept=".ppt,.pptx,.txt,.md,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain,text/markdown"
+            // Native file providers can disable PPT files when an accept filter
+            // is present. Validate the selected files in readCvFile instead.
             onChange={(event) => {
               const files = Array.from(event.target.files ?? []);
               event.target.value = "";
@@ -180,11 +181,11 @@ export function JobCvProfileEditor({
           />
         </label>
         <p className="help">
-          Välj högst 10 filer, upp till 20 MB per fil och 60 MB tillsammans. Ny
-          text läggs till i underlaget och sparas när du väljer Spara
-          CV-underlag. Dolda presentationsbilder och talaranteckningar tas inte
-          med. Text som ligger i foton eller skärmbilder behöver kompletteras
-          manuellt.
+          Stöder PowerPoint (.ppt och .pptx) och textfiler (.txt och .md). Välj
+          högst 10 filer, upp till 20 MB per fil och 60 MB tillsammans. Ny text
+          läggs till i underlaget och sparas när du väljer Spara CV-underlag.
+          Dolda presentationsbilder och talaranteckningar tas inte med. Text som
+          ligger i foton eller skärmbilder behöver kompletteras manuellt.
         </p>
         {reading && <p role="status">{progress || "Läser filer…"}</p>}
         {files.length > 0 && (

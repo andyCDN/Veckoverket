@@ -46,7 +46,18 @@ for (const format of ["ppt", "pptx"]) {
       page,
     }) => {
       const { f, editor } = await setup(page, width);
-      await upload(page).setInputFiles(resolve(root, `bildmall.${format}`));
+      const choose = page.waitForEvent("filechooser");
+      await upload(page).click();
+      const chooser = await choose;
+      // The native picker must allow files even if a provider supplies no MIME
+      // type or a generic one. setInputFiles alone bypasses this picker filter.
+      expect(await chooser.element().getAttribute("accept")).toBeNull();
+      expect(chooser.isMultiple()).toBe(true);
+      await chooser.setFiles({
+        name: `bildmall.${format.toUpperCase()}`,
+        mimeType: "application/octet-stream",
+        buffer: readFileSync(resolve(root, `bildmall.${format}`)),
+      });
       await expect(
         editor.getByRole("region", { name: "Inlästa filer", exact: true }),
       ).toContainText("1 fil tillagd");
