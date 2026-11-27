@@ -30,8 +30,24 @@ Specialistroller och uttryckliga specialistkrav prövas före generell titelmatc
 
 Redan granskade jobb som liknar roller i aktiva ansökningar prioriteras extra. Endast roll och aktiv status används som intressesignal, på användarens enhet. Avslagna eller avslutade ansökningar ger ingen sådan signal. Ett specialistkrav eller ofullständigt underlag kan inte åsidosättas av likheten, och likheten är inte ett bevis på behörighet. Inga privata ansökningsuppgifter skickas till källorna eller skrivs till det publika annonsflödet.
 
-Granskningen använder förklarbara regler på annonsinnehållet. Prioritering betyder överensstämmelse med sökinriktningen, inte att användarens utbildning eller erfarenhet har verifierats mot kraven. Någon CV-profil är ännu inte ansluten till matchningen. Kravlistan är ett urval ur underlaget; den fullständiga annonsen kan alltid öppnas före beslut. Ingen separat AI-tjänst, API-nyckel eller ändring av kalendern krävs.
+Granskningen använder förklarbara regler på annonsinnehållet. Prioritering betyder överensstämmelse med sökinriktningen. Personlig kravbedömning använder det privata CV-underlaget och användarens bekräftelser enligt nedan. Kravlistan är ett urval ur underlaget; den fullständiga annonsen kan alltid öppnas före beslut. Ingen separat AI-tjänst, API-nyckel eller ändring av kalendern krävs.
 
 **Jobb → Jobbspaning → Källor och sökurval** visar källorna, sökurvalet och respektive källas senaste kontroll. **Uppdatera** hämtar den senaste rapporten; knappen startar inte en ny genomsökning av externa sajter.
 
-Samma titel, organisation och sista ansökningsdag från flera källor visas som ett annonskort, med källänkarna kvar. Befintliga sparade eller bortvalda källänkar döljer även motsvarande kort. **Granska jobbet** använder publicerad fulltext, vilket gör att dessa nya källor inte behöver läsas direkt från webbläsaren. Inget sparas före **Spara jobb**. Den separat lästa ansökningslänken följer med till ansökningsflödet. Kalendern ändras inte av hämtningen eller granskningen.
+Samma titel, organisation och sista ansökningsdag från flera källor visas som ett annonskort, med källänkarna kvar. Befintliga sparade eller bortvalda källänkar döljer även motsvarande kort. **Ta vidare** sparar ett nytt jobb med fullständigt annonsunderlag direkt som utkast och öppnar nästa steg. Möjliga dubbletter och ofullständiga underlag öppnas först för granskning. Den separat lästa ansökningslänken följer med till ansökningsflödet. Kalendern ändras inte.
+
+## Bedöm senare och bortval
+
+**Bedöm senare** väljer en återkomstdag efter idag och senast sista ansökningsdagen. Jobbet ligger under **Bedöm senare** tills dess och kommer tillbaka överst bland startjobben på den valda dagen, även om det behöver granskas närmare. **Bedöm nu** hämtar tillbaka det tidigare; **Ändra återkomstdatum** ändrar valet. Om annonsen inte finns i senaste flödet finns originallänken kvar för kontroll. Passerade ansökningsdagar visas inte som nya öppna jobb.
+
+**Ointressant** döljer alla kända annonskällor för jobbet. Ett frivilligt bortvalsskäl kan anges efteråt. Endast **Fel inriktning** sänker liknande rollers prioritet lokalt; ett bortval på grund av placering eller krav blir inte ett generellt yrkesfilter. **Ångra bortval** återställer hela jobbet, inklusive alternativa källänkar. **Visa bortvalda jobb igen** återställer bortvalen utan att ändra uppskjutna jobb.
+
+## Privat jämförelse med CV
+
+Öppna **CV för jobbmatchning** i jobbspaningen eller under **Mina jobb → Fler verktyg**. Klistra in grund-CV:t, eller läs in en `.txt`-/`.md`-fil, högst 60 000 tecken. För PDF och Word kopieras texten till fältet. En länk till en separat CV-chatt ger inte appen tillgång till dess dokument.
+
+**Jämför krav med ditt CV** finns på annonskort och sparade ansökningar. Angivna krav och meriter hålls isär. Relevanta, ordagranna utdrag föreslås med textregler. En ordträff styrker aldrig automatiskt ett krav: **Behöver kontrolleras** gäller tills användaren har bekräftat ett faktiskt CV-utdrag eller markerat **Saknar stöd i CV:t**. Bekräftat stöd måste finnas i det sparade CV-underlaget. Antal år, examensnivå och alternativa meriter behöver kontrolleras mot hela kravet.
+
+Bekräftade krav ger högre lokal prioritet. Ett angivet krav som användaren markerat utan stöd flyttar en vanlig prioriterad träff till **Alla träffar**; en saknad merit gör inte det. Ett specialistkrav kan prövas genom att användaren bekräftar samtliga urskilda angivna krav. Ändrad CV-text återställer tidigare bedömningar, och borttagning av CV-underlaget tar även bort dessa bedömningar. Ansökningar och deras dokumentlänkar bevaras.
+
+CV-text, kravbedömningar, veckans val och beslut sparas i samma privata arbetsyta som ansökningarna och synkas genom befintlig kontolagring. Ingen databasändring krävs. CV-texten skickas inte till annonskällor, AI-tjänster eller det publika GitHub-flödet. Själva jämförelsen sker i webbläsaren. Bedömningen är inte ett intyg om formell behörighet.

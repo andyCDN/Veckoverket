@@ -28,7 +28,7 @@ export function Modal({
     <dialog
       ref={ref}
       className={`modal ${wide ? "wide" : ""}`}
-      aria-labelledby="dialog-title"
+      aria-label={title}
       onCancel={onClose}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -36,7 +36,7 @@ export function Modal({
     >
       <div className="modal-head">
         <div>
-          <h2 id="dialog-title">{title}</h2>
+          <h2>{title}</h2>
           {description && <p>{description}</p>}
         </div>
         <button

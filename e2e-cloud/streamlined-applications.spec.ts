@@ -176,7 +176,7 @@ test("jobbspaning använder publicerad fulltext och bevarar uppgifter när annon
   await watch.getByRole("button", { name: /^Alla träffar/ }).click();
   await watch
     .getByRole("article", { name: "Utvecklare · Formbolaget", exact: true })
-    .getByRole("button", { name: "Granska jobbet", exact: true })
+    .getByRole("button", { name: "Ta vidare", exact: true })
     .click();
   const capture = page.getByRole("dialog", {
     name: "Lägg till jobb",
@@ -196,7 +196,7 @@ test("jobbspaning använder publicerad fulltext och bevarar uppgifter när annon
     .click();
   await watch
     .getByRole("article", { name: "Arkivarie · Arkivet", exact: true })
-    .getByRole("button", { name: "Granska jobbet", exact: true })
+    .getByRole("button", { name: "Ta vidare", exact: true })
     .click();
   await expect(capture).toContainText("Ingen entydig annons");
   await expect(capture.getByLabel("Tjänst", { exact: true })).toHaveValue(
@@ -332,6 +332,10 @@ for (const width of [1440, 390]) {
       .toBe("2026-12-02");
     await page.reload();
     await navigateTo(page, "Jobb");
+    await page
+      .getByRole("region", { name: "Ansökans detaljer", exact: true })
+      .getByRole("button", { name: "Till jobblistan", exact: true })
+      .click();
     await page.getByRole("button", { name: /^Väntar på svar/ }).click();
     await expect(
       page.getByRole("article", { name: "Utredare · Kommunen", exact: true }),
@@ -382,7 +386,7 @@ for (const width of [1440, 390]) {
       .click();
     await page
       .getByRole("region", { name: "Jobbspaning", exact: true })
-      .getByRole("button", { name: "Granska jobbet", exact: true })
+      .getByRole("button", { name: "Ta vidare", exact: true })
       .click();
     const capture = page.getByRole("dialog", {
       name: "Lägg till jobb",

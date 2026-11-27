@@ -1,7 +1,7 @@
 "use client";
 import { applicationDeadlineActive } from "@/lib/application-deadlines";
 import { orderedCategories, categoryLabel } from "@/lib/presentation";
-import { useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import type {
   Activity,
   AppData,
@@ -11,6 +11,7 @@ import type {
 } from "@/lib/types";
 import {
   addDays,
+  monday,
   parseTime,
   planningBoundary,
   time,
@@ -78,18 +79,32 @@ import {
 import {
   mergeJobAdvertisement,
   applicationAdvertisementUrls,
+  jobMatches,
 } from "@/lib/job-identity";
 import {
   jobSessionApplications,
   type JobSessionRef,
 } from "@/lib/job-search-sessions";
-import {
-  dismissJobUrl,
-  removeJobApplication,
-  restoreDismissedJobs,
-} from "@/lib/job-removal";
+import { removeJobApplication, restoreDismissedJobs } from "@/lib/job-removal";
 import { JobCapture } from "./job-capture";
 import { ApplicationSent } from "./application-sent";
+import { useJobNavigation } from "@/lib/use-job-navigation";
+import {
+  clearJobDecision,
+  decideWatchJob,
+  toggleWeeklyJob,
+  updateDismissalReason,
+} from "@/lib/job-search";
+import {
+  removeJobCvProfile,
+  saveJobCvCheck,
+  saveJobCvProfile,
+} from "@/lib/job-cv-match";
+import { JobCvProfileEditor } from "./job-cv-profile";
+import {
+  JobRequirements,
+  type JobRequirementCheckHandler,
+} from "./job-requirements";
 import {
   jobWorkspace,
   markApplicationSent,
@@ -99,6 +114,8 @@ import {
 
 const statuses = APPLICATION_STATUSES;
 type Props = {
+  storageScope?: string;
+  week?: string;
   session?: JobSessionRef;
   onSessionStart?: (applicationId: string, session: JobSessionRef) => void;
   onWeek: () => void;
@@ -128,15 +145,29 @@ export function CareerView({
   onWeek,
   session,
   onSessionStart,
+  storageScope = "local",
+  week = monday(today()),
 }: Props) {
-  const [detailId, setDetailId] = useState<string | null>(() =>
+  const initialDetailId =
     initialRecord?.kind === "application"
       ? initialRecord.id
       : initialActionId
-        ? (careerActions(data).find((a) => a.id === initialActionId)
-            ?.applicationId ?? null)
-        : null,
+        ? careerActions(data).find((a) => a.id === initialActionId)
+            ?.applicationId
+        : undefined;
+  const { navigation, update: updateNavigation } = useJobNavigation(
+    storageScope,
+    section === "jobs",
+    initialDetailId,
+    initialTab ?? "contacts",
   );
+  const detailId = navigation.detailId;
+  const setDetailId = (id: string | null) =>
+    updateNavigation({ detailId: id, ...(id ? { tab: "applications" } : {}) });
+  const jobLane = navigation.lane;
+  const setJobLane = (lane: JobLane) => updateNavigation({ lane });
+  const [cvProfileOpen, setCvProfileOpen] = useState(false);
+  const pickWeek = navigation.pickWeek ?? week;
   const [addJobOpen, setAddJobOpen] = useState(false);
   const [captureSeed, setCaptureSeed] = useState<JobApplication>();
   const [sessionEditing, setSessionEditing] = useState<string | null>(null);
@@ -144,7 +175,6 @@ export function CareerView({
     session,
   );
   const [sentId, setSentId] = useState<string | null>(null);
-  const [jobLane, setJobLane] = useState<JobLane>("todo");
   const [messageApplicationId, setMessageApplicationId] = useState<string>();
   const [cvId, setCvId] = useState<string | null>(null);
   const [messageOpen, setMessageOpen] = useState(false);
@@ -159,9 +189,8 @@ export function CareerView({
     interviewId: string;
   } | null>(null);
   const [historyId, setHistoryId] = useState<string | null>(null);
-  const [tab, setTab] = useState(
-    section === "network" ? (initialTab ?? "contacts") : "applications",
-  );
+  const tab = navigation.tab;
+  const setTab = (tab: string) => updateNavigation({ tab });
   const [focusActionId, setFocusActionId] = useState(initialActionId);
   const [application, setApplication] = useState<JobApplication | null>(null);
   const [contactLog, setContactLog] = useState<NetworkContact | null>(null);
@@ -196,6 +225,7 @@ export function CareerView({
     preview ||
     historyId ||
     materialsId ||
+    cvProfileOpen ||
     interviewBookingId ||
     interviewNotes,
   );
@@ -203,11 +233,51 @@ export function CareerView({
     onEditing(editing);
     return () => onEditing(false);
   }, [editing, onEditing]);
-  const [query, setQuery] = useState("");
+  const query = navigation.query;
+  const setQuery = (query: string) => updateNavigation({ query });
   const [message, setMessage] = useState("");
   const applications = data.applications ?? [],
     contacts = data.contacts ?? [],
     deadlines = data.deadlines ?? [];
+  useEffect(() => {
+    if (detailId && !applications.some((job) => job.id === detailId))
+      updateNavigation({ detailId: null });
+    if (
+      navigation.lastId &&
+      !applications.some((job) => job.id === navigation.lastId)
+    )
+      updateNavigation({ lastId: null });
+  }, [applications, detailId, navigation.lastId, updateNavigation]);
+  const checkRequirement: JobRequirementCheckHandler = (
+    keys,
+    requirement,
+    verdict,
+    evidence,
+  ) => {
+    try {
+      onChange(
+        saveJobCvCheck(data, keys, requirement, verdict, evidence),
+        data,
+      );
+      return undefined;
+    } catch (error) {
+      return error instanceof Error
+        ? error.message
+        : "Kravbedömningen kunde inte sparas.";
+    }
+  };
+  const togglePick = (id: string) => {
+    try {
+      onChange(toggleWeeklyJob(data, pickWeek, id), data);
+      setMessage("");
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Veckans val kunde inte sparas.",
+      );
+    }
+  };
   const all = Object.values(data.weeks).flatMap((p) => p.activities);
   const bookStep = (step: TrackedAction) =>
     setBooking({
@@ -267,9 +337,6 @@ export function CareerView({
   const sentApplication = applications.find((a) => a.id === sentId);
   const openJob = (a: JobApplication) => {
     setDetailId(a.id);
-    requestAnimationFrame(() =>
-      window.scrollTo({ top: 0, behavior: "instant" }),
-    );
   };
   const primaryJobAction = (row: JobRow) => {
     openJob(row.application);
@@ -330,6 +397,19 @@ export function CareerView({
           )}
         </div>
         {a.deadline && <p>Deadline: {a.deadline}</p>}
+        {!isClosedApplication(a) && (
+          <button
+            className="text-button job-pick-button"
+            aria-pressed={(
+              data.jobSearch?.weeklyPicks?.[pickWeek] ?? []
+            ).includes(a.id)}
+            onClick={() => togglePick(a.id)}
+          >
+            {(data.jobSearch?.weeklyPicks?.[pickWeek] ?? []).includes(a.id)
+              ? "Vald denna vecka"
+              : "Välj till veckan"}
+          </button>
+        )}
         {initialRecord?.kind === "application" && initialRecord.id === a.id && (
           <p className="check-in-plan">
             <strong>Första lilla steget</strong>
@@ -406,6 +486,19 @@ export function CareerView({
                   : "Arbetssteget kunde inte sparas.";
               }
             }}
+          />
+        )}
+        {a.advertisement?.text && (
+          <JobRequirements
+            text={a.advertisement.text}
+            jobKeys={
+              applicationAdvertisementUrls(a).length
+                ? applicationAdvertisementUrls(a)
+                : [`application:${a.id}`]
+            }
+            profile={data.jobSearch?.cvProfile}
+            onCheck={checkRequirement}
+            onProfile={() => setCvProfileOpen(true)}
           />
         )}
         {a.status === "sent" && !step && (
@@ -804,11 +897,57 @@ export function CareerView({
       )}
       {section === "jobs" && tab === "watch" && (
         <JobWatch
+          showAll={navigation.watchAll ?? false}
+          onShowAll={(watchAll) => updateNavigation({ watchAll })}
+          jobSearch={data.jobSearch}
           applications={applications}
           dismissedUrls={data.dismissedJobUrls ?? []}
-          onDismiss={(url) => onChange(dismissJobUrl(data, url), data)}
+          onDismiss={(job) =>
+            onChange(decideWatchJob(data, job, { kind: "dismissed" }), data)
+          }
+          onDefer={(job, revisitOn) => {
+            try {
+              onChange(
+                decideWatchJob(data, job, { kind: "later", revisitOn }),
+                data,
+              );
+              return undefined;
+            } catch (error) {
+              return error instanceof Error
+                ? error.message
+                : "Datumet kunde inte sparas.";
+            }
+          }}
+          onClearDecision={(url) => onChange(clearJobDecision(data, url), data)}
+          onDismissalReason={(url, reason) =>
+            onChange(updateDismissalReason(data, url, reason), data)
+          }
+          onProfile={() => setCvProfileOpen(true)}
+          onCheck={checkRequirement}
           onRestore={(url) => onChange(restoreDismissedJobs(data, url), data)}
           onSave={(a) => {
+            if (
+              (a.advertisement?.text.trim().length ?? 0) >= 180 &&
+              !jobMatches(a, applications).length
+            ) {
+              const next = clearJobDecision(
+                {
+                  ...data,
+                  applications: [
+                    ...applications,
+                    saveApplication(undefined, a),
+                  ],
+                },
+                a.advertisement!.url,
+              );
+              onChange(next, data);
+              setDetailId(a.id);
+              setJobLane("todo");
+              setMessage(
+                "Jobbet är sparat som utkast. Fortsätt med nästa steg.",
+              );
+              return;
+            }
             setCaptureSeed(a);
             setAddJobOpen(true);
           }}
@@ -849,6 +988,11 @@ export function CareerView({
           </section>
         ) : (
           <JobList
+            week={pickWeek}
+            onWeek={(pickWeek) => updateNavigation({ pickWeek })}
+            onTogglePick={togglePick}
+            resumeId={navigation.lastId}
+            onProfile={() => setCvProfileOpen(true)}
             data={data}
             lane={jobLane}
             onLane={setJobLane}
@@ -1092,6 +1236,31 @@ export function CareerView({
               "Jobbet är sparat. Fortsätt med nästa steg när det passar.",
             );
             return undefined;
+          }}
+        />
+      )}
+      {cvProfileOpen && (
+        <JobCvProfileEditor
+          profile={data.jobSearch?.cvProfile}
+          onClose={() => setCvProfileOpen(false)}
+          onSave={(text) => {
+            try {
+              onChange(saveJobCvProfile(data, text), data);
+              setCvProfileOpen(false);
+              setMessage(
+                "CV-underlaget är sparat. Jämför kraven i en annons eller ansökan.",
+              );
+              return undefined;
+            } catch (error) {
+              return error instanceof Error
+                ? error.message
+                : "CV-underlaget kunde inte sparas.";
+            }
+          }}
+          onRemove={() => {
+            onChange(removeJobCvProfile(data), data);
+            setCvProfileOpen(false);
+            setMessage("CV-underlaget och kravbedömningarna har tagits bort.");
           }}
         />
       )}

@@ -28,10 +28,37 @@ export function dismissJobUrl(data: AppData, url: string): AppData {
 export function restoreDismissedJobs(data: AppData, url?: string): AppData {
   const key = url === undefined ? undefined : jobUrlKey(url);
   if (url !== undefined && !key) return data;
+  const decisions = data.jobSearch?.decisions ?? [];
+  const matching = decisions.filter(
+    (decision) =>
+      decision.kind === "dismissed" &&
+      (!key ||
+        [decision.url, ...decision.additionalUrls].some(
+          (value) => jobUrlKey(value) === key,
+        )),
+  );
+  const keys = new Set(
+    matching
+      .flatMap((decision) => [decision.url, ...decision.additionalUrls])
+      .map(jobUrlKey),
+  );
+  if (key) keys.add(key);
   const dismissedJobUrls = key
-    ? (data.dismissedJobUrls?.filter((value) => jobUrlKey(value) !== key) ?? [])
+    ? (data.dismissedJobUrls?.filter((value) => !keys.has(jobUrlKey(value))) ??
+      [])
     : [];
-  return { ...data, dismissedJobUrls };
+  return {
+    ...data,
+    dismissedJobUrls,
+    ...(data.jobSearch
+      ? {
+          jobSearch: {
+            ...data.jobSearch,
+            decisions: decisions.filter((item) => !matching.includes(item)),
+          },
+        }
+      : {}),
+  };
 }
 
 export function removeJobApplication(data: AppData, id: string): AppData {
@@ -40,6 +67,19 @@ export function removeJobApplication(data: AppData, id: string): AppData {
   const key = `application:${id}`;
   const next: AppData = {
     ...data,
+    ...(data.jobSearch?.weeklyPicks
+      ? {
+          jobSearch: {
+            ...data.jobSearch,
+            weeklyPicks: Object.fromEntries(
+              Object.entries(data.jobSearch.weeklyPicks).map(([week, ids]) => [
+                week,
+                ids.filter((value) => value !== id),
+              ]),
+            ),
+          },
+        }
+      : {}),
     weeks: Object.fromEntries(
       Object.entries(data.weeks).map(([week, plan]) => [
         week,

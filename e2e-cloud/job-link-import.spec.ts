@@ -92,12 +92,16 @@ for (const width of [1440, 390])
     expect(f.documents.get(userA)!.data.weeks).toEqual(original.weeks);
     await page.reload();
     await navigateTo(page, "Jobb");
-    await expect(
-      page.getByRole("article", {
-        name: "Projektledare för regeringsuppdrag · Naturvårdsverket",
-        exact: true,
-      }),
-    ).toBeVisible();
+    const resumed = page.getByRole("region", {
+      name: "Ansökans detaljer",
+      exact: true,
+    });
+    await expect(resumed).toContainText(
+      "Projektledare för regeringsuppdrag · Naturvårdsverket",
+    );
+    await resumed
+      .getByRole("button", { name: "Till jobblistan", exact: true })
+      .click();
     expect(
       f.documents.get(userA)!.data.applications!.find((a) => a.id === added.id)
         ?.advertisement,

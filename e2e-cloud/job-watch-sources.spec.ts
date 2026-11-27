@@ -111,27 +111,19 @@ for (const [width, selectedJob] of [
         name: `${selectedJob.role} · ${selectedJob.organization}`,
         exact: true,
       })
-      .getByRole("button", { name: "Granska jobbet", exact: true })
+      .getByRole("button", { name: "Ta vidare", exact: true })
       .click();
-    const dialog = page.getByRole("dialog", {
-      name: "Lägg till jobb",
+    const detail = page.getByRole("region", {
+      name: "Ansökans detaljer",
       exact: true,
     });
-    await expect(dialog.getByLabel("Tjänst", { exact: true })).toHaveValue(
-      selectedJob.role,
+    await expect(detail).toContainText(
+      `${selectedJob.role} · ${selectedJob.organization}`,
     );
-    await expect(
-      dialog.getByLabel("Arbetsgivare", { exact: true }),
-    ).toHaveValue(selectedJob.organization);
-    await dialog.getByText("Annons och anteckningar", { exact: true }).click();
-    await expect(
-      dialog.getByRole("textbox", { name: "Annonstext", exact: true }),
-    ).toHaveValue(sourceText);
-    expect(f.writes).toHaveLength(0);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await detail.getByText("Läs annonsen", { exact: true }).click();
+    await expect(detail.getByText(sourceText, { exact: true })).toBeVisible();
     expect(externalReads).toBe(0);
-    await dialog
-      .getByRole("button", { name: "Spara jobb", exact: true })
-      .click();
     await expect
       .poll(() => f.documents.get(userA)!.data.applications!.length)
       .toBe(original.applications!.length + 1);

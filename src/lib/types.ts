@@ -281,6 +281,34 @@ export type DailyCheckIn = {
   focus: DailyFocus;
   updatedAt: string;
 };
+export type JobWatchDecision = {
+  url: string;
+  additionalUrls: string[];
+  role: string;
+  organization: string;
+  deadline: string;
+  kind: "later" | "dismissed";
+  revisitOn?: string;
+  reason?: "role" | "requirements" | "location" | "other";
+  decidedAt: string;
+};
+export type JobCvCheck = {
+  jobKey: string;
+  requirement: string;
+  kind: "required" | "preferred";
+  verdict: "supported" | "missing";
+  evidence: string;
+};
+export type JobCvProfile = {
+  text: string;
+  updatedAt: string;
+  checks: JobCvCheck[];
+};
+export type JobSearchData = {
+  weeklyPicks?: Record<string, string[]>;
+  decisions?: JobWatchDecision[];
+  cvProfile?: JobCvProfile;
+};
 export type AppData = {
   personalScheduleVersion?: 1 | 2;
   dailyCheckIns?: Record<string, DailyCheckIn>;
@@ -288,6 +316,7 @@ export type AppData = {
   habits?: Habit[];
   applications?: JobApplication[];
   dismissedJobUrls?: string[];
+  jobSearch?: JobSearchData;
   contacts?: NetworkContact[];
   careerActions?: CareerAction[];
   deadlines?: Deadline[];

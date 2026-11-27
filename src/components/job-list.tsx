@@ -9,6 +9,8 @@ import {
 } from "@/lib/job-workspace";
 import { APPLICATION_STATUSES } from "@/lib/applications";
 import { planningBoundary } from "@/lib/date";
+import { weeklyJobIds } from "@/lib/job-search";
+import { JobWeeklyFocus } from "./job-weekly-focus";
 
 export function JobList({
   data,
@@ -24,6 +26,11 @@ export function JobList({
   onDeadlines,
   query,
   onQuery,
+  week,
+  onWeek,
+  onTogglePick,
+  resumeId,
+  onProfile,
 }: {
   data: AppData;
   lane: JobLane;
@@ -38,6 +45,11 @@ export function JobList({
   onDeadlines: () => void;
   query: string;
   onQuery: (query: string) => void;
+  week: string;
+  onWeek: (week: string) => void;
+  onTogglePick: (id: string) => void;
+  resumeId: string | null;
+  onProfile: () => void;
 }) {
   const [boundary, setBoundary] = useState(planningBoundary);
   useEffect(() => {
@@ -45,6 +57,13 @@ export function JobList({
     return () => clearInterval(timer);
   }, []);
   const rows = jobWorkspace(data, boundary);
+  const pickedIds = weeklyJobIds(data, week);
+  const picks = pickedIds.flatMap((id) =>
+    rows.filter((row) => row.application.id === id),
+  );
+  const resume = rows.find(
+    (row) => row.application.id === resumeId && row.lane !== "closed",
+  );
   const terms = query
     .toLocaleLowerCase("sv-SE")
     .trim()
@@ -70,6 +89,31 @@ export function JobList({
           Lägg till jobb
         </button>
       </div>
+      <JobWeeklyFocus
+        week={week}
+        rows={picks}
+        onWeek={onWeek}
+        onPrimary={onPrimary}
+        onToggle={onTogglePick}
+      />
+      {resume && (
+        <section className="job-resume" aria-label="Fortsätt där du slutade">
+          <div>
+            <h3>Fortsätt där du slutade</h3>
+            <p>
+              {resume.application.role} · {resume.application.organization}
+            </p>
+            <p>{resume.next}</p>
+          </div>
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() => onPrimary(resume)}
+          >
+            Återuppta ansökan
+          </button>
+        </section>
+      )}
       <div
         className="job-lanes"
         role="group"
@@ -101,6 +145,7 @@ export function JobList({
         <input
           type="search"
           value={query}
+          maxLength={300}
           onChange={(e) => onQuery(e.target.value)}
           placeholder="Tjänst, arbetsgivare eller nästa steg"
         />
@@ -156,6 +201,21 @@ export function JobList({
                 </button>
               </h3>
               <p>{row.application.organization}</p>
+              {row.lane !== "closed" && (
+                <button
+                  type="button"
+                  className="text-button job-pick-button"
+                  aria-pressed={pickedIds.includes(row.application.id)}
+                  disabled={
+                    picks.length >= 3 && !pickedIds.includes(row.application.id)
+                  }
+                  onClick={() => onTogglePick(row.application.id)}
+                >
+                  {pickedIds.includes(row.application.id)
+                    ? "Vald denna vecka"
+                    : "Välj till veckan"}
+                </button>
+              )}
             </div>
             <span className="job-status">
               <span className="sr-only">Status: </span>
@@ -217,6 +277,9 @@ export function JobList({
       <details className="job-tools">
         <summary>Fler verktyg</summary>
         <div className="career-actions">
+          <button className="text-button" onClick={onProfile}>
+            CV för jobbmatchning
+          </button>
           <button className="text-button" onClick={onImport}>
             Importera flera LinkedIn-jobb
           </button>
