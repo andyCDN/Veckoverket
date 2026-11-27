@@ -1,5 +1,7 @@
 import type { JobWatchJob } from "./job-watch-config";
-import type { JobApplication } from "./types";
+import type { JobApplication, JobSearchData } from "./types";
+import { compareJobRequirements } from "./job-cv-match";
+import { watchJobUrls } from "./job-watch-feed";
 
 export type AdRequirement = { text: string; kind: "required" | "preferred" };
 export type JobReview = {
@@ -10,6 +12,7 @@ export type JobReview = {
   concerns: string[];
   score: number;
   preference?: string;
+  interest?: string;
 };
 
 const tidy = (text: string) => text.replace(/\s+/gu, " ").trim();
@@ -276,9 +279,10 @@ export function reviewWatchJob(job: JobWatchJob): JobReview {
 export function orderedJobReviews(
   jobs: JobWatchJob[],
   applications: Pick<JobApplication, "role" | "status">[] = [],
+  personal?: JobSearchData,
 ) {
   const order = { priority: 0, possible: 1, incomplete: 2, outside: 3 };
-  const tags = (role: string) =>
+  const tags = (role: string): string[] =>
     normalize(role).match(
       /politiskt sakkunnig|policyexpert|kommunikatör|kommunikationsstrateg|kommunikationschef|pressansvarig|presschef|handläggare|utredare|projektledare|samordnare|kanslichef|chefssekreterare|verksamhetsutvecklare|enhetschef|avdelningschef|verksamhetschef/gu,
     ) ?? [];
@@ -291,7 +295,59 @@ export function orderedJobReviews(
   );
   return jobs
     .map((job) => {
-      const review = reviewWatchJob(job);
+      let review = reviewWatchJob(job);
+      const comparison = compareJobRequirements(
+        review.requirements,
+        watchJobUrls(job),
+        personal?.cvProfile,
+        false,
+      );
+      const required = comparison.filter((item) => item.kind === "required");
+      const supported = required.filter(
+        (item) => item.verdict === "supported",
+      ).length;
+      if (
+        required.some((item) => item.verdict === "missing") &&
+        review.kind === "priority"
+      ) {
+        review = {
+          ...review,
+          kind: "possible",
+          reason:
+            "Du har markerat att ett angivet krav saknar stöd i CV:t. Pröva det innan du söker.",
+          score: review.score - 20,
+        };
+      } else if (
+        review.kind === "possible" &&
+        review.concerns.length &&
+        supported === required.length &&
+        required.length > 0
+      ) {
+        review = {
+          ...review,
+          kind: "priority",
+          reason:
+            "Arbetsuppgifterna ligger inom sökinriktningen och du har bekräftat CV-stöd för de urskilda kraven.",
+        };
+      }
+      if (review.kind === "priority")
+        review = {
+          ...review,
+          score: review.score + Math.min(12, supported * 3),
+        };
+      const disliked = (personal?.decisions ?? []).some(
+        (decision) =>
+          decision.kind === "dismissed" &&
+          decision.reason === "role" &&
+          tags(job.role).some((tag) => tags(decision.role).includes(tag)),
+      );
+      if (disliked && review.kind === "priority")
+        review = {
+          ...review,
+          score: review.score - 20,
+          interest:
+            "Lägre prioritet: liknar en roll du valt bort på grund av inriktningen.",
+        };
       const similar =
         review.kind === "priority" &&
         tags(job.role).some((tag) => preferred.has(tag));

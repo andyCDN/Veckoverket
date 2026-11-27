@@ -2145,6 +2145,8 @@ export function Workspace({
           {(view === "career" || view === "network") && (
             <CareerView
               key={`${view}-${user?.id ?? "local"}-${undoVersion}-${careerEntry?.id ?? ""}`}
+              storageScope={user?.id ?? "local"}
+              week={week}
               onWeek={() => navigate("planner")}
               initialTab={careerEntry?.tab}
               initialActionId={

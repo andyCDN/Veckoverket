@@ -28,7 +28,7 @@ Börja jobbsökarpasset öppnar första kvarvarande utkastet. När en ansökan �
 
 I Mina jobb finns Ta bort på varje jobbrad och Ta bort jobbet i detaljvyn. Efter bekräftelse tas jobbet, dess nästa steg och val i dagsinchecken bort. Kalenderpass och deadlines bevaras. Jobbet visas inte heller som nytt i jobbspaningen.
 
-I Jobbspaning väljer du Inte intressant. Bortvalet sparas i kontot. Ångra bortval visar det senaste jobbet igen; Visa bortvalda jobb igen återställer bortvalen även efter omladdning.
+I Jobbspaning väljer du Ointressant och kan ange en frivillig orsak. Bortvalet sparas i kontot. Ångra bortval visar det senaste jobbet igen med alla annonskällor; Visa bortvalda jobb igen återställer bortvalen även efter omladdning. Bedöm senare väljer i stället ett återkomstdatum före sista ansökningsdag.
 
 ## Importera flera LinkedIn-jobb
 

@@ -85,6 +85,10 @@ for (const width of [1440, 390])
     expect(f.documents.get(userA)!.data.weeks).toEqual(original.weeks);
     await page.reload();
     await navigateTo(page, "Jobb");
+    await expect(detail).toContainText("Ansökan är skickad");
+    await detail
+      .getByRole("button", { name: "Till jobblistan", exact: true })
+      .click();
     await page
       .getByRole("button", { name: "Väntar på svar (2)", exact: true })
       .click();

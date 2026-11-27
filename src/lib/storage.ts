@@ -8,6 +8,7 @@ import { googleEventUrl, isGoogleEventKey } from "./external-calendar";
 import { isLocalDate } from "./google-time";
 import { ensureCityHallCategory, refreshDemoCopy } from "./defaults";
 import { validateImportedSchedule } from "./schedule-import";
+import { validateJobSearchData } from "./job-search";
 export const STORAGE_KEY = "veckoverket.workspace.v1";
 export interface StorageLike {
   getItem(key: string): string | null;
@@ -33,6 +34,7 @@ export function decodeData(raw: string): AppData {
       "Filen är inte en giltig Veckoverket-säkerhetskopia (version 1).",
     );
   validateDailyCheckIns(d.dailyCheckIns);
+  validateJobSearchData(d.jobSearch);
   for (const s of [
     d.settings,
     ...Object.values(d.weeks)

@@ -113,9 +113,7 @@ for (const width of [1440, 390]) {
       exact: true,
     });
     await expect(results.getByRole("article")).toHaveCount(2);
-    await job
-      .getByRole("button", { name: "Inte intressant", exact: true })
-      .click();
+    await job.getByRole("button", { name: "Ointressant", exact: true }).click();
     await expect(job).toHaveCount(0);
     await expect
       .poll(() => f.documents.get(userA)!.data.dismissedJobUrls?.length)
@@ -124,9 +122,7 @@ for (const width of [1440, 390]) {
       .getByRole("button", { name: "Ångra bortval", exact: true })
       .click();
     await expect(job).toBeVisible();
-    await job
-      .getByRole("button", { name: "Inte intressant", exact: true })
-      .click();
+    await job.getByRole("button", { name: "Ointressant", exact: true }).click();
     await expect
       .poll(() => f.documents.get(userA)!.data.dismissedJobUrls)
       .toEqual(["https://arbetsformedlingen.se/platsbanken/annonser/31722867"]);
@@ -181,7 +177,7 @@ test("jobbspaningens bortval stannar i rätt konto", async ({ page }) => {
       name: "Projektledare · Naturvårdsverket",
       exact: true,
     })
-    .getByRole("button", { name: "Inte intressant", exact: true })
+    .getByRole("button", { name: "Ointressant", exact: true })
     .click();
   await expect
     .poll(() => f.documents.get(userA)!.data.dismissedJobUrls?.length)

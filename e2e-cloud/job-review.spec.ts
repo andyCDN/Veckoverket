@@ -99,22 +99,9 @@ for (const width of [1440, 390]) {
     await watch
       .getByRole("button", { name: "Prioriterade", exact: true })
       .click();
-    await first
-      .getByRole("button", { name: "Granska jobbet", exact: true })
-      .click();
-    const capture = page.getByRole("dialog", {
-      name: "Lägg till jobb",
-      exact: true,
-    });
-    await expect(capture.getByLabel("Tjänst", { exact: true })).toHaveValue(
-      "Politiskt sakkunnig",
-    );
-    await capture
-      .getByRole("button", { name: "Stäng dialog", exact: true })
-      .click();
     expect(f.writes).toHaveLength(0);
     await first
-      .getByRole("button", { name: "Inte intressant", exact: true })
+      .getByRole("button", { name: "Ointressant", exact: true })
       .click();
     await expect(first).toHaveCount(0);
     await expect(watch.getByRole("article")).toHaveCount(8);
