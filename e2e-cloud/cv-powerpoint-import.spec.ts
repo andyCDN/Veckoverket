@@ -38,7 +38,196 @@ async function setup(page: Page, width = 1440) {
   };
 }
 const upload = (page: Page) =>
-  page.getByLabel("Läs in filer (PowerPoint eller text)", { exact: true });
+  page.getByLabel("Läs in filer (PDF, PowerPoint eller text)", { exact: true });
+
+for (const width of [1440, 390]) {
+  test(`fem PDF-filer kan väljas tillsammans, granskas och sparas ${width}`, async ({
+    page,
+  }) => {
+    const { f, editor } = await setup(page, width);
+    const posts: string[] = [];
+    page.on("request", (request) => {
+      if (request.method() === "POST") posts.push(request.url());
+    });
+    const choose = page.waitForEvent("filechooser");
+    await upload(page).click();
+    const chooser = await choose;
+    expect(await chooser.element().getAttribute("accept")).toBeNull();
+    await chooser.setFiles(
+      Array.from({ length: 5 }, (_, index) => ({
+        name: `Fiktivt CV för samhällsarbete ${index + 1}.PDF`,
+        mimeType: "application/octet-stream",
+        buffer: readFileSync(resolve(root, `cv-${index + 1}.pdf`)),
+      })),
+    );
+    const results = editor.getByRole("region", {
+      name: "Inlästa filer",
+      exact: true,
+    });
+    await expect(results).toContainText("5 filer tillagda.");
+    await expect(results).toContainText("PDF · 2 sidor med text");
+    await expect(results).toContainText("1 sida saknar läsbar text");
+    await results.screenshot({ path: `test-results/pdf-import-${width}.png` });
+    const text = editor.getByLabel("Klistra in CV-text", { exact: true });
+    const value = await text.inputValue();
+    expect(value).toContain(existing);
+    for (let index = 1; index <= 5; index++) {
+      expect(value).toContain(
+        `[Källa: Fiktivt CV för samhällsarbete ${index}.PDF]`,
+      );
+      expect(value).toContain(
+        `Fiktiv erfarenhet ${index}: projektledning och samhällsarbete.`,
+      );
+      expect(value).toContain(
+        `Fiktivt tillägg ${index}: organisation och samordning.`,
+      );
+    }
+    expect(value).toContain("[Sida 2]");
+    expect(value).toContain("Förvaltning, rådgivning och remissvar.");
+    expect(value).not.toContain("Doktorsexamen från PDF-metadata");
+    expect(posts).toEqual([]);
+    expect(f.writes).toHaveLength(0);
+    await upload(page).setInputFiles(resolve(root, "cv-1.pdf"));
+    await expect(results).toContainText("Redan inläst");
+    await expect(text).toHaveValue(value);
+    await editor
+      .getByRole("button", { name: "Spara CV-underlag", exact: true })
+      .click();
+    await expect
+      .poll(() => f.documents.get(userA)!.data.jobSearch?.cvProfile?.text)
+      .toBe(value);
+    await page.reload();
+    await navigateTo(page, "Jobb");
+    await page.getByText("Fler verktyg", { exact: true }).click();
+    await page
+      .getByRole("button", { name: "CV för jobbmatchning", exact: true })
+      .click();
+    await expect(
+      page.getByLabel("Klistra in CV-text", { exact: true }),
+    ).toHaveValue(value);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    expect(f.errors).toEqual([]);
+  });
+}
+
+test("PDF, PowerPoint och text kan blandas i samma import", async ({
+  page,
+}) => {
+  const { f, editor } = await setup(page);
+  await upload(page).setInputFiles([
+    {
+      name: "underlag.pdf",
+      mimeType: "application/pdf",
+      buffer: readFileSync(resolve(root, "cv-1.pdf")),
+    },
+    {
+      name: "underlag.ppt",
+      mimeType: "application/vnd.ms-powerpoint",
+      buffer: readFileSync(resolve(root, "kompetens.ppt")),
+    },
+    {
+      name: "underlag.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from(
+        "Eget texttillägg om analys och verksamhetsutveckling.",
+      ),
+    },
+  ]);
+  await expect(
+    editor.getByRole("region", { name: "Inlästa filer", exact: true }),
+  ).toContainText("3 filer tillagda.");
+  const text = editor.getByLabel("Klistra in CV-text", { exact: true });
+  await expect(text).toHaveValue(/Fiktiv erfarenhet 1/);
+  await expect(text).toHaveValue(/Politiskt arbete 2012/);
+  await expect(text).toHaveValue(/Eget texttillägg/);
+  expect(f.writes).toHaveLength(0);
+  await editor.getByRole("button", { name: "Avbryt", exact: true }).click();
+  expect(f.documents.get(userA)!.data.jobSearch?.cvProfile?.text).toBe(
+    existing,
+  );
+  expect(f.errors).toEqual([]);
+});
+
+test("oläsbara PDF-filer visar orsaken och bevarar CV:t; en ny import kan lyckas", async ({
+  page,
+}) => {
+  const { f, editor } = await setup(page);
+  await upload(page).setInputFiles([
+    {
+      name: "losenord.pdf",
+      mimeType: "application/pdf",
+      buffer: readFileSync(resolve(root, "losenord.pdf")),
+    },
+    {
+      name: "skannat.pdf",
+      mimeType: "application/pdf",
+      buffer: readFileSync(resolve(root, "skannat.pdf")),
+    },
+    {
+      name: "trasig.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from("%PDF-1.7\nDet här är en trasig PDF."),
+    },
+  ]);
+  const results = editor.getByRole("region", {
+    name: "Inlästa filer",
+    exact: true,
+  });
+  await expect(results).toContainText("0 filer tillagda · 3 kunde inte läsas");
+  await expect(results).toContainText("PDF-filen är lösenordsskyddad");
+  await expect(results).toContainText("PDF-filen saknar läsbar text");
+  await expect(results).toContainText("PDF-filen kunde inte läsas");
+  await results
+    .getByText("Visa teknisk felorsak", { exact: true })
+    .first()
+    .click();
+  await expect(results).toContainText("PDF_PASSWORD");
+  await expect(
+    editor.getByLabel("Klistra in CV-text", { exact: true }),
+  ).toHaveValue(existing);
+  expect(f.writes).toHaveLength(0);
+  await upload(page).setInputFiles(resolve(root, "cv-1.pdf"));
+  await expect(results).toContainText("1 fil tillagd.");
+  await expect(
+    editor.getByLabel("Klistra in CV-text", { exact: true }),
+  ).toHaveValue(/Fiktiv erfarenhet 1/);
+  await editor.getByRole("button", { name: "Avbryt", exact: true }).click();
+  expect(f.documents.get(userA)!.data.jobSearch?.cvProfile?.text).toBe(
+    existing,
+  );
+  expect(f.writes).toHaveLength(0);
+  expect(f.errors).toEqual([]);
+});
+
+test("PDF-gränser avvisar hela den för stora filen och låter nästa fil läsas", async ({
+  page,
+}) => {
+  const { f, editor } = await setup(page);
+  await upload(page).setInputFiles([
+    resolve(root, "for-manga-sidor.pdf"),
+    resolve(root, "for-mycket-text.pdf"),
+    resolve(root, "cv-1.pdf"),
+  ]);
+  const results = editor.getByRole("region", {
+    name: "Inlästa filer",
+    exact: true,
+  });
+  await expect(results).toContainText("1 fil tillagd · 2 kunde inte läsas");
+  await expect(results).toContainText("mellan 1 och 250 sidor");
+  await expect(results).toContainText("mer än 60 000 tecken");
+  const value = await editor
+    .getByLabel("Klistra in CV-text", { exact: true })
+    .inputValue();
+  expect(value).toContain("Fiktiv erfarenhet 1");
+  expect(value).not.toContain("for-manga-sidor.pdf");
+  expect(value).not.toContain("for-mycket-text.pdf");
+  expect(f.writes).toHaveLength(0);
+  expect(f.errors).toEqual([]);
+});
 
 for (const format of ["ppt", "pptx"]) {
   for (const width of [1440, 390]) {

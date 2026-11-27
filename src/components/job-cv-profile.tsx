@@ -73,10 +73,12 @@ export function JobCvProfileEditor({
         setState((current) => {
           try {
             const result = appendCvDocument(current.text, document);
+            const unit = document.format === "pdf" ? "sida" : "bild";
+            const units = document.format === "pdf" ? "sidor" : "bilder";
             const counts =
               document.format === "text"
                 ? "Textfil"
-                : `${document.format.toUpperCase()} · ${document.slides} ${document.slides === 1 ? "bild" : "bilder"} med text${document.hiddenSlides ? ` · ${document.hiddenSlides} ${document.hiddenSlides === 1 ? "dold bild överhoppad" : "dolda bilder överhoppade"}` : ""}${document.emptySlides ? ` · ${document.emptySlides} ${document.emptySlides === 1 ? "bild saknar" : "bilder saknar"} läsbar text` : ""}`;
+                : `${document.format.toUpperCase()} · ${document.pages} ${document.pages === 1 ? unit : units} med text${document.hiddenPages ? ` · ${document.hiddenPages} ${document.hiddenPages === 1 ? "dold bild överhoppad" : "dolda bilder överhoppade"}` : ""}${document.emptyPages ? ` · ${document.emptyPages} ${document.emptyPages === 1 ? `${unit} saknar` : `${units} saknar`} läsbar text` : ""}`;
             return {
               ...current,
               text: result.text,
@@ -143,9 +145,9 @@ export function JobCvProfileEditor({
         }}
       >
         <p>
-          Klistra in ditt CV eller läs in en eller flera PowerPoint-filer.
-          Relevanta utdrag föreslås vid annonsens krav. Du bekräftar vilka
-          utdrag som faktiskt styrker kraven.
+          Klistra in ditt CV eller läs in en eller flera PDF- eller
+          PowerPoint-filer. Relevanta utdrag föreslås vid annonsens krav. Du
+          bekräftar vilka utdrag som faktiskt styrker kraven.
         </p>
         <p className="help">
           Underlaget sparas i din privata arbetsyta tillsammans med
@@ -166,7 +168,7 @@ export function JobCvProfileEditor({
           }}
         />
         <label>
-          Läs in filer (PowerPoint eller text)
+          Läs in filer (PDF, PowerPoint eller text)
           <input
             type="file"
             multiple
@@ -181,11 +183,12 @@ export function JobCvProfileEditor({
           />
         </label>
         <p className="help">
-          Stöder PowerPoint (.ppt och .pptx) och textfiler (.txt och .md). Välj
-          högst 10 filer, upp till 20 MB per fil och 60 MB tillsammans. Ny text
-          läggs till i underlaget och sparas när du väljer Spara CV-underlag.
-          Dolda presentationsbilder och talaranteckningar tas inte med. Text som
-          ligger i foton eller skärmbilder behöver kompletteras manuellt.
+          Stöder PDF (.pdf), PowerPoint (.ppt och .pptx) och textfiler (.txt och
+          .md). Välj högst 10 filer, upp till 20 MB per fil och 60 MB
+          tillsammans. Ny text läggs till i underlaget och sparas när du väljer
+          Spara CV-underlag. Dolda presentationsbilder och talaranteckningar tas
+          inte med. Text som ligger i foton eller skärmbilder behöver
+          kompletteras manuellt.
         </p>
         {reading && <p role="status">{progress || "Läser filer…"}</p>}
         {files.length > 0 && (

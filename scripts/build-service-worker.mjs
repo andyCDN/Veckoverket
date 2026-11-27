@@ -2,6 +2,10 @@ import { createHash } from "node:crypto";
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const pdfVersion = require("pdfjs-dist/package.json").version;
 
 export async function buildServiceWorker(basePath = "/Veckoverket") {
   const root = fileURLToPath(new URL("../out/", import.meta.url));
@@ -23,6 +27,7 @@ export async function buildServiceWorker(basePath = "/Veckoverket") {
     join(root, "inspelning", "index.html"),
     join(root, "importera-schema", "index.html"),
     join(root, "pcm-capture.worklet.js"),
+    join(root, "vendor", "pdfjs", pdfVersion, "pdf.worker.min.mjs"),
     join(root, "manifest.webmanifest"),
     join(root, "inspelning", "manifest.webmanifest"),
     ...(await files(join(root, "_next", "static"))),
