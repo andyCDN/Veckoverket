@@ -107,9 +107,10 @@ export function cvEvidenceSuggestions(requirement: string, cv: string) {
   const fragments = [
     ...new Set(
       cv
+        .replace(/^\[(?:Källa:[^\n]*|Bild \d+)\]\s*$/gmu, "")
         .split(/\n+|(?<=[.!?])\s+/u)
         .map((s) => s.trim())
-        .filter((s) => s.length >= 8),
+        .filter((s) => s.length >= 8 && !/^\[(?:Källa:|Bild \d+\])/u.test(s)),
     ),
   ];
   return fragments
