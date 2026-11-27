@@ -1033,6 +1033,20 @@
 .job-cv-comparison select {
   text-overflow: ellipsis;
 }
+.cv-import-results {
+  border: 1px solid var(--blue);
+  padding: 16px;
+  overflow-wrap: anywhere;
+}
+.cv-import-results ul {
+  padding-left: 20px;
+}
+.cv-import-results li + li {
+  margin-top: 12px;
+}
+.cv-import-results li p {
+  margin: 4px 0;
+}
 @media (max-width: 850px) {
   .job-weekly-heading,
   .job-resume {

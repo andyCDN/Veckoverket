@@ -44,7 +44,11 @@ Samma titel, organisation och sista ansökningsdag från flera källor visas som
 
 ## Privat jämförelse med CV
 
-Öppna **CV för jobbmatchning** i jobbspaningen eller under **Mina jobb → Fler verktyg**. Klistra in grund-CV:t, eller läs in en `.txt`-/`.md`-fil, högst 60 000 tecken. För PDF och Word kopieras texten till fältet. En länk till en separat CV-chatt ger inte appen tillgång till dess dokument.
+Öppna **CV för jobbmatchning** i jobbspaningen eller under **Mina jobb → Fler verktyg**. Klistra in grund-CV:t eller välj **Läs in filer (PowerPoint eller text)**. Flera äldre `.ppt`, nyare `.pptx` och `.txt`-/`.md`-filer kan väljas tillsammans: högst tio filer, 20 MB per fil och 60 MB sammanlagt. Den samlade CV-texten får vara högst 60 000 tecken. För PDF och Word kopieras texten till fältet. En länk till en separat CV-chatt ger inte appen tillgång till dess dokument.
+
+PowerPoint-texter från rubriker, textrutor och tabeller läggs till i befintligt underlag med filnamn och bildnummer. Presentationens bildordning följs. Dolda bilder och talaranteckningar tas inte med; bildfiler och skärmbilder tolkas inte med OCR. Resultatet visar lästa filer, bilder utan läsbar text och eventuella fel. Samma importerade text dubbleras inte. Ett fel i en fil raderar inte tidigare text eller andra lyckade importer. En import som överskrider textgränsen avvisas utan att kapas. **Spara CV-underlag** sparar den granskade texten, medan **Avbryt** lämnar kontots tidigare underlag kvar.
+
+Läsningen sker på enheten. Endast den extraherade texten med källrubriker sparas i arbetsytan. Äldre PPT läses med `@file-viewer/ppt` och PPTX-arkiv med `fflate`, vilka laddas först när formatet används. Licenserna följer med webbpubliceringen under `public/third-party/`.
 
 **Jämför krav med ditt CV** finns på annonskort och sparade ansökningar. Angivna krav och meriter hålls isär. Relevanta, ordagranna utdrag föreslås med textregler. En ordträff styrker aldrig automatiskt ett krav: **Behöver kontrolleras** gäller tills användaren har bekräftat ett faktiskt CV-utdrag eller markerat **Saknar stöd i CV:t**. Bekräftat stöd måste finnas i det sparade CV-underlaget. Antal år, examensnivå och alternativa meriter behöver kontrolleras mot hela kravet.
 

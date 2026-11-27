@@ -80,7 +80,7 @@ for (const width of [1440, 390]) {
       exact: true,
     });
     await editor
-      .getByLabel("Läs in textfil (valfritt)", { exact: true })
+      .getByLabel("Läs in filer (PowerPoint eller text)", { exact: true })
       .setInputFiles({
         name: "grund-cv.txt",
         mimeType: "text/plain",
