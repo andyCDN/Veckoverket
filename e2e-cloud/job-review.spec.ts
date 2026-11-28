@@ -77,25 +77,30 @@ for (const width of [1440, 390]) {
     await expect(first).toContainText("Meriterande");
     expect(f.writes).toHaveLength(0);
     await page.screenshot({ path: `test-results/job-review-${width}.png` });
-    await watch.getByRole("button", { name: /^Alla träffar/ }).click();
-    await expect(watch.getByRole("article")).toHaveCount(jobs.length);
+    await watch.getByRole("button", { name: /^Att granska/ }).click();
+    await expect(watch.getByRole("article")).toHaveCount(jobs.length - 2);
     const physics = watch.getByRole("article", {
       name: "Utredare · Fysikmyndigheten",
       exact: true,
     });
     await expect(physics).toContainText("specialistkrav behöver prövas först");
-    await expect(
-      watch.getByRole("article", {
-        name: "Forskningsingenjör i kvantsäker kommunikation · Förbundet",
-        exact: true,
-      }),
-    ).toContainText("Utanför sökinriktningen");
+    const research = watch.getByRole("article", {
+      name: "Forskningsingenjör i kvantsäker kommunikation · Förbundet",
+      exact: true,
+    });
+    await expect(research).toHaveCount(0);
     await expect(
       watch.getByRole("article", {
         name: "Projektledare · Förbundet",
         exact: true,
       }),
     ).toContainText("Underlag saknas");
+    await watch.getByRole("button", { name: /^Bortsorterade \(2\)/ }).click();
+    await expect(watch.getByRole("article")).toHaveCount(2);
+    await expect(research).toContainText("Automatiskt bortsorterat");
+    await expect(research).toContainText("annat yrkesområde");
+    await expect(watch).toContainText("Placeringen är Göteborg");
+    await page.screenshot({ path: `test-results/job-excluded-${width}.png` });
     await watch
       .getByRole("button", { name: "Prioriterade", exact: true })
       .click();
@@ -139,6 +144,117 @@ for (const width of [1440, 390]) {
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true);
+    expect(f.errors).toEqual([]);
+  });
+}
+
+test("manuellt vald återkomstdag tar tillbaka ett bortsorterat jobb för bedömning", async ({
+  page,
+}) => {
+  const data = jobWorkspaceFixture();
+  const job = reviewJobFixture({
+    role: "Forskningsingenjör",
+    url: "https://example.org/returning",
+  });
+  data.jobSearch = {
+    decisions: [
+      {
+        url: job.url,
+        additionalUrls: [],
+        role: job.role,
+        organization: job.organization,
+        deadline: job.deadline,
+        kind: "later",
+        revisitOn: "2026-11-26",
+        decidedAt: "2026-11-25T08:00:00Z",
+      },
+    ],
+  };
+  const f = await mock(page, row(data));
+  await page.clock.setFixedTime(new Date("2026-11-26T08:00:00Z"));
+  await page.route("**/jobbspaning.json*", (route) =>
+    route.fulfill({ json: { jobs: [job], updatedAt: "2026-11-26T08:00:00Z" } }),
+  );
+  await page.goto("./");
+  await login(page);
+  await navigateTo(page, "Jobb");
+  await page.getByRole("button", { name: "Jobbspaning", exact: true }).click();
+  const watch = page.getByRole("region", { name: "Jobbspaning", exact: true });
+  await expect(
+    watch.getByRole("article", {
+      name: `${job.role} · ${job.organization}`,
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(watch).toContainText("Dags att bedöma igen");
+  await expect(
+    watch.getByRole("button", { name: /^Bortsorterade/ }),
+  ).toHaveCount(0);
+  expect(f.writes).toHaveLength(0);
+  expect(f.documents.get(userA)!.data.applications).toEqual(data.applications);
+  expect(f.errors).toEqual([]);
+});
+
+for (const width of [1440, 390]) {
+  test(`enbart bortsorterade jobb kan granskas och tas vidare manuellt ${width}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    const data = jobWorkspaceFixture();
+    const job = reviewJobFixture({
+      role: "Forskningsingenjör",
+      url: "https://example.org/manual-choice",
+    });
+    const f = await mock(page, row(data));
+    await page.clock.setFixedTime(new Date("2026-11-26T08:00:00Z"));
+    await page.route("**/jobbspaning.json*", (route) =>
+      route.fulfill({
+        json: { jobs: [job], updatedAt: "2026-11-26T08:00:00Z" },
+      }),
+    );
+    await page.goto("./");
+    await login(page);
+    await navigateTo(page, "Jobb");
+    await page
+      .getByRole("button", { name: "Jobbspaning", exact: true })
+      .click();
+    const watch = page.getByRole("region", {
+      name: "Jobbspaning",
+      exact: true,
+    });
+    await expect(watch).toContainText("Alla aktuella träffar är bortsorterade");
+    await expect(watch.getByRole("article")).toHaveCount(0);
+    await watch.getByRole("button", { name: /^Att granska \(0\)/ }).click();
+    await expect(watch.getByRole("article")).toHaveCount(0);
+    await watch.getByRole("button", { name: /^Bortsorterade \(1\)/ }).click();
+    const card = watch.getByRole("article", {
+      name: `${job.role} · ${job.organization}`,
+      exact: true,
+    });
+    await expect(card).toContainText("Automatiskt bortsorterat");
+    await expect(
+      card.getByRole("link", { name: "Öppna annons", exact: true }),
+    ).toHaveAttribute("href", job.url);
+    expect(f.writes).toHaveLength(0);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await card.getByRole("button", { name: "Ta vidare", exact: true }).click();
+    await expect(
+      page.getByRole("region", { name: "Ansökans detaljer", exact: true }),
+    ).toContainText(job.role);
+    await expect
+      .poll(() => f.documents.get(userA)!.data.applications?.length)
+      .toBe(data.applications!.length + 1);
+    expect(
+      f.documents.get(userA)!.data.applications!.at(-1)?.advertisement?.url,
+    ).toBe(job.url);
+    expect(f.documents.get(userA)!.data.weeks).toEqual(data.weeks);
+    expect(f.documents.get(userA)!.data.dismissedJobUrls).toEqual(
+      data.dismissedJobUrls,
+    );
     expect(f.errors).toEqual([]);
   });
 }

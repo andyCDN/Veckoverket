@@ -333,7 +333,7 @@ for (const width of [1440, 390]) {
       .click();
     await expect(card).toHaveCount(0);
     await watch(page)
-      .getByRole("button", { name: /^Alla träffar/ })
+      .getByRole("button", { name: /^Bortsorterade/ })
       .click();
     card = watch(page).getByRole("article", {
       name: "Politiskt sakkunnig · Förbundet",
@@ -355,7 +355,7 @@ for (const width of [1440, 390]) {
     await page.reload();
     await navigateTo(page, "Jobb");
     await watch(page)
-      .getByRole("button", { name: /^Alla träffar/ })
+      .getByRole("button", { name: /^Bortsorterade/ })
       .click();
     await card.locator(".job-cv-comparison > summary").click();
     await expect(card.locator(".job-requirement").first()).toContainText(

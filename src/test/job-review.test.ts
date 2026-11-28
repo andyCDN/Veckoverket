@@ -264,3 +264,59 @@ it("bedömer kommunikations- och policyarbete efter arbetsuppgifterna även inom
     ).kind,
   ).toBe("outside");
 });
+
+it("sorterar bort tydliga yrkesroller även när annonsen är kort", () => {
+  for (const role of [
+    "Legitimerad sjuksköterska",
+    "Senior systemutvecklare",
+    "Doktorand inom policy",
+    "SIEM-tekniker",
+    "Gymnasielärare i samhällskunskap",
+  ]) {
+    const review = reviewWatchJob(
+      reviewJobFixture({ role, text: "Kort beskrivning." }),
+    );
+    expect(review.kind, role).toBe("outside");
+    expect(review.evidence).toBe(role);
+  }
+});
+
+it("använder inte yrkesord för målgruppen som skäl att filtrera bort policy och kommunikation", () => {
+  for (const role of [
+    "Policyexpert för forskare och lärare",
+    "Kommunikatör inom sjukvård",
+    "Kommunikationsstrateg inom systemutveckling",
+    "Strateg till Digitaliseringsmyndigheten",
+  ]) {
+    expect(reviewWatchJob(reviewJobFixture({ role })).kind, role).toBe(
+      "priority",
+    );
+  }
+});
+
+it("låter uttryckligt helt distansarbete väga tyngre än en ort utanför Stockholm", () => {
+  expect(
+    reviewWatchJob(
+      reviewJobFixture({
+        location: "Göteborg",
+        text: `${reviewText}\nArbetet kan utföras helt på distans.`,
+      }),
+    ).kind,
+  ).toBe("priority");
+  expect(
+    reviewWatchJob(
+      reviewJobFixture({
+        location: "Göteborg",
+        text: `${reviewText}\nMöjlighet att arbeta på distans två dagar i veckan.`,
+      }),
+    ).kind,
+  ).toBe("possible");
+  expect(
+    reviewWatchJob(
+      reviewJobFixture({
+        location: "Göteborg",
+        text: `${reviewText}\nDu får arbeta helt på distans två dagar i veckan.`,
+      }),
+    ).kind,
+  ).toBe("possible");
+});

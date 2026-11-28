@@ -120,8 +120,8 @@ const families = [
 
 const otherRole =
   /(?:\b(?:siem|it|support|system|nätverks|applikations)[- ]?tekniker|forskningsingenjör|doktorand|postdoktor|\bforskare\b|systemutvecklare|programmerare|testledare|\bit[- ]strateg|\bit[- ]samordnare|informationssäkerhet|cybersäkerhet|dataskydd|\bnautisk|toxikolog|palynolog|ringmärkning|kapacitetsmodell|redovisning|internrevisor|inköpare|upphandling|hyresjuridisk|klienthandläggare|domstolshandläggare|rättssakkunnig|kvalificerad jurist|markåtkomst|laborativa miljöer|säkerhetstjänst|vid Must|operativ samordning|säkerhetsskydd|underrättelseproduktion|infrastruktursektionen|uttagsfrågor)/iu;
-const clearOtherProfession =
-  /(?:tekniker|ingenjör|doktorand|postdoktor|\bforskare\b|systemutvecklare|programmerare|testledare)/iu;
+const clearProfessionTitle =
+  /^(?:(?:senior|junior|erfaren|legitimerad|specialistutbildad|biträdande)\s+)*(?:sjuksköterska|undersköterska|läkare|tandläkare|psykolog|fysioterapeut|förskollärare|grundskollärare|gymnasielärare|lärare|socialsekreterare|doktorand|postdoktor|professor|forskare|forskningsingenjör|laboratorieingenjör|systemutvecklare|programmerare|(?:siem|it|support|system|nätverks|applikations)[- ]?tekniker)\b/iu;
 const communicationOrPolicyRole =
   /kommunikatör|kommunikations(?:strateg|chef|ansvarig)|presschef|pressansvarig|policyexpert|politiskt sakkunnig|intressepolitisk/iu;
 const specialistRequirements = [
@@ -149,6 +149,10 @@ const broaderEducation =
   /statsvetenskap|samhällsvetenskap|kommunikation|nationalekonomi|företagsekonomi|exempelvis.{0,100}juridik/iu;
 const watchArea =
   /stockholm|sundbyberg|solna|nacka|huddinge|haninge|tyresö|täby|danderyd|lidingö|sollentuna|järfälla|botkyrka|södertälje|salem|vaxholm|värmdö|vallentuna|upplands|sigtuna|nynäshamn|norrtälje|ekerö|österåker|bromma|farsta|kista|hägersten|älvsjö|skarpnäck|skärholmen|vällingby|hässelby|spånga|enskede|distans|remote|flexibelt|hela sverige|ej specificerad/iu;
+const fullyRemote =
+  /(?:tjänsten|rollen|arbetet|uppdraget).{0,60}(?:helt|100\s*%).{0,15}(?:på distans|remote)|(?:arbeta|jobba).{0,30}(?:helt på distans|var som helst i Sverige)/iu;
+const partialRemote =
+  /(?:delvis|hybrid)|(?:en|två|tre|fyra|[1-4]) dagar?.{0,20}(?:veck|månad)/iu;
 
 function workText(text: string) {
   const first =
@@ -195,6 +199,14 @@ export function reviewWatchJob(job: JobWatchJob): JobReview {
     concerns: [] as string[],
     score: 0,
   };
+  if (clearProfessionTitle.test(tidy(job.role)))
+    return {
+      ...base,
+      kind: "outside",
+      reason:
+        "Titeln avser ett annat yrkesområde än din nuvarande sökinriktning.",
+      evidence: tidy(job.role),
+    };
   if (text.length < 180)
     return {
       ...base,
@@ -202,22 +214,22 @@ export function reviewWatchJob(job: JobWatchJob): JobReview {
       reason:
         "Hela annonstexten behövs för att granska arbetsuppgifter och krav.",
     };
-  if (
-    otherRole.test(job.role) &&
-    (clearOtherProfession.test(job.role) ||
-      !communicationOrPolicyRole.test(job.role))
-  )
+  if (otherRole.test(job.role) && !communicationOrPolicyRole.test(job.role))
     return {
       ...base,
       kind: "outside",
       reason:
         "Rollen har en annan specialistinriktning än det nuvarande sökurvalet.",
     };
-  if (job.location && !watchArea.test(job.location))
+  const outsideArea = !!job.location && !watchArea.test(job.location);
+  const remoteUnclear =
+    outsideArea &&
+    (!fullyRemote.test(tidy(text)) || partialRemote.test(tidy(text)));
+  if (outsideArea && !/distans|remote/iu.test(text))
     return {
       ...base,
       kind: "outside",
-      reason: "Placeringen ligger utanför Stockholmsområdet eller distans.",
+      reason: `Placeringen är ${job.location}, utanför Stockholmsområdet, och annonsen anger inte arbete helt på distans.`,
     };
   const required = requirements.filter((item) => item.kind === "required");
   const specialist = required.find((item) =>
@@ -243,15 +255,17 @@ export function reviewWatchJob(job: JobWatchJob): JobReview {
     Math.max(...matched.map((family) => family.points)) +
     (matched.length > 1 ? 8 : 0);
   const evidence = evidenceFor(work, strongest.work);
-  if (!job.location || !required.length)
+  if (!job.location || !required.length || remoteUnclear)
     return {
       ...base,
       kind: "possible",
       evidence,
       score: score - 10,
-      reason: !job.location
-        ? "Arbetsuppgifterna är relevanta, men placeringen behöver kontrolleras."
-        : "Arbetsuppgifterna är relevanta, men tydliga krav kunde inte urskiljas i underlaget.",
+      reason: remoteUnclear
+        ? "Placeringen ligger utanför Stockholmsområdet och omfattningen av distansarbetet behöver kontrolleras."
+        : !job.location
+          ? "Arbetsuppgifterna är relevanta, men placeringen behöver kontrolleras."
+          : "Arbetsuppgifterna är relevanta, men tydliga krav kunde inte urskiljas i underlaget.",
     };
   if (specialist) {
     const concern = specialistRequirements.find((rule) =>
@@ -308,11 +322,11 @@ export function orderedJobReviews(
       ).length;
       if (
         required.some((item) => item.verdict === "missing") &&
-        review.kind === "priority"
+        review.kind !== "outside"
       ) {
         review = {
           ...review,
-          kind: "possible",
+          kind: "outside",
           reason:
             "Du har markerat att ett angivet krav saknar stöd i CV:t. Pröva det innan du söker.",
           score: review.score - 20,

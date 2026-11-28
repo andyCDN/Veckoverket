@@ -63,7 +63,7 @@ async function openWatch(page: Page) {
   await expect(
     watch.getByText("Hämtar jobb…", { exact: true }),
   ).not.toBeVisible();
-  await watch.getByRole("button", { name: /^Alla träffar/ }).click();
+  await watch.getByRole("button", { name: /^Att granska/ }).click();
   return watch;
 }
 
