@@ -69,6 +69,7 @@ export function JobWatch({
   const [revisitOn, setRevisitOn] = useState("");
   const [laterError, setLaterError] = useState("");
   const [decisionMessage, setDecisionMessage] = useState("");
+  const [excludedSelected, setShowExcluded] = useState(false);
   useEffect(() => {
     const timer = setInterval(() => setCurrentDate(today()), 60000);
     return () => clearInterval(timer);
@@ -161,18 +162,31 @@ export function JobWatch({
         )),
   );
   const reviewed = orderedJobReviews(visible, applications, jobSearch);
-  const priorities = reviewed.filter(
-    ({ review }) => review.kind === "priority",
-  );
   const returning = reviewed.filter(({ job }) => {
     const decision = decisionForJob(decisions, watchJobUrls(job));
     return decision?.kind === "later" && decision.revisitOn! <= currentDate;
   });
+  // An explicit return date takes precedence over automatic filtering.
+  const excluded = reviewed.filter(
+    (row) => row.review.kind === "outside" && !returning.includes(row),
+  );
+  const showExcluded = excludedSelected && excluded.length > 0;
+  const toReview = reviewed.filter((row) => !excluded.includes(row));
+  const priorities = toReview.filter(
+    ({ review }) => review.kind === "priority",
+  );
+  useEffect(() => {
+    if (!excluded.length) setShowExcluded(false);
+  }, [excluded.length]);
   const startJobs = [
     ...returning,
     ...priorities.filter((row) => !returning.includes(row)),
   ];
-  const showing = showAll ? reviewed : startJobs.slice(0, 8);
+  const showing = showExcluded
+    ? excluded
+    : showAll
+      ? toReview
+      : startJobs.slice(0, 8);
   return (
     <section className="job-workspace stack" aria-label="Jobbspaning">
       <div className="job-toolbar">
@@ -357,8 +371,16 @@ export function JobWatch({
         <div className="job-review-overview stack">
           <p>
             <strong>{Math.min(8, startJobs.length)} jobb att börja med</strong>{" "}
-            av {visible.length} öppna träffar.
+            av {toReview.length} träffar att granska.
           </p>
+          {excluded.length > 0 && (
+            <p>
+              {excluded.length} jobb är automatiskt bortsorterade på grund av
+              yrkesinriktning, placering eller ett krav som du markerat utan
+              CV-stöd. Under Bortsorterade kan du se orsaken och ta vidare ett
+              jobb ändå.
+            </p>
+          )}
           {returning.length > 0 && (
             <p>
               {returning.length} jobb är tillbaka för bedömning enligt dina
@@ -373,8 +395,8 @@ export function JobWatch({
           {jobSearch?.cvProfile && (
             <p>
               CV-underlag finns. Dina bekräftade kravbedömningar påverkar
-              ordningen. Krav som du markerat utan stöd behöver prövas före
-              ansökan.
+              ordningen. Jobb med obligatoriska krav som du markerat utan stöd
+              sorteras bort. Osäkra krav lämnas kvar för granskning.
             </p>
           )}
           <div
@@ -384,23 +406,39 @@ export function JobWatch({
           >
             <button
               className="button secondary"
-              aria-pressed={!showAll}
-              onClick={() => setShowAll(false)}
+              aria-pressed={!showAll && !showExcluded}
+              onClick={() => {
+                setShowExcluded(false);
+                setShowAll(false);
+              }}
             >
               Prioriterade
             </button>
             <button
               className="button secondary"
-              aria-pressed={showAll}
-              onClick={() => setShowAll(true)}
+              aria-pressed={showAll && !showExcluded}
+              onClick={() => {
+                setShowExcluded(false);
+                setShowAll(true);
+              }}
             >
-              Alla träffar ({reviewed.length})
+              Att granska ({toReview.length})
             </button>
+            {excluded.length > 0 && (
+              <button
+                className="button secondary"
+                aria-pressed={showExcluded}
+                onClick={() => setShowExcluded(true)}
+              >
+                Bortsorterade ({excluded.length})
+              </button>
+            )}
           </div>
-          {!showAll && !startJobs.length && (
+          {!showExcluded && !showAll && !startJobs.length && (
             <p>
-              Inga tydliga förslag efter granskningen. Alla träffar finns kvar
-              att gå igenom.
+              {toReview.length
+                ? "Inga tydliga förslag efter granskningen. Välj Att granska för att gå igenom osäkra träffar."
+                : "Alla aktuella träffar är bortsorterade. Du kan se orsakerna under Bortsorterade."}
             </p>
           )}
         </div>
@@ -431,13 +469,15 @@ export function JobWatch({
           </p>
           <p className="job-review-reason">
             <strong>
-              {review.kind === "priority"
-                ? "Därför lyfts jobbet fram"
-                : review.kind === "possible"
-                  ? "Behöver granskas närmare"
-                  : review.kind === "incomplete"
-                    ? "Underlag saknas"
-                    : "Utanför sökinriktningen"}
+              {showExcluded
+                ? "Automatiskt bortsorterat"
+                : review.kind === "priority"
+                  ? "Därför lyfts jobbet fram"
+                  : review.kind === "possible"
+                    ? "Behöver granskas närmare"
+                    : review.kind === "incomplete"
+                      ? "Underlag saknas"
+                      : "Utanför sökinriktningen"}
               :
             </strong>{" "}
             {review.reason}
@@ -464,7 +504,7 @@ export function JobWatch({
                 if (!issue)
                   setDecisionMessage(
                     args[2] === "missing" && args[1].kind === "required"
-                      ? "Bedömningen är sparad. Jobb med krav utan CV-stöd finns under Alla träffar."
+                      ? "Bedömningen är sparad. Jobb med obligatoriska krav utan CV-stöd finns under Bortsorterade."
                       : "Kravbedömningen är sparad.",
                   );
                 return issue;

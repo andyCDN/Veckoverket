@@ -103,7 +103,7 @@ it("kräver att bekräftat textstöd faktiskt finns i CV:t och bevarar hela anno
   ).toBe("review");
 });
 
-it("sänker prioritet för saknat obligatoriskt stöd men inte för en saknad merit", () => {
+it("sorterar bort bekräftat saknat obligatoriskt stöd men inte en saknad merit", () => {
   const profile = saveJobCvProfile(jobWorkspaceFixture(), cv, now);
   const missing = saveJobCvCheck(
     profile,
@@ -112,7 +112,7 @@ it("sänker prioritet för saknat obligatoriskt stöd men inte för en saknad me
     "missing",
   );
   expect(orderedJobReviews([job], [], missing.jobSearch)[0].review.kind).toBe(
-    "possible",
+    "outside",
   );
   const merit = saveJobCvCheck(profile, [job.url], requirements[2], "missing");
   expect(orderedJobReviews([job], [], merit.jobSearch)[0].review.kind).toBe(
